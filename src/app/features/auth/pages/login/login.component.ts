@@ -51,7 +51,7 @@ export class LoginComponent {
       this.isLoading = true;
       this.errorMessage = '';
       
-      this.authService.login(this.loginForm.value).subscribe({
+      this.authService.login({ correo: this.loginForm.value.correo, password: this.loginForm.value.contrasena }).subscribe({
         next: (res) => {
           this.isLoading = false;
           // Redirección por roles
