@@ -23,6 +23,14 @@ export class AuthService {
     this.loadTokenFromStorage();
   }
 
+  forgotPassword(email: string) {
+    return this.http.post<{mensaje: string}>(`${this.apiUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, nuevaContrasena: string) {
+    return this.http.patch<{mensaje: string}>(`${this.apiUrl}/reset-password`, { token, nuevaContrasena });
+  }
+
   login(credentials: LoginRequest) {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
       tap(response => {
