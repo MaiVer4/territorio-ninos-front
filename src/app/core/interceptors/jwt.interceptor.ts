@@ -1,18 +1,24 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const token = authService.getToken();
+  // Evitar inyectar AuthService directamente para prevenir Dependencia Circular
+  // con HttpClient (HttpClient -> Interceptor -> AuthService -> HttpClient)
+  const token = localStorage.getItem('tdn_jwt_token');
 
   if (token) {
-    const clonedReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
+    try {
+      const authData = JSON.parse(token);
+      if (authData && authData.token) {
+        const clonedReq = req.clone({
+          setHeaders: {
+            Authorization: `Bearer ${authData.token}`
+          }
+        });
+        return next(clonedReq);
       }
-    });
-    return next(clonedReq);
+    } catch (e) {
+      console.error('Error parseando token en interceptor', e);
+    }
   }
 
   return next(req);

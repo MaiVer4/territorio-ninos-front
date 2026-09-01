@@ -69,7 +69,7 @@ export class AuthService {
   private loadTokenFromStorage(): void {
     const authData = localStorage.getItem(this.TOKEN_KEY);
     if (authData) {
-      this.currentUser.set(JSON.parse(authData));
+      try { this.currentUser.set(JSON.parse(authData)); } catch(e) { console.error("Error parsing token", e); localStorage.removeItem(this.TOKEN_KEY); }
     }
   }
 }
