@@ -7,6 +7,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/pages/login/login.component').then(m => m.LoginComponent)
   },
   {
+    path: 'forgot-password',
+    loadComponent: () => import('./features/auth/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent)
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./features/auth/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent)
+  },
+  {
     path: 'admin/dashboard',
     canActivate: [authGuard],
     data: { roles: ['ADMINISTRADOR'] },
