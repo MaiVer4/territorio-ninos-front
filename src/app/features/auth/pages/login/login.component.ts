@@ -56,14 +56,14 @@ export class LoginComponent {
           this.isLoading = false;
           // Redirección por roles
           const rol = res.rol;
-          if (rol === 'ROLE_ADMIN') this.router.navigate(['/admin/dashboard']);
-          else if (rol === 'ROLE_TAQUILLERO') this.router.navigate(['/taquilla/pos']);
-          else if (rol === 'ROLE_OPERARIO') this.router.navigate(['/operario/monitor']);
+          if (rol === 'ADMINISTRADOR') this.router.navigate(['/admin/dashboard']);
+          else if (rol === 'TAQUILLERO') this.router.navigate(['/taquilla/pos']);
+          else if (rol === 'OPERARIO') this.router.navigate(['/operario/monitor']);
           else this.router.navigate(['/']);
         },
         error: (err) => {
           this.isLoading = false;
-          this.errorMessage = 'Credenciales inválidas. Por favor, verifica tu correo y contraseña.';
+          if (err.status === 401) { this.errorMessage = 'Credenciales inválidas. Por favor, verifica tu correo y contraseña.'; } else if (err.status === 0) { this.errorMessage = 'Error de conexión. El servidor no responde.'; } else { this.errorMessage = 'Ha ocurrido un error inesperado. Inténtalo más tarde.'; }
         }
       });
     }
