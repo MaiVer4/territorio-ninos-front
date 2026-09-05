@@ -1,0 +1,37 @@
+<mat-sidenav-container class="h-screen w-full bg-slate-50">
+  <mat-sidenav mode="side" opened class="w-64 border-r border-slate-200 bg-white">
+    <div class="flex items-center gap-3 p-6 mb-2">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+        <span class="material-symbols-outlined">castle</span>
+      </div>
+      <h2 class="text-xl font-bold text-slate-800">Admin</h2>
+    </div>
+
+    <mat-nav-list class="px-3">
+      <a mat-list-item routerLink="/admin/dashboard" routerLinkActive="!bg-blue-50 !text-blue-700 rounded-lg mb-1">
+        <mat-icon matListItemIcon class="text-slate-500">dashboard</mat-icon>
+        <span class="font-medium text-sm">Dashboard</span>
+      </a>
+      <a mat-list-item routerLink="/admin/colaboradores" routerLinkActive="!bg-blue-50 !text-blue-700 rounded-lg mb-1">
+        <mat-icon matListItemIcon class="text-slate-500">group</mat-icon>
+        <span class="font-medium text-sm">Colaboradores</span>
+      </a>
+      <a mat-list-item routerLink="/admin/atracciones" routerLinkActive="!bg-blue-50 !text-blue-700 rounded-lg mb-1">
+        <mat-icon matListItemIcon class="text-slate-500">attractions</mat-icon>
+        <span class="font-medium text-sm">Atracciones</span>
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="flex flex-col">
+    <mat-toolbar class="bg-white border-b border-slate-200 px-6 h-16 flex justify-end">
+      <button mat-button color="warn" (click)="logout()">
+        <mat-icon>logout</mat-icon> Salir
+      </button>
+    </mat-toolbar>
+    
+    <main class="p-6 md:p-8 flex-1 overflow-auto">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
