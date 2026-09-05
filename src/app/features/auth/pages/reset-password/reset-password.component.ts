@@ -1,7 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,6 +21,7 @@ import { AuthService } from '../../../../core/services/auth.service';
     MatCardModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatProgressSpinnerModule
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen flex justify-center items-center bg-slate-50 p-8">
   <div class="w-full max-w-md">
@@ -92,6 +94,8 @@ export class ResetPasswordComponent implements OnInit {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
   resetForm: FormGroup = this.fb.group({
     nuevaContrasena: ['', [Validators.required, Validators.minLength(8)]],
@@ -110,37 +114,48 @@ export class ResetPasswordComponent implements OnInit {
       ? null : { mismatch: true };
   }
 
-  ngOnInit() {
-    this.route.queryParams.subscribe(params => {
+  constructor() {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       this.token = params['token'];
       if (!this.token) {
         this.errorMessage = 'Enlace de recuperación inválido o incompleto.';
+        this.cdr.markForCheck();
       }
     });
+  }
+
+  ngOnInit() {
+    // Suscripción movida al constructor para takeUntilDestroyed sin inyectar DestroyRef
   }
 
   onSubmit(): void {
     if (this.resetForm.valid && this.token) {
       this.isLoading = true;
       this.errorMessage = '';
+      this.cdr.markForCheck();
       
-      this.authService.resetPassword(this.token, this.resetForm.value.nuevaContrasena).subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          this.successMessage = res.mensaje || 'Contraseña actualizada correctamente.';
-          this.resetForm.reset();
-        },
-        error: (err) => {
-          this.isLoading = false;
-          if (err.status === 401) {
-            this.errorMessage = 'El enlace ha expirado o no es válido.';
-          } else {
-            this.errorMessage = 'Ocurrió un error al restablecer tu contraseña.';
+      this.authService.resetPassword(this.token, this.resetForm.value.nuevaContrasena)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.isLoading = false;
+            this.successMessage = res.mensaje || 'Contraseña actualizada correctamente.';
+            this.resetForm.reset();
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.isLoading = false;
+            if (err.status === 401) {
+              this.errorMessage = 'El enlace ha expirado o no es válido.';
+            } else {
+              this.errorMessage = 'Ocurrió un error al restablecer tu contraseña.';
+            }
+            this.cdr.markForCheck();
           }
-        }
-      });
+        });
     } else if (!this.token) {
       this.errorMessage = 'Falta el token de seguridad. Vuelve a solicitar un enlace.';
+      this.cdr.markForCheck();
     }
   }
 }

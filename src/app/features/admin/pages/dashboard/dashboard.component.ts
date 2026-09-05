@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../../core/services/auth.service';
 
@@ -6,6 +6,7 @@ import { AuthService } from '../../../../core/services/auth.service';
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <h1 class="text-4xl font-bold text-blue-700 mb-4">Dashboard Administrador</h1>

@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,6 +21,7 @@ import { AuthService } from '../../../../core/services/auth.service';
     MatCardModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatProgressSpinnerModule
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="min-h-screen flex justify-center items-center bg-slate-50 p-8">
   <div class="w-full max-w-md">
@@ -70,6 +72,8 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class ForgotPasswordComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
   forgotForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]]
@@ -84,17 +88,22 @@ export class ForgotPasswordComponent {
       this.isLoading = true;
       this.errorMessage = '';
       this.successMessage = '';
+      this.cdr.markForCheck();
       
-      this.authService.forgotPassword(this.forgotForm.value.email).subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          this.successMessage = res.mensaje || 'Se ha enviado un enlace de recuperación a tu correo.';
-        },
-        error: (err) => {
-          this.isLoading = false;
-          this.errorMessage = 'Ocurrió un error al procesar la solicitud. Verifica tu conexión.';
-        }
-      });
+      this.authService.forgotPassword(this.forgotForm.value.email)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.isLoading = false;
+            this.successMessage = res.mensaje || 'Se ha enviado un enlace de recuperación a tu correo.';
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.isLoading = false;
+            this.errorMessage = 'Ocurrió un error al procesar la solicitud. Verifica tu conexión.';
+            this.cdr.markForCheck();
+          }
+        });
     }
   }
 }
