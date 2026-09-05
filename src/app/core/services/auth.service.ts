@@ -5,6 +5,7 @@ import { AuthResponse, LoginRequest } from '../models/auth.model';
 import { tap, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import { jwtDecode } from 'jwt-decode';
 
 @Injectable({
   providedIn: 'root'
@@ -35,7 +36,11 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
       tap(response => {
         if (response.token) {
-          localStorage.setItem(this.TOKEN_KEY, JSON.stringify(response));
+          try {
+            localStorage.setItem(this.TOKEN_KEY, JSON.stringify(response));
+          } catch (e) {
+            console.error('Error guardando en localStorage', e);
+          }
           this.currentUser.set(response);
         }
       }),
@@ -47,37 +52,69 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+    try {
+      localStorage.removeItem(this.TOKEN_KEY);
+    } catch (e) {
+      console.error('Error limpiando localStorage', e);
+    }
     this.currentUser.set(null);
     this.router.navigate(['/login']);
   }
 
   getToken(): string | null {
-    const authData = localStorage.getItem(this.TOKEN_KEY);
-    if (authData) {
-      const response: AuthResponse = JSON.parse(authData);
-      return response.token;
+    try {
+      const authData = localStorage.getItem(this.TOKEN_KEY);
+      if (authData) {
+        const response: AuthResponse = JSON.parse(authData);
+        return response.token;
+      }
+    } catch (e) {
+      console.error('Error leyendo localStorage', e);
     }
     return null;
   }
 
   isAuthenticated(): boolean {
-    return this.getToken() !== null; // En producción se verificaría la expiración
+    const token = this.getToken();
+    if (!token) return false;
+
+    try {
+      const decodedToken: any = jwtDecode(token);
+      // Verificar si el token ya expiró
+      const isExpired = (decodedToken.exp * 1000) < Date.now();
+      if (isExpired) {
+        this.logout(); // Limpiar estado inválido preventivamente
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Token inválido', error);
+      return false; // Si el token está mal formado
+    }
   }
 
   getRole(): string | null {
-    const authData = localStorage.getItem(this.TOKEN_KEY);
-    if (authData) {
-      const response: AuthResponse = JSON.parse(authData);
-      return response.rol;
+    try {
+      const authData = localStorage.getItem(this.TOKEN_KEY);
+      if (authData) {
+        const response: AuthResponse = JSON.parse(authData);
+        return response.rol;
+      }
+    } catch (e) {
+      console.error('Error leyendo rol de localStorage', e);
     }
     return null;
   }
 
   private loadTokenFromStorage(): void {
-    const authData = localStorage.getItem(this.TOKEN_KEY);
-    if (authData) {
-      try { this.currentUser.set(JSON.parse(authData)); } catch(e) { console.error("Error parsing token", e); localStorage.removeItem(this.TOKEN_KEY); }
+    try {
+      const authData = localStorage.getItem(this.TOKEN_KEY);
+      if (authData) {
+        this.currentUser.set(JSON.parse(authData));
+      }
+    } catch(e) { 
+      console.error("Error parsing token", e); 
+      localStorage.removeItem(this.TOKEN_KEY); 
     }
   }
 }

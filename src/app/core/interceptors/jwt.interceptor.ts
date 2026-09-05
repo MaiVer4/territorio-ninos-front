@@ -3,7 +3,13 @@ import { HttpInterceptorFn } from '@angular/common/http';
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   // Evitar inyectar AuthService directamente para prevenir Dependencia Circular
   // con HttpClient (HttpClient -> Interceptor -> AuthService -> HttpClient)
-  const token = localStorage.getItem('tdn_jwt_token');
+  let token: string | null = null;
+  
+  try {
+    token = localStorage.getItem('tdn_jwt_token');
+  } catch (err) {
+    console.error('Error accediendo a localStorage en interceptor', err);
+  }
 
   if (token) {
     try {
