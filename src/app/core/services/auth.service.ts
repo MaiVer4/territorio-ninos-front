@@ -7,12 +7,15 @@ import { throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
 
+import { NotificationService } from './notification.service';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private notificationService = inject(NotificationService);
   
   private readonly apiUrl = `${environment.apiUrl}/auth`;
   private readonly TOKEN_KEY = 'tdn_jwt_token';
@@ -51,7 +54,34 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  logout(force = false): void {
+    if (force || !this.getToken()) {
+      this.clearSessionAndRedirect();
+      return;
+    }
+
+    this.http.post<{mensaje?: string}>(`${this.apiUrl}/logout`, {}).subscribe({
+      next: (res) => {
+        this.clearSessionAndRedirect();
+        if (res?.mensaje) {
+          this.notificationService.info(res.mensaje);
+        }
+      },
+      error: (err) => {
+        // En caso de conflicto de negocio (ej: código 409 por caja abierta en taquilla)
+        if (err.status === 409) {
+          const motivo = err.error?.mensaje || 'No puedes cerrar sesión porque tienes un turno de caja activo. Cierra la caja primero.';
+          this.notificationService.warn(motivo);
+          return;
+        }
+
+        // Si fue error de token expirado (401), red o servidor, procedemos con logout local preventivo
+        this.clearSessionAndRedirect();
+      }
+    });
+  }
+
+  clearSessionAndRedirect(): void {
     try {
       localStorage.removeItem(this.TOKEN_KEY);
     } catch (e) {
@@ -83,7 +113,7 @@ export class AuthService {
       // Verificar si el token ya expiró
       const isExpired = (decodedToken.exp * 1000) < Date.now();
       if (isExpired) {
-        this.logout(); // Limpiar estado inválido preventivamente
+        this.logout(true); // Limpiar estado inválido preventivamente sin llamada remota
         return false;
       }
       return true;
