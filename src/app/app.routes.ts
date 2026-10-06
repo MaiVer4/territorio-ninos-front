@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent)
   },
   {
+    path: 'unauthorized',
+    loadComponent: () => import('./features/auth/pages/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
+  },
+  {
     path: 'admin',
     canActivate: [authGuard],
     data: { roles: ['ADMINISTRADOR'] },
