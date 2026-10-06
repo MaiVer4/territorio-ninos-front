@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AuthService } from '../../../../core/services/auth.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -32,16 +33,14 @@ import { AuthService } from '../../../../core/services/auth.service';
 
     <mat-card class="!shadow-xl !rounded-2xl !bg-white">
       <mat-card-content class="!p-8">
-        <div *ngIf="successMessage" class="mb-6 p-4 bg-green-50 text-green-700 rounded-lg text-sm flex items-center gap-2 border border-green-200">
-          <span class="material-symbols-outlined">check_circle</span>
-          {{ successMessage }}
-        </div>
-        <div *ngIf="errorMessage" class="mb-6 p-4 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2 border border-red-200">
-          <span class="material-symbols-outlined">error</span>
-          {{ errorMessage }}
+        <div *ngIf="emailSent" class="mb-6 p-6 bg-green-50 text-green-800 rounded-xl text-center flex flex-col items-center gap-3 border border-green-200">
+          <span class="material-symbols-outlined text-4xl text-green-600">mark_email_read</span>
+          <p class="font-medium text-sm leading-relaxed">
+            Hemos enviado un enlace de recuperación a tu correo electrónico. Sigue las instrucciones recibidas.
+          </p>
         </div>
 
-        <form *ngIf="!successMessage" [formGroup]="forgotForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+        <form *ngIf="!emailSent" [formGroup]="forgotForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
             <label class="text-sm font-semibold text-slate-700">Correo electrónico</label>
             <mat-form-field appearance="outline" class="w-full">
@@ -72,6 +71,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class ForgotPasswordComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
@@ -80,14 +80,11 @@ export class ForgotPasswordComponent {
   });
 
   isLoading = false;
-  errorMessage = '';
-  successMessage = '';
+  emailSent = false;
 
   onSubmit(): void {
-    if (this.forgotForm.valid) {
+    if (this.forgotForm.valid && !this.isLoading) {
       this.isLoading = true;
-      this.errorMessage = '';
-      this.successMessage = '';
       this.cdr.markForCheck();
       
       this.authService.forgotPassword(this.forgotForm.value.email)
@@ -95,12 +92,14 @@ export class ForgotPasswordComponent {
         .subscribe({
           next: (res) => {
             this.isLoading = false;
-            this.successMessage = res.mensaje || 'Se ha enviado un enlace de recuperación a tu correo.';
+            this.emailSent = true;
+            this.notificationService.success(res.mensaje || 'Se ha enviado un enlace de recuperación a tu correo.');
             this.cdr.markForCheck();
           },
           error: (err) => {
             this.isLoading = false;
-            this.errorMessage = 'Ocurrió un error al procesar la solicitud. Verifica tu conexión.';
+            const msg = err.error?.mensaje || 'Ocurrió un error al procesar la solicitud. Verifica tu conexión.';
+            this.notificationService.error(msg);
             this.cdr.markForCheck();
           }
         });
