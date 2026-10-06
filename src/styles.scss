@@ -40,4 +40,41 @@ body {
   margin: 0;
   height: 100%;
 }
-/* You can add global styles to this file, and also import other style files */
+/* Estilos para Toasts de Notificación (MatSnackBar) */
+.mat-mdc-snack-bar-container.toast-success .mdc-snackbar__surface {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.4) !important;
+}
+
+.mat-mdc-snack-bar-container.toast-error .mdc-snackbar__surface {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4) !important;
+}
+
+.mat-mdc-snack-bar-container.toast-warn .mdc-snackbar__surface {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 25px -5px rgba(217, 119, 6, 0.4) !important;
+}
+
+.mat-mdc-snack-bar-container.toast-info .mdc-snackbar__surface {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4) !important;
+}
+
+.mat-mdc-snack-bar-container .mdc-snackbar__label {
+  font-weight: 500 !important;
+  font-size: 0.95rem !important;
+}
+
+.mat-mdc-snack-bar-container .mat-mdc-button {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
