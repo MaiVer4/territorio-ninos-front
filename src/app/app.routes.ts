@@ -37,6 +37,23 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/pages/colaboradores/colaboradores.component').then(m => m.ColaboradoresComponent)
       },
       {
+        path: 'usuarios',
+        redirectTo: 'colaboradores',
+        pathMatch: 'full'
+      },
+      {
+        path: 'reportes',
+        loadComponent: () => import('./features/admin/pages/reportes/reportes.component').then(m => m.ReportesComponent)
+      },
+      {
+        path: 'turnos',
+        loadComponent: () => import('./features/admin/pages/turnos/turnos.component').then(m => m.TurnosComponent)
+      },
+      {
+        path: 'auditoria',
+        loadComponent: () => import('./features/admin/pages/auditoria/auditoria.component').then(m => m.AuditoriaComponent)
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full'
