@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AuthService } from '../../../../core/services/auth.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-login',
@@ -34,6 +35,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class LoginComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
@@ -41,7 +43,6 @@ export class LoginComponent {
   loginForm: FormGroup;
   hidePassword = true;
   isLoading = false;
-  errorMessage = '';
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -51,9 +52,8 @@ export class LoginComponent {
   }
 
   onSubmit(): void {
-    if (this.loginForm.valid) {
+    if (this.loginForm.valid && !this.isLoading) {
       this.isLoading = true;
-      this.errorMessage = '';
       this.cdr.markForCheck();
       
       this.authService.login({ correo: this.loginForm.value.correo, password: this.loginForm.value.contrasena })
@@ -61,16 +61,27 @@ export class LoginComponent {
         .subscribe({
           next: (res) => {
             this.isLoading = false;
+            this.notificationService.success(`¡Bienvenido al sistema! (${res.correo})`);
             // Redirección por roles
             const rol = res.rol;
             if (rol === 'ADMINISTRADOR') this.router.navigate(['/admin/dashboard']);
             else if (rol === 'TAQUILLERO') this.router.navigate(['/taquilla/pos']);
-            else if (rol === 'OPERARIO') this.router.navigate(['/operario/monitor']);
-            else this.router.navigate(['/']);
+            else if (rol === 'OPERARIO') this.router.navigate(['/operario/seleccion']);
+            else this.router.navigate(['/unauthorized']);
           },
           error: (err) => {
             this.isLoading = false;
-            if (err.status === 401) { this.errorMessage = 'Credenciales inválidas. Por favor, verifica tu correo y contraseña.'; } else if (err.status === 0) { this.errorMessage = 'Error de conexión. El servidor no responde.'; } else { this.errorMessage = 'Ha ocurrido un error inesperado. Inténtalo más tarde.'; }
+            let msg = 'Ha ocurrido un error inesperado. Inténtalo más tarde.';
+            if (err.status === 401) {
+              msg = 'Credenciales inválidas. Por favor, verifica tu correo y contraseña.';
+            } else if (err.status === 403 || err.status === 423) {
+              msg = err.error?.mensaje || err.error?.detalles || 'Acceso restringido o cuenta bloqueada temporalmente.';
+            } else if (err.status === 0) {
+              msg = 'Error de conexión. El servidor no responde.';
+            } else if (err.error?.mensaje) {
+              msg = err.error.mensaje;
+            }
+            this.notificationService.error(msg);
             this.cdr.markForCheck();
           }
         });
