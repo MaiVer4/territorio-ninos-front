@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
+import { TipoAtraccion } from '../../../../core/models/enums';
 
 @Component({
   selector: 'app-atraccion-form',
@@ -41,17 +42,17 @@ import { Atraccion } from '../../../../core/models/atraccion.model';
           }
         </div>
 
-        <!-- Precio y Capacidad -->
+        <!-- Tarifa por Minuto y Capacidad Máxima -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-              Precio (COP) <span class="text-red-500">*</span>
+              Tarifa por minuto (COP) <span class="text-red-500">*</span>
             </label>
-            <input type="number" formControlName="precio" min="0" step="1000"
+            <input type="number" formControlName="tarifaMinuto" min="0.01" step="100"
               class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-            @if (form.get('precio')?.value > 0) {
+            @if (form.get('tarifaMinuto')?.value > 0) {
               <p class="text-xs text-emerald-600 mt-1 font-semibold">
-                \${{ form.get('precio')?.value.toLocaleString('es-CO') }}
+                \${{ form.get('tarifaMinuto')?.value.toLocaleString('es-CO') }}/min
               </p>
             }
           </div>
@@ -60,7 +61,7 @@ import { Atraccion } from '../../../../core/models/atraccion.model';
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
               Capacidad máxima <span class="text-red-500">*</span>
             </label>
-            <input type="number" formControlName="maxCapacity" min="1" max="100"
+            <input type="number" formControlName="capacidadMaxima" min="1" max="100"
               class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
           </div>
         </div>
@@ -102,12 +103,12 @@ import { Atraccion } from '../../../../core/models/atraccion.model';
           </div>
         }
 
-        <!-- Tipo de control (3 Tarjetas) -->
+        <!-- Tipo de control (2 Tarjetas canónicas) -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-            Tipo de control <span class="text-red-500">*</span>
+            Tipo de atracción <span class="text-red-500">*</span>
           </label>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 gap-2">
             @for (t of controlTypes; track t.value) {
               <button type="button" (click)="setControlType(t.value)"
                 class="p-3 rounded-xl border-2 text-left transition cursor-pointer"
@@ -122,19 +123,51 @@ import { Atraccion } from '../../../../core/models/atraccion.model';
           </div>
         </div>
 
-        <!-- Duración (minutos) -->
-        @if (form.get('tipo')?.value !== 'falls') {
+        <!-- Duración Base (minutos) si es TEMPORIZADA -->
+        @if (form.get('tipo')?.value === 'TEMPORIZADA') {
           <div>
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-              Duración (minutos)
+              Duración base (minutos) <span class="text-red-500">*</span>
             </label>
-            <input type="number" formControlName="duracion" min="0" max="480" step="5"
+            <input type="number" formControlName="duracionMinutosBase" min="1" max="480" step="5"
               class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-            @if (form.get('duracion')?.value > 0) {
-              <p class="text-xs text-slate-400 mt-1">{{ form.get('duracion')?.value }} minutos por sesión</p>
+            @if (form.get('duracionMinutosBase')?.value > 0) {
+              <p class="text-xs text-slate-400 mt-1">{{ form.get('duracionMinutosBase')?.value }} minutos por sesión base</p>
             }
           </div>
+        } @else {
+          <!-- Caídas Límite si es EVENTOS_CAIDAS -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+              Límite de caídas / eventos <span class="text-red-500">*</span>
+            </label>
+            <input type="number" formControlName="caidasLimite" min="1" max="50" step="1"
+              class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
+            <p class="text-xs text-slate-400 mt-1">Máximo de intentos o caídas permitidas antes de finalizar</p>
+          </div>
         }
+
+        <!-- Margen de Tolerancia (HU-12 / RF12) -->
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-700">
+              Margen de tolerancia / tiempo de gracia (HU-12)
+            </label>
+            <span class="text-xs font-bold text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded-md">
+              {{ form.get('toleranciaMinutos')?.value ?? 0 }} min
+            </span>
+          </div>
+          <input type="range" formControlName="toleranciaMinutos" min="0" max="5" step="1"
+            class="w-full accent-blue-600 cursor-pointer" />
+          <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+            <span>0 min (Alarma inmediata)</span>
+            <span>2 min</span>
+            <span>5 min (Máx. permitido)</span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1.5">
+            Tiempo adicional concedido para desalojo antes de activar la alarma sonora de tiempo agotado.
+          </p>
+        </div>
 
         <!-- Botones de Acción -->
         <div class="pt-2 grid grid-cols-2 gap-3">
@@ -165,10 +198,9 @@ export class AtraccionFormComponent {
 
   ages = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  controlTypes = [
-    { value: 'time', label: '⏱ Por Tiempo', desc: 'Cronómetro regresivo' },
-    { value: 'falls', label: '🎯 Por Caídas', desc: 'Contador de eventos' },
-    { value: 'vip', label: '⭐ VIP / Acceso', desc: 'Acceso libre por tiempo' }
+  controlTypes: { value: TipoAtraccion; label: string; desc: string }[] = [
+    { value: 'TEMPORIZADA', label: '⏱ Por Tiempo', desc: 'Cronómetro regresivo por sesión' },
+    { value: 'EVENTOS_CAIDAS', label: '🎯 Por Caídas', desc: 'Contador de eventos / caídas' }
   ];
 
   form: FormGroup;
@@ -176,19 +208,25 @@ export class AtraccionFormComponent {
   constructor(@Inject(MAT_DIALOG_DATA) public data: Atraccion | null) {
     this.isEdit.set(!!data && !!data.id);
 
+    const tipoVal: TipoAtraccion = (data?.tipo === 'EVENTOS_CAIDAS' || (data?.tipo as any) === 'falls')
+      ? 'EVENTOS_CAIDAS'
+      : 'TEMPORIZADA';
+
     this.form = this.fb.group({
       nombre: [data?.nombre || '', Validators.required],
-      precio: [data?.precio || data?.tarifaMinuto || 10000, [Validators.required, Validators.min(0)]],
-      maxCapacity: [data?.maxCapacity || data?.capacidadMaxima || 10, [Validators.required, Validators.min(1)]],
+      tarifaMinuto: [data?.tarifaMinuto || data?.precio || 1000, [Validators.required, Validators.min(0.01)]],
+      capacidadMaxima: [data?.capacidadMaxima || data?.maxCapacity || 10, [Validators.required, Validators.min(1)]],
       edadMin: [data?.edadMin || 2, Validators.required],
       edadMax: [data?.edadMax || 12, Validators.required],
-      tipo: [data?.tipo || 'time', Validators.required],
-      duracion: [data?.duracion || data?.duracionMinutosBase || 20, Validators.required],
+      tipo: [tipoVal, Validators.required],
+      duracionMinutosBase: [data?.duracionMinutosBase || data?.duracion || 15, Validators.required],
+      toleranciaMinutos: [data?.toleranciaMinutos ?? 1, [Validators.required, Validators.min(0), Validators.max(10)]],
+      caidasLimite: [data?.caidasLimite || 3],
       estado: [data?.estado || 'ACTIVO']
     });
   }
 
-  setControlType(tipo: string) {
+  setControlType(tipo: TipoAtraccion) {
     this.form.patchValue({ tipo });
   }
 
@@ -199,21 +237,31 @@ export class AtraccionFormComponent {
 
     this.loading.set(true);
 
+    const tipoVal: TipoAtraccion = val.tipo === 'EVENTOS_CAIDAS' ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA';
+    const tarifaMinuto = Number(val.tarifaMinuto);
+    const capacidadMaxima = Number(val.capacidadMaxima);
+    const duracionMinutosBase = Number(val.duracionMinutosBase || 15);
+    const toleranciaMinutos = Number(val.toleranciaMinutos || 0);
+    const caidasLimite = Number(val.caidasLimite || 3);
+
     const payload: Atraccion = {
       ...this.data,
       nombre: val.nombre,
-      descripcion: `${val.duracion} min · máx ${val.maxCapacity} · edad ${val.edadMin}–${val.edadMax}`,
-      tarifaMinuto: val.precio,
-      precio: val.precio,
-      maxCapacity: val.maxCapacity,
-      capacidadMaxima: val.maxCapacity,
+      descripcion: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad ${val.edadMin}–${val.edadMax}`,
+      tarifaMinuto,
+      capacidadMaxima,
+      duracionMinutosBase,
+      toleranciaMinutos,
+      caidasLimite,
+      tipo: tipoVal,
+      estado: val.estado || 'ACTIVO',
+      // Propiedades de UI y aliases
+      precio: tarifaMinuto,
+      maxCapacity: capacidadMaxima,
+      duracion: duracionMinutosBase,
       edadMin: val.edadMin,
       edadMax: val.edadMax,
-      tipo: val.tipo,
-      duracion: val.duracion,
-      duracionMinutosBase: val.duracion,
-      estado: val.estado || 'ACTIVO',
-      tag: `${val.duracion} min · máx ${val.maxCapacity} · edad ${val.edadMin}–${val.edadMax}`
+      tag: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad ${val.edadMin}–${val.edadMax}`
     };
 
     if (this.isEdit() && this.data?.id && typeof this.data.id === 'number') {
@@ -229,7 +277,6 @@ export class AtraccionFormComponent {
         }
       });
     } else {
-      const numId = typeof this.data?.id === 'number' ? this.data.id : undefined;
       this.atraccionService.create(payload).subscribe({
         next: (res) => {
           this.loading.set(false);

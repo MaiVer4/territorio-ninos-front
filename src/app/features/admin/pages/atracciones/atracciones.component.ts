@@ -4,6 +4,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 import { AtraccionFormComponent } from './atraccion-form.component';
+import { TarifasModalComponent } from './tarifas-modal.component';
 
 @Component({
   selector: 'app-atracciones',
@@ -92,13 +93,13 @@ import { AtraccionFormComponent } from './atraccion-form.component';
                   <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
                     <p class="text-slate-400 text-[10px]">Tipo</p>
                     <p class="font-bold text-slate-700">
-                      {{ a.tipo === 'falls' ? 'Caídas' : a.tipo === 'vip' ? 'VIP' : 'Tiempo' }}
+                      {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Caídas' : 'Tiempo' }}
                     </p>
                   </div>
                   <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
                     <p class="text-slate-400 text-[10px]">Duración</p>
                     <p class="font-bold text-slate-700">
-                      {{ (a.duracion || 0) > 0 ? (a.duracion + ' min') : 'Por evento' }}
+                      {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Por caídas' : ((a.duracionMinutosBase || a.duracion || 15) + ' min') }}
                     </p>
                   </div>
                   <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
@@ -113,6 +114,13 @@ import { AtraccionFormComponent } from './atraccion-form.component';
 
                 <!-- Botones de Acción -->
                 <div class="flex gap-2">
+                  <button (click)="openTarifasDialog(a)"
+                    class="flex-1 py-1.5 text-xs font-semibold text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50 transition flex items-center justify-center gap-1 cursor-pointer">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Tarifas
+                  </button>
                   <button (click)="openDialog(a)"
                     class="flex-1 py-1.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition flex items-center justify-center gap-1 cursor-pointer">
                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,7 +176,7 @@ import { AtraccionFormComponent } from './atraccion-form.component';
                         {{ a.maxCapacity || a.capacidadMaxima || 10 }} niños
                       </td>
                       <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
-                        {{ a.tipo === 'falls' ? 'Caídas' : (a.duracion + ' min') }}
+                        {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Caídas' : ((a.duracionMinutosBase || a.duracion || 15) + ' min') }}
                       </td>
                       <td class="px-5 py-3.5 text-slate-500 text-xs whitespace-nowrap">
                         {{ a.edadMin || 2 }} - {{ a.edadMax || 12 }} años
@@ -181,6 +189,9 @@ import { AtraccionFormComponent } from './atraccion-form.component';
                       </td>
                       <td class="px-5 py-3.5 text-right whitespace-nowrap">
                         <div class="flex items-center justify-end gap-2">
+                          <button (click)="openTarifasDialog(a)" class="text-xs font-semibold text-amber-600 hover:text-amber-800 hover:underline cursor-pointer">
+                            Tarifas
+                          </button>
                           <button (click)="openDialog(a)" class="text-xs font-semibold text-blue-600 hover:underline cursor-pointer">
                             Editar
                           </button>
@@ -240,17 +251,25 @@ export class AtraccionesComponent implements OnInit {
           const colors = ["#0EA5E9", "#F59E0B", "#8B5CF6", "#10B981", "#EF4444", "#F97316", "#2563EB"];
           const lightBgs = ["#E0F2FE", "#FEF3C7", "#EDE9FE", "#D1FAE5", "#FEE2E2", "#FFF7ED", "#DBEAFE"];
 
-          const mapped = data.map((a, i) => ({
-            ...a,
-            precio: a.precio || a.tarifaMinuto || 10000,
-            duracion: a.duracion || a.duracionMinutosBase || 20,
-            maxCapacity: a.maxCapacity || a.capacidadMaxima || 15,
-            edadMin: a.edadMin || 2,
-            edadMax: a.edadMax || 12,
-            color: a.color || colors[i % colors.length],
-            lightBg: a.lightBg || lightBgs[i % lightBgs.length],
-            tag: `${a.duracion || a.duracionMinutosBase || 20} min · máx ${a.maxCapacity || a.capacidadMaxima || 15} · edad 2–12`
-          }));
+          const mapped = data.map((a, i) => {
+            const tarifaMinuto = a.tarifaMinuto || a.precio || 10000;
+            const duracionMinutosBase = a.duracionMinutosBase || a.duracion || 15;
+            const capacidadMaxima = a.capacidadMaxima || a.maxCapacity || 10;
+            return {
+              ...a,
+              tarifaMinuto,
+              precio: tarifaMinuto,
+              duracionMinutosBase,
+              duracion: duracionMinutosBase,
+              capacidadMaxima,
+              maxCapacity: capacidadMaxima,
+              edadMin: a.edadMin || 2,
+              edadMax: a.edadMax || 12,
+              color: a.color || colors[i % colors.length],
+              lightBg: a.lightBg || lightBgs[i % lightBgs.length],
+              tag: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad 2–12`
+            };
+          });
           this.atracciones.set(mapped);
         } else {
           this.atracciones.set([]);
@@ -299,5 +318,13 @@ export class AtraccionesComponent implements OnInit {
         });
       }
     }
+  }
+
+  openTarifasDialog(atraccion: Atraccion) {
+    this.dialog.open(TarifasModalComponent, {
+      width: '500px',
+      panelClass: '!rounded-2xl',
+      data: atraccion
+    });
   }
 }
