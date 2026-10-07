@@ -1,8 +1,11 @@
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
+import { AsignacionService } from '../../../../core/services/asignacion.service';
+import { WebSocketService } from '../../../../core/services/websocket.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 
 Chart.register(...registerables);
@@ -129,40 +132,68 @@ interface ShiftSummary {
         </div>
 
         @if (atraccionesDb().length > 0) {
-          <!-- Grid responsivo con atracciones de la BD -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          <!-- Grid responsivo con telemetría en tiempo real (HU-11 / SCRUM-67) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
             @for (a of atraccionesDb(); track a.id) {
-              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                <div class="flex items-center gap-2 mb-2">
-                  <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    [style.background-color]="a.lightBg || '#DBEAFE'">
-                    <span class="text-xs font-bold" [style.color]="a.color || '#2563EB'">★</span>
+              @let pct = getOccupancyPct(a);
+              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex flex-col justify-between hover:shadow-sm transition">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                        [style.background-color]="a.lightBg || '#DBEAFE'">
+                        <span class="text-xs font-bold" [style.color]="a.color || '#2563EB'">★</span>
+                      </div>
+                      <p class="text-xs font-bold text-slate-800 truncate">{{ a.nombre }}</p>
+                    </div>
+
+                    <!-- Badge de Estado de Aforo -->
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                      [ngClass]="getBadgeClass(pct)">
+                      {{ getStatusLabel(pct) }}
+                    </span>
                   </div>
-                  <p class="text-xs font-semibold text-slate-700 truncate">{{ a.nombre }}</p>
+
+                  <!-- Operario Responsable en Turno -->
+                  <div class="text-[11px] text-slate-500 mb-2.5 flex items-center gap-1.5 truncate">
+                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span class="truncate">
+                      {{ a.operarioAsignado || 'Sin operario asignado' }}
+                    </span>
+                  </div>
                 </div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-[10px] text-slate-400">Aforo</span>
-                  <span class="text-xs font-bold text-emerald-600">
-                    0/{{ a.maxCapacity || a.capacidadMaxima || 15 }}
-                  </span>
-                </div>
-                <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full bg-emerald-500" style="width: 0%"></div>
+
+                <!-- Barra de Progreso y Métricas de Aforo -->
+                <div>
+                  <div class="flex items-center justify-between mb-1.5 text-xs">
+                    <span class="text-[10px] font-semibold text-slate-400">Niños activos</span>
+                    <span class="font-bold" [ngClass]="getTextColor(pct)">
+                      {{ a.ninosActivos || 0 }}/{{ a.maxCapacity || a.capacidadMaxima || 10 }} ({{ pct }}%)
+                    </span>
+                  </div>
+                  <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500"
+                      [style.width.%]="pct"
+                      [ngClass]="getProgressColor(pct)">
+                    </div>
+                  </div>
                 </div>
               </div>
             }
           </div>
         } @else {
-          <!-- Empty State si no hay atracciones en BD -->
-          <div class="flex flex-col items-center justify-center py-8 px-4 text-center border-2 border-dashed border-slate-100 rounded-xl">
+          <!-- Empty State (Escenario 2 de HU-11 / SCRUM-67) -->
+          <div class="flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-slate-100 rounded-xl">
             <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
               </svg>
             </div>
-            <p class="text-sm font-bold text-slate-700">No hay atracciones registradas en el sistema</p>
+            <p class="text-sm font-bold text-slate-700">No hay atracciones operativas en este momento</p>
             <p class="text-xs text-slate-400 max-w-sm mt-1 mb-4">
-              Crea las atracciones del parque para monitorear el aforo, tarifas y turnos en tiempo real.
+              Registra atracciones y vincula operarios para visualizar la telemetría de aforo en vivo.
             </p>
             <a routerLink="/admin/atracciones"
               class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-xs">
@@ -279,15 +310,18 @@ interface ShiftSummary {
 })
 export class AdminDashboardComponent implements OnInit, OnDestroy {
   private atraccionService = inject(AtraccionService);
+  private asignacionService = inject(AsignacionService);
+  private webSocketService = inject(WebSocketService);
 
   @ViewChild('salesChartCanvas', { static: true }) salesChartCanvas!: ElementRef<HTMLCanvasElement>;
 
   private salesChart: Chart | null = null;
+  private occupancySub?: Subscription;
 
   dateFilter = signal<DateFilter>('day');
   chartTitle = signal('Ventas por hora');
 
-  // Atracciones reales obtenidas de la Base de Datos
+  // Atracciones reales obtenidas de la Base de Datos con métricas en tiempo real
   atraccionesDb = signal<Atraccion[]>([]);
 
   // Turnos activos reales (inician en vacío si no hay en BD)
@@ -296,10 +330,29 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadAtracciones();
     this.initSalesChart();
+    this.initWebSocketTelemetry();
   }
 
   ngOnDestroy() {
     this.salesChart?.destroy();
+    this.occupancySub?.unsubscribe();
+  }
+
+  initWebSocketTelemetry() {
+    this.occupancySub = this.webSocketService.occupancy$.subscribe((event) => {
+      this.atraccionesDb.update((list) =>
+        list.map((a) => {
+          if (a.id === event.atraccionId) {
+            return {
+              ...a,
+              ninosActivos: event.ninosActivos,
+              operarioAsignado: event.operarioNombre || a.operarioAsignado
+            };
+          }
+          return a;
+        })
+      );
+    });
   }
 
   loadAtracciones() {
@@ -309,12 +362,30 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           const colors = ["#0EA5E9", "#F59E0B", "#8B5CF6", "#10B981", "#EF4444", "#F97316", "#2563EB"];
           const lightBgs = ["#E0F2FE", "#FEF3C7", "#EDE9FE", "#D1FAE5", "#FEE2E2", "#FFF7ED", "#DBEAFE"];
 
-          const mapped = data.map((a, i) => ({
-            ...a,
-            color: a.color || colors[i % colors.length],
-            lightBg: a.lightBg || lightBgs[i % lightBgs.length]
-          }));
-          this.atraccionesDb.set(mapped);
+          this.asignacionService.getActiveAssignments().subscribe({
+            next: (asigs) => {
+              const mapped = data.map((a, i) => {
+                const asig = asigs?.find((x) => x.atraccionId === a.id && x.activo);
+                return {
+                  ...a,
+                  color: a.color || colors[i % colors.length],
+                  lightBg: a.lightBg || lightBgs[i % lightBgs.length],
+                  operarioAsignado: asig?.operarioNombre,
+                  ninosActivos: a.ninosActivos || 0
+                };
+              });
+              this.atraccionesDb.set(mapped);
+            },
+            error: () => {
+              const mapped = data.map((a, i) => ({
+                ...a,
+                color: a.color || colors[i % colors.length],
+                lightBg: a.lightBg || lightBgs[i % lightBgs.length],
+                ninosActivos: a.ninosActivos || 0
+              }));
+              this.atraccionesDb.set(mapped);
+            }
+          });
         } else {
           this.atraccionesDb.set([]);
         }
@@ -323,6 +394,36 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         this.atraccionesDb.set([]);
       }
     });
+  }
+
+  getOccupancyPct(a: Atraccion): number {
+    const cap = a.capacidadMaxima || a.maxCapacity || 10;
+    const act = a.ninosActivos || 0;
+    return Math.min(100, Math.round((act / cap) * 100));
+  }
+
+  getProgressColor(pct: number): string {
+    if (pct >= 100) return 'bg-rose-500';
+    if (pct >= 70) return 'bg-amber-500';
+    return 'bg-emerald-500';
+  }
+
+  getTextColor(pct: number): string {
+    if (pct >= 100) return 'text-rose-600';
+    if (pct >= 70) return 'text-amber-600';
+    return 'text-emerald-600';
+  }
+
+  getStatusLabel(pct: number): string {
+    if (pct >= 100) return 'Lleno (100%)';
+    if (pct >= 70) return 'Alta ocupación';
+    return 'Aforo disponible';
+  }
+
+  getBadgeClass(pct: number): string {
+    if (pct >= 100) return 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse';
+    if (pct >= 70) return 'bg-amber-100 text-amber-700 border border-amber-200';
+    return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
   }
 
   setDateFilter(f: DateFilter) {

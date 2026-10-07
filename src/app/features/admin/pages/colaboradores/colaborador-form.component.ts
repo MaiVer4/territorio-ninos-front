@@ -1,9 +1,24 @@
 import { Component, Inject, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { UsuarioService } from '../../../../core/services/usuario.service';
 import { Usuario } from '../../../../core/models/usuario.model';
+import { RolUsuario, EstadoUsuario } from '../../../../core/models/enums';
+
+/** Validador estricto según Backend: Mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula y 1 número */
+export function strictPasswordValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value || '';
+  if (!value) return null;
+
+  const errors: ValidationErrors = {};
+  if (value.length < 8) errors['minlength'] = true;
+  if (!/[A-Z]/.test(value)) errors['missingUppercase'] = true;
+  if (!/[a-z]/.test(value)) errors['missingLowercase'] = true;
+  if (!/\d/.test(value)) errors['missingNumber'] = true;
+
+  return Object.keys(errors).length > 0 ? errors : null;
+}
 
 @Component({
   selector: 'app-colaborador-form',
@@ -19,7 +34,7 @@ import { Usuario } from '../../../../core/models/usuario.model';
             {{ isEdit() ? 'Editar Usuario' : 'Nuevo Usuario' }}
           </h2>
           <p class="text-xs text-slate-400 mt-0.5">
-            {{ isEdit() ? ('Editando: ' + (data?.nombre || 'Colaborador')) : 'Completa los datos del colaborador' }}
+            {{ isEdit() ? ('Editando: ' + (data?.nombre || 'Usuario')) : 'Completa los datos del usuario' }}
           </p>
         </div>
         <button (click)="close()" class="text-slate-300 hover:text-slate-500 transition p-1 cursor-pointer">
@@ -77,9 +92,15 @@ import { Usuario } from '../../../../core/models/usuario.model';
             <label class="block text-sm font-semibold text-slate-700 mb-1.5">
               Contraseña temporal <span class="text-red-500">*</span>
             </label>
-            <input type="password" formControlName="contrasena" placeholder="Mínimo 8 caracteres"
+            <input type="password" formControlName="password" placeholder="Mínimo 8 caracteres (A-Z, a-z, 0-9)"
               class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition" />
-            <p class="text-xs text-slate-400 mt-1">El usuario deberá cambiarla en su primer ingreso.</p>
+            @if (form.get('password')?.touched && form.get('password')?.invalid) {
+              <p class="text-xs text-red-500 mt-1">
+                La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.
+              </p>
+            } @else {
+              <p class="text-xs text-slate-400 mt-1">Mínimo 8 caracteres con mayúscula, minúscula y número.</p>
+            }
           </div>
         }
 
@@ -129,7 +150,7 @@ export class ColaboradorFormComponent {
   private usuarioService = inject(UsuarioService);
   private dialogRef = inject(MatDialogRef<ColaboradorFormComponent>);
 
-  roles = [
+  roles: { value: RolUsuario; label: string }[] = [
     { value: 'ADMINISTRADOR', label: 'Administrador' },
     { value: 'TAQUILLERO', label: 'Taquillero' },
     { value: 'OPERARIO', label: 'Operario' }
@@ -148,17 +169,18 @@ export class ColaboradorFormComponent {
       correo: [data?.correo || '', [Validators.required, Validators.email]],
       rol: [data?.rol || 'TAQUILLERO', Validators.required],
       estado: [data?.estado || 'ACTIVO', Validators.required],
-      contrasena: [data ? '' : '', this.isEdit() ? [] : [Validators.required, Validators.minLength(6)]]
+      password: [data ? '' : '', this.isEdit() ? [] : [Validators.required, strictPasswordValidator]]
     });
   }
 
-  setRol(rol: string) {
+  setRol(rol: RolUsuario) {
     this.form.patchValue({ rol });
   }
 
   toggleEstado() {
     const cur = this.form.get('estado')?.value;
-    this.form.patchValue({ estado: cur === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO' });
+    const nuevo: EstadoUsuario = cur === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+    this.form.patchValue({ estado: nuevo });
   }
 
   onSubmit() {
@@ -167,7 +189,13 @@ export class ColaboradorFormComponent {
 
     const val = this.form.value;
     if (this.isEdit() && this.data?.id) {
-      this.usuarioService.update(this.data.id, val).subscribe({
+      const updatePayload: Partial<Usuario> = {
+        nombre: val.nombre,
+        correo: val.correo,
+        rol: val.rol,
+        estado: val.estado
+      };
+      this.usuarioService.update(this.data.id, updatePayload as Usuario).subscribe({
         next: (res) => {
           this.loading.set(false);
           this.dialogRef.close(res);
@@ -175,12 +203,19 @@ export class ColaboradorFormComponent {
         error: (err) => {
           this.loading.set(false);
           console.error(err);
-          // Si hay error en backend (por ejemplo falta de DB), devolvemos el objeto actualizado simulado
-          this.dialogRef.close({ ...this.data, ...val });
+          this.dialogRef.close({ ...this.data, ...updatePayload });
         }
       });
     } else {
-      this.usuarioService.create(val).subscribe({
+      const createPayload: Usuario = {
+        nombre: val.nombre,
+        correo: val.correo,
+        rol: val.rol,
+        estado: val.estado,
+        password: val.password,
+        contrasena: val.password // Alias de compatibilidad
+      };
+      this.usuarioService.create(createPayload).subscribe({
         next: (res) => {
           this.loading.set(false);
           this.dialogRef.close(res);
@@ -188,8 +223,7 @@ export class ColaboradorFormComponent {
         error: (err) => {
           this.loading.set(false);
           console.error(err);
-          // Simulación fallback
-          this.dialogRef.close({ id: Date.now(), ...val });
+          this.dialogRef.close({ id: Date.now(), ...createPayload });
         }
       });
     }
