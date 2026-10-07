@@ -33,6 +33,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/pages/atracciones/atracciones.component').then(m => m.AtraccionesComponent)
       },
       {
+        path: 'asignaciones',
+        loadComponent: () => import('./features/admin/pages/asignaciones/asignaciones.component').then(m => m.AsignacionesComponent)
+      },
+      {
         path: 'colaboradores',
         loadComponent: () => import('./features/admin/pages/colaboradores/colaboradores.component').then(m => m.ColaboradoresComponent)
       },
@@ -52,6 +56,10 @@ export const routes: Routes = [
       {
         path: 'auditoria',
         loadComponent: () => import('./features/admin/pages/auditoria/auditoria.component').then(m => m.AuditoriaComponent)
+      },
+      {
+        path: 'configuracion',
+        loadComponent: () => import('./features/admin/pages/configuracion/configuracion.component').then(m => m.ConfiguracionComponent)
       },
       {
         path: '',
