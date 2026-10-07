@@ -30,7 +30,7 @@ describe('AtraccionService', () => {
 
   it('should get all attractions', () => {
     const mockAtracciones: Atraccion[] = [
-      { id: 1, nombre: 'Carrusel Mágico', descripcion: 'Carrusel para niños', tarifaMinuto: 1000, estado: 'ACTIVA' }
+      { id: 1, nombre: 'Carrusel Mágico', descripcion: 'Carrusel para niños', tarifaMinuto: 1000, estado: 'ACTIVO', tipo: 'TEMPORIZADA', capacidadMaxima: 10, duracionMinutosBase: 15 }
     ];
 
     service.getAll().subscribe(atracciones => {

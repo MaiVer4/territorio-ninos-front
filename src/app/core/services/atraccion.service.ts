@@ -30,4 +30,8 @@ export class AtraccionService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  updateTolerance(id: number | string, toleranciaMinutos: number): Observable<Atraccion> {
+    return this.http.put<Atraccion>(`${this.apiUrl}/${id}/tolerancia`, { toleranciaMinutos });
+  }
 }

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest } from '../models/auth.model';
+import { RolUsuario } from '../models/enums';
 import { tap, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { Router } from '@angular/router';
@@ -27,8 +28,8 @@ export class AuthService {
     this.loadTokenFromStorage();
   }
 
-  forgotPassword(email: string) {
-    return this.http.post<{mensaje: string}>(`${this.apiUrl}/forgot-password`, { email });
+  forgotPassword(correo: string) {
+    return this.http.post<{mensaje: string}>(`${this.apiUrl}/forgot-password`, { correo, email: correo });
   }
 
   resetPassword(token: string, nuevaContrasena: string) {
@@ -123,7 +124,7 @@ export class AuthService {
     }
   }
 
-  getRole(): string | null {
+  getRole(): RolUsuario | null {
     try {
       const authData = localStorage.getItem(this.TOKEN_KEY);
       if (authData) {
