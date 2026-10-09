@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 import { AtraccionFormComponent } from './atraccion-form.component';
 import { TarifasModalComponent } from './tarifas-modal.component';
@@ -233,7 +235,9 @@ import { TarifasModalComponent } from './tarifas-modal.component';
 })
 export class AtraccionesComponent implements OnInit {
   private atraccionService = inject(AtraccionService);
+  private notificationService = inject(NotificationService);
   private dialog = inject(MatDialog);
+  private destroyRef = inject(DestroyRef);
 
   viewMode = signal<'grid' | 'table'>('grid');
 
@@ -245,40 +249,42 @@ export class AtraccionesComponent implements OnInit {
   }
 
   loadAtracciones() {
-    this.atraccionService.getAll().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
-          const colors = ["#0EA5E9", "#F59E0B", "#8B5CF6", "#10B981", "#EF4444", "#F97316", "#2563EB"];
-          const lightBgs = ["#E0F2FE", "#FEF3C7", "#EDE9FE", "#D1FAE5", "#FEE2E2", "#FFF7ED", "#DBEAFE"];
+    this.atraccionService.getAll()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          if (data && data.length > 0) {
+            const colors = ["#0EA5E9", "#F59E0B", "#8B5CF6", "#10B981", "#EF4444", "#F97316", "#2563EB"];
+            const lightBgs = ["#E0F2FE", "#FEF3C7", "#EDE9FE", "#D1FAE5", "#FEE2E2", "#FFF7ED", "#DBEAFE"];
 
-          const mapped = data.map((a, i) => {
-            const tarifaMinuto = a.tarifaMinuto || a.precio || 10000;
-            const duracionMinutosBase = a.duracionMinutosBase || a.duracion || 15;
-            const capacidadMaxima = a.capacidadMaxima || a.maxCapacity || 10;
-            return {
-              ...a,
-              tarifaMinuto,
-              precio: tarifaMinuto,
-              duracionMinutosBase,
-              duracion: duracionMinutosBase,
-              capacidadMaxima,
-              maxCapacity: capacidadMaxima,
-              edadMin: a.edadMin || 2,
-              edadMax: a.edadMax || 12,
-              color: a.color || colors[i % colors.length],
-              lightBg: a.lightBg || lightBgs[i % lightBgs.length],
-              tag: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad 2–12`
-            };
-          });
-          this.atracciones.set(mapped);
-        } else {
+            const mapped = data.map((a, i) => {
+              const tarifaMinuto = a.tarifaMinuto || a.precio || 10000;
+              const duracionMinutosBase = a.duracionMinutosBase || a.duracion || 15;
+              const capacidadMaxima = a.capacidadMaxima || a.maxCapacity || 10;
+              return {
+                ...a,
+                tarifaMinuto,
+                precio: tarifaMinuto,
+                duracionMinutosBase,
+                duracion: duracionMinutosBase,
+                capacidadMaxima,
+                maxCapacity: capacidadMaxima,
+                edadMin: a.edadMin || 2,
+                edadMax: a.edadMax || 12,
+                color: a.color || colors[i % colors.length],
+                lightBg: a.lightBg || lightBgs[i % lightBgs.length],
+                tag: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad 2–12`
+              };
+            });
+            this.atracciones.set(mapped);
+          } else {
+            this.atracciones.set([]);
+          }
+        },
+        error: () => {
           this.atracciones.set([]);
         }
-      },
-      error: () => {
-        this.atracciones.set([]);
-      }
-    });
+      });
   }
 
   openDialog(atraccion?: Atraccion) {
@@ -288,34 +294,46 @@ export class AtraccionesComponent implements OnInit {
       data: atraccion || null
     });
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        if (atraccion && atraccion.id) {
-          this.atracciones.update(list =>
-            list.map(a => a.id === atraccion.id ? { ...a, ...result } : a)
-          );
-        } else {
-          this.atracciones.update(list => [
-            ...list,
-            {
-              ...result,
-              id: result.id || 'atr-' + Date.now(),
-              color: result.color || '#2563EB',
-              lightBg: result.lightBg || '#DBEAFE'
-            }
-          ]);
+    dialogRef.afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(result => {
+        if (result) {
+          if (atraccion && atraccion.id) {
+            this.atracciones.update(list =>
+              list.map(a => a.id === atraccion.id ? { ...a, ...result } : a)
+            );
+          } else {
+            this.atracciones.update(list => [
+              ...list,
+              {
+                ...result,
+                id: result.id || 'atr-' + Date.now(),
+                color: result.color || '#2563EB',
+                lightBg: result.lightBg || '#DBEAFE'
+              }
+            ]);
+          }
         }
-      }
-    });
+      });
   }
 
   deleteAtraccion(atraccion: Atraccion) {
     if (confirm(`¿Estás seguro de eliminar la atracción ${atraccion.nombre}?`)) {
-      this.atracciones.update(list => list.filter(a => a.id !== atraccion.id));
       if (typeof atraccion.id === 'number') {
-        this.atraccionService.delete(atraccion.id).subscribe({
-          error: (err) => console.error('Error eliminando atracción', err)
-        });
+        this.atraccionService.delete(atraccion.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.atracciones.update(list => list.filter(a => a.id !== atraccion.id));
+              this.notificationService.success(`Atracción ${atraccion.nombre} eliminada correctamente.`);
+            },
+            error: (err) => {
+              const msg = err.error?.mensaje || 'Error al eliminar la atracción en el servidor.';
+              this.notificationService.error(msg);
+            }
+          });
+      } else {
+        this.atracciones.update(list => list.filter(a => a.id !== atraccion.id));
       }
     }
   }

@@ -1,9 +1,12 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { UsuarioService } from '../../../../core/services/usuario.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { Usuario } from '../../../../core/models/usuario.model';
+import { EstadoUsuario } from '../../../../core/models/enums';
 import { ColaboradorFormComponent } from './colaborador-form.component';
 
 export interface UserRow extends Usuario {
@@ -142,7 +145,9 @@ export interface UserRow extends Usuario {
 })
 export class ColaboradoresComponent implements OnInit {
   private usuarioService = inject(UsuarioService);
+  private notificationService = inject(NotificationService);
   private dialog = inject(MatDialog);
+  private destroyRef = inject(DestroyRef);
 
   usuarios = signal<UserRow[]>([]);
   searchQuery = signal('');
@@ -162,22 +167,23 @@ export class ColaboradoresComponent implements OnInit {
   }
 
   loadUsuarios() {
-    this.usuarioService.getAll().subscribe({
-      next: (data) => {
-        if (data) {
-          const mapped: UserRow[] = data.map((u, i) => ({
-            ...u,
-            estado: u.estado || 'ACTIVO',
-            ultimoAcceso: i === 0 ? 'Ahora' : 'Hoy'
-          }));
-          this.usuarios.set(mapped);
+    this.usuarioService.getAll()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          if (data) {
+            const mapped: UserRow[] = data.map((u, i) => ({
+              ...u,
+              estado: u.estado || 'ACTIVO',
+              ultimoAcceso: i === 0 ? 'Ahora' : 'Hoy'
+            }));
+            this.usuarios.set(mapped);
+          }
+        },
+        error: () => {
+          this.usuarios.set([]);
         }
-      },
-      error: () => {
-        // En caso de que el backend no tenga conexión, lista vacía
-        this.usuarios.set([]);
-      }
-    });
+      });
   }
 
   getInitials(name: string): string {
@@ -198,15 +204,28 @@ export class ColaboradoresComponent implements OnInit {
   }
 
   toggleEstado(usuario: UserRow) {
-    const nuevoEstado = usuario.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
-    // Mantiene el usuario visible en la tabla con su nuevo estado
+    const estadoOriginal = usuario.estado || 'ACTIVO';
+    const nuevoEstado: EstadoUsuario = estadoOriginal === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+    // Cambio optimista en vista
     this.usuarios.update(list =>
       list.map(u => u.id === usuario.id ? { ...u, estado: nuevoEstado } : u)
     );
     if (usuario.id) {
-      this.usuarioService.update(usuario.id, { ...usuario, estado: nuevoEstado }).subscribe({
-        error: () => {}
-      });
+      this.usuarioService.update(usuario.id, { ...usuario, estado: nuevoEstado })
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.notificationService.success(`Usuario ${usuario.nombre} marcado como ${nuevoEstado === 'ACTIVO' ? 'Activo' : 'Inactivo'}.`);
+          },
+          error: (err) => {
+            // Revertir cambio optimista
+            this.usuarios.update(list =>
+              list.map(u => u.id === usuario.id ? { ...u, estado: estadoOriginal } : u)
+            );
+            const msg = err.error?.mensaje || 'No se pudo actualizar el estado del usuario en el servidor.';
+            this.notificationService.error(msg);
+          }
+        });
     }
   }
 
@@ -217,27 +236,36 @@ export class ColaboradoresComponent implements OnInit {
       data: usuario || null
     });
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        if (usuario && usuario.id) {
-          this.usuarios.update(list =>
-            list.map(u => u.id === usuario.id ? { ...u, ...result } : u)
-          );
-        } else {
-          this.usuarios.update(list => [...list, { ...result, id: result.id || Date.now(), ultimoAcceso: 'Ahora' }]);
+    dialogRef.afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(result => {
+        if (result) {
+          if (usuario && usuario.id) {
+            this.usuarios.update(list =>
+              list.map(u => u.id === usuario.id ? { ...u, ...result } : u)
+            );
+          } else {
+            this.usuarios.update(list => [...list, { ...result, id: result.id || Date.now(), ultimoAcceso: 'Ahora' }]);
+          }
         }
-      }
-    });
+      });
   }
 
   deleteUser(usuario: UserRow) {
     if (confirm(`¿Estás seguro de eliminar definitivamente a ${usuario.nombre}?`)) {
-      // Solo al eliminar se remueve de la vista
-      this.usuarios.update(list => list.filter(u => u.id !== usuario.id));
       if (usuario.id) {
-        this.usuarioService.delete(usuario.id).subscribe({
-          error: (err) => console.error('Error eliminando en backend', err)
-        });
+        this.usuarioService.delete(usuario.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.usuarios.update(list => list.filter(u => u.id !== usuario.id));
+              this.notificationService.success(`Usuario ${usuario.nombre} eliminado.`);
+            },
+            error: (err) => {
+              const msg = err.error?.mensaje || 'Error al eliminar el usuario en el servidor.';
+              this.notificationService.error(msg);
+            }
+          });
       }
     }
   }

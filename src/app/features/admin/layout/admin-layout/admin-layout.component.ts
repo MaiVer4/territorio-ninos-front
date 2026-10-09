@@ -1,7 +1,8 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../../core/services/auth.service';
 
 interface NavItem {
@@ -191,6 +192,7 @@ interface NavItem {
 export class AdminLayoutComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   // En escritorio controla colapso (w-60 vs w-16). En móvil el drawer flotante
   sidebarOpenDesktop = signal(true);
@@ -222,7 +224,8 @@ export class AdminLayoutComponent {
 
   constructor() {
     this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
+      filter(event => event instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe((event: any) => {
       this.currentUrl.set(event.urlAfterRedirects || event.url);
       // Cerrar drawer móvil al navegar

@@ -1,11 +1,13 @@
-import { Component, Inject, inject, signal, OnInit } from '@angular/core';
+import { Component, Inject, inject, signal, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 import { TarifaService } from '../../../../core/services/tarifa.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { TarifaBloque, TarifaEvento } from '../../../../core/models/tarifa.model';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-tarifas-modal',
@@ -208,6 +210,7 @@ export class TarifasModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<TarifasModalComponent>);
   private tarifaService = inject(TarifaService);
   private notificationService = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
 
   saving = signal(false);
 
@@ -292,18 +295,21 @@ export class TarifasModalComponent implements OnInit {
     this.saving.set(true);
     const bloques: TarifaBloque[] = this.timeForm.value.bloques;
 
-    // Persistir cada bloque a través del servicio
-    bloques.forEach(b => {
-      this.tarifaService.saveTarifaBloque(b).subscribe({
-        error: () => {}
+    const requests$ = bloques.map(b => this.tarifaService.saveTarifaBloque(b));
+    forkJoin(requests$)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (guardados) => {
+          this.saving.set(false);
+          this.notificationService.success('Tarifas por tiempo actualizadas correctamente.');
+          this.dialogRef.close({ tipo: 'TEMPORIZADA', bloques: guardados });
+        },
+        error: (err) => {
+          this.saving.set(false);
+          const msg = err.error?.mensaje || 'Error al actualizar las tarifas por tiempo.';
+          this.notificationService.error(msg);
+        }
       });
-    });
-
-    setTimeout(() => {
-      this.saving.set(false);
-      this.notificationService.success('Tarifas por tiempo actualizadas correctamente.');
-      this.dialogRef.close({ tipo: 'TEMPORIZADA', bloques });
-    }, 400);
   }
 
   saveEventRates() {
@@ -311,18 +317,21 @@ export class TarifasModalComponent implements OnInit {
     this.saving.set(true);
     const eventos: TarifaEvento[] = this.eventForm.value.eventos;
 
-    // Persistir cada tarifa de evento
-    eventos.forEach(e => {
-      this.tarifaService.saveTarifaEvento(e).subscribe({
-        error: () => {}
+    const requests$ = eventos.map(e => this.tarifaService.saveTarifaEvento(e));
+    forkJoin(requests$)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (guardados) => {
+          this.saving.set(false);
+          this.notificationService.success('Tarifas por evento actualizadas correctamente.');
+          this.dialogRef.close({ tipo: 'EVENTOS_CAIDAS', eventos: guardados });
+        },
+        error: (err) => {
+          this.saving.set(false);
+          const msg = err.error?.mensaje || 'Error al actualizar las tarifas por evento.';
+          this.notificationService.error(msg);
+        }
       });
-    });
-
-    setTimeout(() => {
-      this.saving.set(false);
-      this.notificationService.success('Tarifas por evento actualizadas correctamente.');
-      this.dialogRef.close({ tipo: 'EVENTOS_CAIDAS', eventos });
-    }, 400);
   }
 
   close() {

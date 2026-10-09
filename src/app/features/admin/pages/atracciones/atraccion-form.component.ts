@@ -1,8 +1,10 @@
-import { Component, Inject, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, Inject, inject, ChangeDetectionStrategy, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 import { TipoAtraccion } from '../../../../core/models/enums';
 
@@ -191,7 +193,9 @@ import { TipoAtraccion } from '../../../../core/models/enums';
 export class AtraccionFormComponent {
   private fb = inject(FormBuilder);
   private atraccionService = inject(AtraccionService);
+  private notificationService = inject(NotificationService);
   private dialogRef = inject(MatDialogRef<AtraccionFormComponent>);
+  private destroyRef = inject(DestroyRef);
 
   isEdit = signal(false);
   loading = signal(false);
@@ -265,29 +269,35 @@ export class AtraccionFormComponent {
     };
 
     if (this.isEdit() && this.data?.id && typeof this.data.id === 'number') {
-      this.atraccionService.update(this.data.id, payload).subscribe({
-        next: (res) => {
-          this.loading.set(false);
-          this.dialogRef.close({ ...payload, ...res });
-        },
-        error: (err) => {
-          this.loading.set(false);
-          console.warn('Fallback local update', err);
-          this.dialogRef.close(payload);
-        }
-      });
+      this.atraccionService.update(this.data.id, payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.loading.set(false);
+            this.notificationService.success(`Atracción ${val.nombre} actualizada correctamente.`);
+            this.dialogRef.close({ ...payload, ...res });
+          },
+          error: (err) => {
+            this.loading.set(false);
+            const msg = err.error?.mensaje || 'Error al actualizar la atracción en el servidor.';
+            this.notificationService.error(msg);
+          }
+        });
     } else {
-      this.atraccionService.create(payload).subscribe({
-        next: (res) => {
-          this.loading.set(false);
-          this.dialogRef.close({ ...payload, ...res });
-        },
-        error: (err) => {
-          this.loading.set(false);
-          console.warn('Fallback local create', err);
-          this.dialogRef.close({ ...payload, id: Date.now() });
-        }
-      });
+      this.atraccionService.create(payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.loading.set(false);
+            this.notificationService.success(`Atracción ${val.nombre} creada exitosamente.`);
+            this.dialogRef.close({ ...payload, ...res });
+          },
+          error: (err) => {
+            this.loading.set(false);
+            const msg = err.error?.mensaje || 'Error al crear la atracción en el servidor.';
+            this.notificationService.error(msg);
+          }
+        });
     }
   }
 

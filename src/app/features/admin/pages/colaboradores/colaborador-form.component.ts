@@ -1,8 +1,10 @@
-import { Component, Inject, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, Inject, inject, ChangeDetectionStrategy, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { UsuarioService } from '../../../../core/services/usuario.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { Usuario } from '../../../../core/models/usuario.model';
 import { RolUsuario, EstadoUsuario } from '../../../../core/models/enums';
 
@@ -148,7 +150,9 @@ export function strictPasswordValidator(control: AbstractControl): ValidationErr
 export class ColaboradorFormComponent {
   private fb = inject(FormBuilder);
   private usuarioService = inject(UsuarioService);
+  private notificationService = inject(NotificationService);
   private dialogRef = inject(MatDialogRef<ColaboradorFormComponent>);
+  private destroyRef = inject(DestroyRef);
 
   roles: { value: RolUsuario; label: string }[] = [
     { value: 'ADMINISTRADOR', label: 'Administrador' },
@@ -195,17 +199,20 @@ export class ColaboradorFormComponent {
         rol: val.rol,
         estado: val.estado
       };
-      this.usuarioService.update(this.data.id, updatePayload as Usuario).subscribe({
-        next: (res) => {
-          this.loading.set(false);
-          this.dialogRef.close(res);
-        },
-        error: (err) => {
-          this.loading.set(false);
-          console.error(err);
-          this.dialogRef.close({ ...this.data, ...updatePayload });
-        }
-      });
+      this.usuarioService.update(this.data.id, updatePayload as Usuario)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.loading.set(false);
+            this.notificationService.success(`Usuario ${res.nombre || val.nombre} actualizado correctamente.`);
+            this.dialogRef.close(res);
+          },
+          error: (err) => {
+            this.loading.set(false);
+            const msg = err.error?.mensaje || 'Error al actualizar el usuario en el servidor. Verifica los datos.';
+            this.notificationService.error(msg);
+          }
+        });
     } else {
       const createPayload: Usuario = {
         nombre: val.nombre,
@@ -215,17 +222,20 @@ export class ColaboradorFormComponent {
         password: val.password,
         contrasena: val.password // Alias de compatibilidad
       };
-      this.usuarioService.create(createPayload).subscribe({
-        next: (res) => {
-          this.loading.set(false);
-          this.dialogRef.close(res);
-        },
-        error: (err) => {
-          this.loading.set(false);
-          console.error(err);
-          this.dialogRef.close({ id: Date.now(), ...createPayload });
-        }
-      });
+      this.usuarioService.create(createPayload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.loading.set(false);
+            this.notificationService.success(`Usuario ${res.nombre || val.nombre} creado exitosamente.`);
+            this.dialogRef.close(res);
+          },
+          error: (err) => {
+            this.loading.set(false);
+            const msg = err.error?.mensaje || 'Error al crear el usuario en el servidor. Revisa si el correo ya existe.';
+            this.notificationService.error(msg);
+          }
+        });
     }
   }
 

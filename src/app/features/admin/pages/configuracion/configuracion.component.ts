@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ConfiguracionService } from '../../../../core/services/configuracion.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ConfiguracionParque } from '../../../../core/models/configuracion.model';
@@ -191,6 +192,8 @@ export class ConfiguracionComponent implements OnInit {
   private configuracionService = inject(ConfiguracionService);
   private notificationService = inject(NotificationService);
 
+  private destroyRef = inject(DestroyRef);
+
   saving = signal(false);
 
   form: FormGroup = this.fb.group({
@@ -212,25 +215,29 @@ export class ConfiguracionComponent implements OnInit {
   previewConfig = signal<ConfiguracionParque>(this.form.value);
 
   ngOnInit() {
-    this.form.valueChanges.subscribe(val => {
-      this.previewConfig.set(val);
-    });
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(val => {
+        this.previewConfig.set(val);
+      });
 
     this.cargarConfiguracion();
   }
 
   cargarConfiguracion() {
-    this.configuracionService.getConfiguracion().subscribe({
-      next: (data) => {
-        if (data) {
-          this.form.patchValue(data);
-          this.previewConfig.set(this.form.value);
+    this.configuracionService.getConfiguracion()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          if (data) {
+            this.form.patchValue(data);
+            this.previewConfig.set(this.form.value);
+          }
+        },
+        error: () => {
+          // En caso de que no exista aún en BD, mantiene los defaults iniciales
         }
-      },
-      error: () => {
-        // En caso de que no exista aún en BD, mantiene los defaults iniciales
-      }
-    });
+      });
   }
 
   onSubmit() {
@@ -245,18 +252,19 @@ export class ConfiguracionComponent implements OnInit {
     const config: ConfiguracionParque = this.form.value;
 
     // Escenario 1 HU-13: Actualización exitosa en backend
-    this.configuracionService.updateConfiguracion(config).subscribe({
-      next: (res) => {
-        this.saving.set(false);
-        this.previewConfig.set(res || config);
-        this.notificationService.success('Parámetros del parque y boletas guardados exitosamente.');
-      },
-      error: () => {
-        // Fallback local
-        this.saving.set(false);
-        this.previewConfig.set(config);
-        this.notificationService.success('Configuración guardada.');
-      }
-    });
+    this.configuracionService.updateConfiguracion(config)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.saving.set(false);
+          this.previewConfig.set(res || config);
+          this.notificationService.success('Parámetros del parque y boletas guardados exitosamente.');
+        },
+        error: (err) => {
+          this.saving.set(false);
+          const msg = err.error?.mensaje || 'Error al guardar los parámetros en el servidor. Verifica tu conexión.';
+          this.notificationService.error(msg);
+        }
+      });
   }
 }

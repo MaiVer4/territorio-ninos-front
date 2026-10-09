@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { UsuarioService } from '../../../../core/services/usuario.service';
 import { AsignacionService } from '../../../../core/services/asignacion.service';
@@ -185,6 +186,7 @@ export class AsignacionesComponent implements OnInit {
   private usuarioService = inject(UsuarioService);
   private asignacionService = inject(AsignacionService);
   private notificationService = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
 
   atracciones = signal<Atraccion[]>([]);
   operarios = signal<Usuario[]>([]);
@@ -227,32 +229,38 @@ export class AsignacionesComponent implements OnInit {
 
   refresh() {
     // 1. Cargar atracciones
-    this.atraccionService.getAll().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
-          this.atracciones.set(data.filter(a => a.estado !== 'INACTIVO'));
-        } else {
-          this.atracciones.set([]);
-        }
-      },
-      error: () => this.atracciones.set([])
-    });
+    this.atraccionService.getAll()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          if (data && data.length > 0) {
+            this.atracciones.set(data.filter(a => a.estado !== 'INACTIVO'));
+          } else {
+            this.atracciones.set([]);
+          }
+        },
+        error: () => this.atracciones.set([])
+      });
 
     // 2. Cargar operarios
-    this.usuarioService.getAll().subscribe({
-      next: (data) => {
-        if (data) {
-          this.operarios.set(data.filter(u => u.rol === 'OPERARIO' && u.estado === 'ACTIVO'));
-        }
-      },
-      error: () => this.operarios.set([])
-    });
+    this.usuarioService.getAll()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          if (data) {
+            this.operarios.set(data.filter(u => u.rol === 'OPERARIO' && u.estado === 'ACTIVO'));
+          }
+        },
+        error: () => this.operarios.set([])
+      });
 
     // 3. Cargar asignaciones activas
-    this.asignacionService.getActiveAssignments().subscribe({
-      next: (data) => this.asignaciones.set(data || []),
-      error: () => this.asignaciones.set([])
-    });
+    this.asignacionService.getActiveAssignments()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => this.asignaciones.set(data || []),
+        error: () => this.asignaciones.set([])
+      });
   }
 
   getInitials(name: string): string {
@@ -282,33 +290,21 @@ export class AsignacionesComponent implements OnInit {
   }
 
   procederAsignacion(atraccionId: number | string, op: Usuario, forzar: boolean) {
-    this.asignacionService.assignOperator(atraccionId, op.id!, forzar).subscribe({
-      next: (nueva) => {
-        this.asignaciones.update(list => {
-          const filtrada = forzar ? list.filter(a => a.operarioId !== op.id) : list;
-          return [...filtrada, nueva];
-        });
-        this.notificationService.success(`Operario ${op.nombre} asignado correctamente.`);
-      },
-      error: () => {
-        // Mock fallback local si el backend no responde
-        const mockAsig: AsignacionOperario = {
-          id: Date.now(),
-          atraccionId,
-          atraccionNombre: this.atracciones().find(a => a.id === atraccionId)?.nombre,
-          operarioId: op.id!,
-          operarioNombre: op.nombre,
-          operarioCorreo: op.correo,
-          fechaAsignacion: new Date().toISOString(),
-          activo: true
-        };
-        this.asignaciones.update(list => {
-          const filtrada = forzar ? list.filter(a => a.operarioId !== op.id) : list;
-          return [...filtrada, mockAsig];
-        });
-        this.notificationService.success(`Operario ${op.nombre} asignado.`);
-      }
-    });
+    this.asignacionService.assignOperator(atraccionId, op.id!, forzar)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (nueva) => {
+          this.asignaciones.update(list => {
+            const filtrada = forzar ? list.filter(a => a.operarioId !== op.id) : list;
+            return [...filtrada, nueva];
+          });
+          this.notificationService.success(`Operario ${op.nombre} asignado correctamente.`);
+        },
+        error: (err) => {
+          const msg = err.error?.mensaje || 'No fue posible asignar el operario. Revisa la conexión con el servidor.';
+          this.notificationService.error(msg);
+        }
+      });
   }
 
   confirmarReasignacion() {
@@ -330,15 +326,17 @@ export class AsignacionesComponent implements OnInit {
     if (!row.asignacion?.id) return;
 
     const asigId = row.asignacion.id;
-    this.asignacionService.releaseAssignment(asigId).subscribe({
-      next: () => {
-        this.asignaciones.update(list => list.filter(a => a.id !== asigId));
-        this.notificationService.info(`Estación liberada.`);
-      },
-      error: () => {
-        this.asignaciones.update(list => list.filter(a => a.id !== asigId));
-        this.notificationService.info(`Estación liberada.`);
-      }
-    });
+    this.asignacionService.releaseAssignment(asigId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.asignaciones.update(list => list.filter(a => a.id !== asigId));
+          this.notificationService.info(`Estación liberada.`);
+        },
+        error: (err) => {
+          const msg = err.error?.mensaje || 'Error al liberar la estación en el servidor.';
+          this.notificationService.error(msg);
+        }
+      });
   }
 }

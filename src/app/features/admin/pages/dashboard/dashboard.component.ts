@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Chart, registerables } from 'chart.js';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { AsignacionService } from '../../../../core/services/asignacion.service';
@@ -312,11 +313,11 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private atraccionService = inject(AtraccionService);
   private asignacionService = inject(AsignacionService);
   private webSocketService = inject(WebSocketService);
+  private destroyRef = inject(DestroyRef);
 
   @ViewChild('salesChartCanvas', { static: true }) salesChartCanvas!: ElementRef<HTMLCanvasElement>;
 
   private salesChart: Chart | null = null;
-  private occupancySub?: Subscription;
 
   dateFilter = signal<DateFilter>('day');
   chartTitle = signal('Ventas por hora');
@@ -335,57 +336,50 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.salesChart?.destroy();
-    this.occupancySub?.unsubscribe();
   }
 
   initWebSocketTelemetry() {
-    this.occupancySub = this.webSocketService.occupancy$.subscribe((event) => {
-      this.atraccionesDb.update((list) =>
-        list.map((a) => {
-          if (a.id === event.atraccionId) {
-            return {
-              ...a,
-              ninosActivos: event.ninosActivos,
-              operarioAsignado: event.operarioNombre || a.operarioAsignado
-            };
-          }
-          return a;
-        })
-      );
-    });
+    this.webSocketService.occupancy$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        this.atraccionesDb.update((list) =>
+          list.map((a) => {
+            if (a.id === event.atraccionId) {
+              return {
+                ...a,
+                ninosActivos: event.ninosActivos,
+                operarioAsignado: event.operarioNombre || a.operarioAsignado
+              };
+            }
+            return a;
+          })
+        );
+      });
   }
 
   loadAtracciones() {
-    this.atraccionService.getAll().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
+    forkJoin({
+      atracciones: this.atraccionService.getAll(),
+      asignaciones: this.asignacionService.getActiveAssignments()
+    })
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe({
+      next: ({ atracciones, asignaciones }) => {
+        if (atracciones && atracciones.length > 0) {
           const colors = ["#0EA5E9", "#F59E0B", "#8B5CF6", "#10B981", "#EF4444", "#F97316", "#2563EB"];
           const lightBgs = ["#E0F2FE", "#FEF3C7", "#EDE9FE", "#D1FAE5", "#FEE2E2", "#FFF7ED", "#DBEAFE"];
 
-          this.asignacionService.getActiveAssignments().subscribe({
-            next: (asigs) => {
-              const mapped = data.map((a, i) => {
-                const asig = asigs?.find((x) => x.atraccionId === a.id && x.activo);
-                return {
-                  ...a,
-                  color: a.color || colors[i % colors.length],
-                  lightBg: a.lightBg || lightBgs[i % lightBgs.length],
-                  operarioAsignado: asig?.operarioNombre,
-                  ninosActivos: a.ninosActivos || 0
-                };
-              });
-              this.atraccionesDb.set(mapped);
-            },
-            error: () => {
-              const mapped = data.map((a, i) => ({
-                ...a,
-                color: a.color || colors[i % colors.length],
-                lightBg: a.lightBg || lightBgs[i % lightBgs.length],
-                ninosActivos: a.ninosActivos || 0
-              }));
-              this.atraccionesDb.set(mapped);
-            }
+          const mapped = atracciones.map((a, i) => {
+            const asig = asignaciones?.find((x) => x.atraccionId === a.id && x.activo);
+            return {
+              ...a,
+              color: a.color || colors[i % colors.length],
+              lightBg: a.lightBg || lightBgs[i % lightBgs.length],
+              operarioAsignado: asig?.operarioNombre,
+              ninosActivos: a.ninosActivos || 0
+            };
           });
+          this.atraccionesDb.set(mapped);
         } else {
           this.atraccionesDb.set([]);
         }
