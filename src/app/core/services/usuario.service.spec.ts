@@ -42,4 +42,59 @@ describe('UsuarioService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(mockUsuarios);
   });
+
+  it('should get user by id', () => {
+    service.getById(1).subscribe(user => {
+      expect(user.id).toBe(1);
+      expect(user.nombre).toBe('Carlos Gomez');
+    });
+
+    const req = httpTesting.expectOne(request => request.url.includes('/usuarios/1'));
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 1, nombre: 'Carlos Gomez', correo: 'carlos@tdn.com.co', rol: 'OPERARIO' });
+  });
+
+  it('should create user via POST', () => {
+    const newUser: Usuario = { nombre: 'Laura', correo: 'laura@tdn.com.co', rol: 'TAQUILLERO' };
+    service.create(newUser).subscribe(user => {
+      expect(user.id).toBe(2);
+    });
+
+    const req = httpTesting.expectOne(request => request.url.includes('/usuarios') && !request.url.includes('/1'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(newUser);
+    req.flush({ ...newUser, id: 2 });
+  });
+
+  it('should update user via PUT', () => {
+    const updateUser: Usuario = { id: 3, nombre: 'Laura Actualizada', correo: 'laura@tdn.com.co', rol: 'TAQUILLERO' };
+    service.update(3, updateUser).subscribe(user => {
+      expect(user.nombre).toBe('Laura Actualizada');
+    });
+
+    const req = httpTesting.expectOne(request => request.url.includes('/usuarios/3'));
+    expect(req.request.method).toBe('PUT');
+    req.flush(updateUser);
+  });
+
+  it('should delete user via DELETE', () => {
+    service.delete(3).subscribe();
+
+    const req = httpTesting.expectOne(request => request.url.includes('/usuarios/3'));
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('should handle HTTP error when API fails', () => {
+    let errorResponse: any;
+    service.getAll().subscribe({
+      next: () => {},
+      error: (err) => { errorResponse = err; }
+    });
+
+    const req = httpTesting.expectOne(request => request.url.includes('/usuarios'));
+    req.flush('Database error', { status: 500, statusText: 'Server Error' });
+
+    expect(errorResponse.status).toBe(500);
+  });
 });
