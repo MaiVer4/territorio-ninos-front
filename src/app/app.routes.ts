@@ -19,6 +19,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/pages/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
   {
+    path: 'taquilla/pos',
+    canActivate: [authGuard],
+    data: { roles: ['TAQUILLERO', 'ADMINISTRADOR'] },
+    loadComponent: () => import('./features/taquilla/pages/pos/pos.component').then(m => m.TaquillaPosComponent)
+  },
+  {
+    path: 'operario/seleccion',
+    canActivate: [authGuard],
+    data: { roles: ['OPERARIO', 'ADMINISTRADOR'] },
+    loadComponent: () => import('./features/operario/pages/seleccion/seleccion.component').then(m => m.OperarioSeleccionComponent)
+  },
+  {
     path: 'admin',
     canActivate: [authGuard],
     data: { roles: ['ADMINISTRADOR'] },
