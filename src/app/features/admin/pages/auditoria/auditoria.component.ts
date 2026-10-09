@@ -1,6 +1,7 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { exportToCsv } from '../../../../core/utils/csv-exporter';
 
 export type AuditSeverity = 'critical' | 'warning' | 'info';
 export type AuditType = 'time_exceeded' | 'ticket_rejected' | 'manual_access' | 'cash_discrepancy' | 'unauthorized_pause';
@@ -19,6 +20,7 @@ interface AuditLog {
   selector: 'app-auditoria',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full space-y-5 font-sans">
       <!-- Encabezado y exportación -->
@@ -195,20 +197,11 @@ export class AuditoriaComponent {
 
   exportarCsv() {
     if (this.filteredLogs().length === 0) return;
-    const rows = [
-      ['ID', 'Severidad', 'Tipo', 'Atracción', 'Operario', 'Descripción', 'Fecha/Hora'],
-      ...this.filteredLogs().map(l => [
-        l.id, l.severity, this.getTypeLabel(l.type), l.attraction, l.operator, `"${l.description}"`, l.timestamp
-      ])
-    ];
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `auditoria_incidentes_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const headers = ['ID', 'Severidad', 'Tipo', 'Atracción', 'Operario', 'Descripción', 'Fecha/Hora'];
+    const rows = this.filteredLogs().map(l => [
+      l.id, l.severity, this.getTypeLabel(l.type), l.attraction, l.operator, l.description, l.timestamp
+    ]);
+    exportToCsv(`auditoria_incidentes_${new Date().toISOString().slice(0, 10)}`, headers, rows);
   }
 
   exportarPdf() {

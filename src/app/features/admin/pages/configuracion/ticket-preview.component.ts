@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as QRCode from 'qrcode';
 import { ConfiguracionParque } from '../../../../core/models/configuracion.model';
@@ -7,6 +7,7 @@ import { ConfiguracionParque } from '../../../../core/models/configuracion.model
   selector: 'app-ticket-preview',
   standalone: true,
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col items-center">
       <!-- Selector de Ancho de Papel -->
@@ -110,7 +111,7 @@ import { ConfiguracionParque } from '../../../../core/models/configuracion.model
     </div>
   `
 })
-export class TicketPreviewComponent implements OnChanges {
+export class TicketPreviewComponent implements OnInit, OnChanges {
   @Input() config: ConfiguracionParque | null = null;
 
   paperWidth = signal<58 | 80>(80);
@@ -119,11 +120,14 @@ export class TicketPreviewComponent implements OnChanges {
 
   teeth = Array.from({ length: 35 });
 
+  ngOnInit() {
+    this.generateDemoQR();
+  }
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['config'] && this.config?.anchoPapelMm) {
       this.paperWidth.set(this.config.anchoPapelMm);
     }
-    this.generateDemoQR();
   }
 
   setPaperWidth(w: 58 | 80) {
@@ -131,6 +135,7 @@ export class TicketPreviewComponent implements OnChanges {
   }
 
   async generateDemoQR() {
+    if (this.qrDataUrl()) return;
     try {
       const url = await QRCode.toDataURL('TDN-DEMO-TICKET-2026', {
         width: 120,

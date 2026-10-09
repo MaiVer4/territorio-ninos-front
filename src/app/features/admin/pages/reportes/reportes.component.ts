@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
+import { exportToCsv } from '../../../../core/utils/csv-exporter';
 
 Chart.register(...registerables);
 
@@ -8,6 +9,7 @@ Chart.register(...registerables);
   selector: 'app-reportes',
   standalone: true,
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full space-y-5">
       <!-- Encabezado y acciones de exportación -->
@@ -174,26 +176,19 @@ export class ReportesComponent implements OnInit, OnDestroy {
   }
 
   exportarCsv() {
+    const headers = ['Hora', 'Ventas (COP)'];
     const rows = [
-      ['Hora', 'Ventas (COP)'],
-      ['08:00 AM', '120000'],
-      ['09:00 AM', '385000'],
-      ['10:00 AM', '520000'],
-      ['11:00 AM', '780000'],
-      ['12:00 PM', '650000'],
-      ['01:00 PM', '895000'],
-      ['02:00 PM', '720000'],
-      ['03:00 PM', '940000'],
-      ['04:00 PM', '560000']
+      ['08:00 AM', 120000],
+      ['09:00 AM', 385000],
+      ['10:00 AM', 520000],
+      ['11:00 AM', 780000],
+      ['12:00 PM', 650000],
+      ['01:00 PM', 895000],
+      ['02:00 PM', 720000],
+      ['03:00 PM', 940000],
+      ['04:00 PM', 560000]
     ];
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `reporte_ventas_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToCsv(`reporte_ventas_${new Date().toISOString().slice(0, 10)}`, headers, rows);
   }
 
   exportarPdf() {

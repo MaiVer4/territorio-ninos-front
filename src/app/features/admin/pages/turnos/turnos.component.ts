@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { exportToCsv } from '../../../../core/utils/csv-exporter';
 
 interface TurnoItem {
   id: number;
@@ -17,6 +18,7 @@ interface TurnoItem {
   selector: 'app-turnos',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full space-y-5 font-sans">
       <!-- Encabezado con filtros y exportación -->
@@ -129,20 +131,11 @@ export class TurnosComponent {
 
   exportarCsv() {
     if (this.turnos().length === 0) return;
-    const rows = [
-      ['Cajero', 'Rol', 'Apertura', 'Base Inicial', 'Ventas', 'Tiquetes', 'Estado'],
-      ...this.turnos().map(t => [
-        t.cajero, t.rol, t.apertura, t.base.toString(), t.ventas.toString(), t.tiquetes.toString(), t.activo ? 'Activo' : 'Cerrado'
-      ])
-    ];
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `historial_turnos_${this.fechaSeleccionada}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const headers = ['Cajero', 'Rol', 'Apertura', 'Base Inicial', 'Ventas', 'Tiquetes', 'Estado'];
+    const rows = this.turnos().map(t => [
+      t.cajero, t.rol, t.apertura, t.base, t.ventas, t.tiquetes, t.activo ? 'Activo' : 'Cerrado'
+    ]);
+    exportToCsv(`historial_turnos_${this.fechaSeleccionada}`, headers, rows);
   }
 
   exportarPdf() {
