@@ -45,4 +45,14 @@ describe('jwtInterceptor', () => {
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
+
+  it('should not attach Authorization header to external third-party URLs even when token exists', () => {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: 'mock-jwt-token' }));
+
+    httpClient.get('https://external-api.com/data').subscribe();
+
+    const req = httpTesting.expectOne('https://external-api.com/data');
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
 });

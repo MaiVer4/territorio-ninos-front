@@ -20,6 +20,8 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true; // Autenticado, sin restricción de rol
   }
 
-  // No autenticado
-  return router.createUrlTree(['/login']);
+  // No autenticado: preservar URL solicitada para redirección posterior
+  return router.createUrlTree(['/login'], { 
+    queryParams: state?.url ? { returnUrl: state.url } : undefined 
+  });
 };

@@ -36,6 +36,18 @@ describe('authGuard', () => {
     expect((result as UrlTree).toString()).toBe('/login');
   });
 
+  it('should preserve requested URL as returnUrl queryParam when unauthenticated', () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(false);
+
+    const route = { data: {} } as unknown as ActivatedRouteSnapshot;
+    const state = { url: '/admin/configuracion' } as RouterStateSnapshot;
+    const result = TestBed.runInInjectionContext(() => authGuard(route, state));
+
+    expect(result instanceof UrlTree).toBe(true);
+    const urlTree = result as UrlTree;
+    expect(urlTree.queryParams['returnUrl']).toBe('/admin/configuracion');
+  });
+
   it('should allow authenticated users when no roles are specified', () => {
     authServiceSpy.isAuthenticated.mockReturnValue(true);
 

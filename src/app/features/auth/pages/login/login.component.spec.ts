@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -29,6 +29,7 @@ describe('LoginComponent', () => {
 
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
@@ -105,5 +106,27 @@ describe('LoginComponent', () => {
     component.onSubmit();
 
     expect(authServiceSpy.login).not.toHaveBeenCalled();
+  });
+
+  it('should navigate to returnUrl if present in queryParams upon login', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    (route.snapshot as any).queryParams = { returnUrl: '/admin/configuracion' };
+
+    authServiceSpy.login.mockReturnValue(of({
+      token: 'valid-jwt',
+      tipoToken: 'Bearer',
+      correo: 'admin@tdn.com.co',
+      rol: 'ADMINISTRADOR'
+    }));
+
+    component.loginForm.setValue({
+      correo: 'admin@tdn.com.co',
+      contrasena: 'Admin1234'
+    });
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/configuracion');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

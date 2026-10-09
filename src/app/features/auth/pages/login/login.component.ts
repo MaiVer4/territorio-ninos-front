@@ -1,7 +1,7 @@
 import { Component, inject, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 // Angular Material
@@ -144,6 +144,7 @@ export class LoginComponent {
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
@@ -169,7 +170,15 @@ export class LoginComponent {
           next: (res) => {
             this.isLoading = false;
             this.notificationService.success(`¡Bienvenido al sistema! (${res.correo})`);
-            // Redirección por roles
+            
+            // Si el usuario intentaba acceder a una ruta específica previa (deep linking)
+            const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+            if (returnUrl) {
+              this.router.navigateByUrl(returnUrl);
+              return;
+            }
+
+            // Redirección por roles predeterminados
             const rol = res.rol;
             if (rol === 'ADMINISTRADOR') this.router.navigate(['/admin/dashboard']);
             else if (rol === 'TAQUILLERO') this.router.navigate(['/taquilla/pos']);

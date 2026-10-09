@@ -1,6 +1,15 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  // Evitar inyección en solicitudes hacia dominios externos no confiables (OWASP A07)
+  const isApiUrl = req.url.startsWith(environment.apiUrl) || 
+                   req.url.startsWith('/') || 
+                   (typeof window !== 'undefined' && req.url.startsWith(window.location.origin));
+  if (!isApiUrl) {
+    return next(req);
+  }
+
   // Evitar inyectar AuthService directamente para prevenir Dependencia Circular
   // con HttpClient (HttpClient -> Interceptor -> AuthService -> HttpClient)
   let token: string | null = null;
