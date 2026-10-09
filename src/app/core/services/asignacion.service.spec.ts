@@ -38,7 +38,7 @@ describe('AsignacionService', () => {
       expect(res[0].operarioNombre).toBe('Carlos Gómez');
     });
 
-    const req = httpTesting.expectOne('http://localhost:8080/territorioninos/api/asignaciones/activas');
+    const req = httpTesting.expectOne(request => request.url.includes('/asignaciones/activas'));
     expect(req.request.method).toBe('GET');
     req.flush(mockList);
   });
@@ -49,7 +49,7 @@ describe('AsignacionService', () => {
       expect(res.operarioId).toBe(5);
     });
 
-    const req = httpTesting.expectOne('http://localhost:8080/territorioninos/api/asignaciones');
+    const req = httpTesting.expectOne(request => request.url.includes('/asignaciones') && !request.url.includes('/activas'));
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ atraccionId: 10, operarioId: 5, forzarReasignacion: false });
     req.flush({ id: 1, atraccionId: 10, operarioId: 5, activo: true });

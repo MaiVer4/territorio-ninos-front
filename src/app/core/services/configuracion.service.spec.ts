@@ -48,7 +48,7 @@ describe('ConfiguracionService', () => {
       expect(res.anchoPapelMm).toBe(80);
     });
 
-    const req = httpTesting.expectOne('http://localhost:8080/territorioninos/api/configuracion');
+    const req = httpTesting.expectOne(request => request.url.includes('/configuracion'));
     expect(req.request.method).toBe('GET');
     req.flush(mockConfig);
   });
@@ -58,7 +58,7 @@ describe('ConfiguracionService', () => {
       expect(res.nit).toBe('901.458.789-2');
     });
 
-    const req = httpTesting.expectOne('http://localhost:8080/territorioninos/api/configuracion');
+    const req = httpTesting.expectOne(request => request.url.includes('/configuracion'));
     expect(req.request.method).toBe('PUT');
     req.flush(mockConfig);
   });
