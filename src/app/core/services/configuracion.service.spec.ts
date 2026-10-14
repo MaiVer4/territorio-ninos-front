@@ -18,7 +18,8 @@ describe('ConfiguracionService', () => {
     ciudad: 'Armenia, Quindío',
     politicasSeguridad: 'Uso obligatorio de medias antideslizantes.',
     anchoPapelMm: 80,
-    mensajePie: '¡Gracias por su visita!'
+    mensajePie: '¡Gracias por su visita!',
+    tiempoGraciaGeneralSegundos: 60
   };
 
   beforeEach(() => {

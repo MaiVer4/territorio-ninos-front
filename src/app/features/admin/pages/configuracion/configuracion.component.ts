@@ -168,6 +168,52 @@ import { TicketPreviewComponent } from './ticket-preview.component';
                   class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-500" />
               </div>
             </div>
+
+            <!-- Tarjeta 3: Operación del Parque y Tolerancia de Tiempo (HU-12 / RF12) -->
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+              <div class="border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-sm">Operación del Parque y Tolerancia de Tiempo</h3>
+                <p class="text-[11px] text-slate-400">Margen de gracia operativo concedido a atracciones temporizadas antes de emitir alertas (HU-12 / RF12)</p>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Margen de gracia general <span class="text-red-500">*</span>
+                  </label>
+                  <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100">
+                    {{ form.get('tiempoGraciaGeneralSegundos')?.value ?? 0 }} segundos
+                  </span>
+                </div>
+
+                <div class="relative">
+                  <input type="number" formControlName="tiempoGraciaGeneralSegundos" min="0" max="600" step="5"
+                    placeholder="60"
+                    class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-blue-500" />
+                  <span class="absolute right-3 top-2 text-[11px] text-slate-400 font-medium">seg</span>
+                </div>
+
+                <!-- Botones de selección rápida -->
+                <div class="flex flex-wrap items-center gap-2 mt-2.5">
+                  <span class="text-[10px] text-slate-400 font-medium">Atajos rápidos:</span>
+                  @for (sec of [30, 60, 90, 120]; track sec) {
+                    <button type="button" (click)="setTiempoGracia(sec)"
+                      [class]="form.get('tiempoGraciaGeneralSegundos')?.value === sec ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                      class="text-[10px] font-semibold px-2.5 py-1 rounded-lg transition cursor-pointer">
+                      {{ sec }}s
+                    </button>
+                  }
+                </div>
+
+                <p class="text-[11px] text-slate-400 mt-2">
+                  Tiempo de tolerancia tras cumplirse los minutos contratados antes de marcar sobretiempo en pantalla del operario y semáforo de aforo.
+                </p>
+
+                @if (form.get('tiempoGraciaGeneralSegundos')?.touched && form.get('tiempoGraciaGeneralSegundos')?.invalid) {
+                  <p class="text-[10px] text-red-500 mt-1">El tiempo de gracia es obligatorio y debe ser mayor o igual a 0 segundos.</p>
+                }
+              </div>
+            </div>
           </form>
         </div>
 
@@ -209,7 +255,8 @@ export class ConfiguracionComponent implements OnInit {
       Validators.required
     ],
     anchoPapelMm: [80, Validators.required],
-    mensajePie: ['¡Gracias por su visita a Territorio de Niños!', Validators.required]
+    mensajePie: ['¡Gracias por su visita a Territorio de Niños!', Validators.required],
+    tiempoGraciaGeneralSegundos: [60, [Validators.required, Validators.min(0)]]
   });
 
   previewConfig = signal<ConfiguracionParque>(this.form.value);
@@ -222,6 +269,11 @@ export class ConfiguracionComponent implements OnInit {
       });
 
     this.cargarConfiguracion();
+  }
+
+  setTiempoGracia(segundos: number) {
+    this.form.patchValue({ tiempoGraciaGeneralSegundos: segundos });
+    this.form.get('tiempoGraciaGeneralSegundos')?.markAsDirty();
   }
 
   cargarConfiguracion() {
@@ -249,7 +301,12 @@ export class ConfiguracionComponent implements OnInit {
     }
 
     this.saving.set(true);
-    const config: ConfiguracionParque = this.form.value;
+    const formVal = this.form.value;
+    const config: ConfiguracionParque = {
+      ...formVal,
+      nombreParque: formVal.nombreComercial,
+      pieTicketLegal: formVal.politicasSeguridad
+    };
 
     // Escenario 1 HU-13: Actualización exitosa en backend
     this.configuracionService.updateConfiguracion(config)

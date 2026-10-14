@@ -9,5 +9,8 @@ export interface ConfiguracionParque {
   politicasSeguridad: string;
   anchoPapelMm: 58 | 80;
   mensajePie: string;
+  tiempoGraciaGeneralSegundos: number;
+  nombreParque?: string;
+  pieTicketLegal?: string;
   fechaActualizacion?: string;
 }
