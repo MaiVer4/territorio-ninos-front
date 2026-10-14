@@ -63,8 +63,6 @@ describe('AtraccionFormComponent', () => {
       duracionMinutosBase: 20,
       toleranciaMinutos: 2,
       tipo: 'TEMPORIZADA',
-      edadMin: 4,
-      edadMax: 10,
       estado: 'ACTIVO'
     };
     await setupComponent(mockAtraccion);
@@ -72,16 +70,13 @@ describe('AtraccionFormComponent', () => {
     expect(component.isEdit()).toBe(true);
     expect(component.form.get('nombre')?.value).toBe('Saltarines Pro');
     expect(component.form.get('tarifaMinuto')?.value).toBe(1500);
-    expect(component.form.get('edadMin')?.value).toBe(4);
     expect(component.form.valid).toBe(true);
   });
 
-  it('should not submit if form is invalid or edadMin > edadMax', async () => {
+  it('should not submit if form is invalid', async () => {
     await setupComponent(null);
     component.form.patchValue({
-      nombre: 'Piscina Invalida',
-      edadMin: 10,
-      edadMax: 5 // Invalido: edadMin > edadMax
+      nombre: '' // Invalido: nombre obligatorio
     });
 
     component.onSubmit();
@@ -97,8 +92,6 @@ describe('AtraccionFormComponent', () => {
       nombre: 'Nueva Atracción',
       tarifaMinuto: 2000,
       capacidadMaxima: 15,
-      edadMin: 3,
-      edadMax: 10,
       tipo: 'TEMPORIZADA',
       duracionMinutosBase: 15,
       toleranciaMinutos: 1,
@@ -120,9 +113,7 @@ describe('AtraccionFormComponent', () => {
       tarifaMinuto: 3000,
       capacidadMaxima: 4,
       duracionMinutosBase: 10,
-      tipo: 'EVENTOS_CAIDAS',
-      edadMin: 5,
-      edadMax: 12
+      tipo: 'EVENTOS_CAIDAS'
     };
     await setupComponent(mockAtraccion);
     atraccionServiceSpy.update.mockReturnValue(of({ id: 7, nombre: 'Pared Escalada Modificada' }));
@@ -147,8 +138,6 @@ describe('AtraccionFormComponent', () => {
       nombre: 'Atracción Error',
       tarifaMinuto: 2000,
       capacidadMaxima: 10,
-      edadMin: 2,
-      edadMax: 8,
       tipo: 'TEMPORIZADA',
       duracionMinutosBase: 15,
       toleranciaMinutos: 1,

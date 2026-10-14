@@ -68,43 +68,6 @@ import { TipoAtraccion } from '../../../../core/models/enums';
           </div>
         </div>
 
-        <!-- Edad mínima y Edad máxima -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-              Edad mínima <span class="text-red-500">*</span>
-            </label>
-            <select formControlName="edadMin"
-              class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition">
-              @for (n of ages; track n) {
-                <option [value]="n">{{ n }} año{{ n > 1 ? 's' : '' }}</option>
-              }
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-              Edad máxima <span class="text-red-500">*</span>
-            </label>
-            <select formControlName="edadMax"
-              class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition">
-              @for (n of ages; track n) {
-                <option [value]="n">{{ n }} año{{ n > 1 ? 's' : '' }}</option>
-              }
-            </select>
-          </div>
-        </div>
-
-        <!-- Alerta si edadMin > edadMax -->
-        @if (form.get('edadMin')?.value > form.get('edadMax')?.value) {
-          <div class="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-            <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-            </svg>
-            <p class="text-xs font-semibold text-red-600">La edad mínima no puede ser mayor que la máxima.</p>
-          </div>
-        }
-
         <!-- Tipo de control (2 Tarjetas canónicas) -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -178,7 +141,7 @@ import { TipoAtraccion } from '../../../../core/models/enums';
             Cancelar
           </button>
           <button type="submit"
-            [disabled]="form.invalid || (form.get('edadMin')?.value > form.get('edadMax')?.value) || loading()"
+            [disabled]="form.invalid || loading()"
             class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -200,8 +163,6 @@ export class AtraccionFormComponent {
   isEdit = signal(false);
   loading = signal(false);
 
-  ages = Array.from({ length: 12 }, (_, i) => i + 1);
-
   controlTypes: { value: TipoAtraccion; label: string; desc: string }[] = [
     { value: 'TEMPORIZADA', label: '⏱ Por Tiempo', desc: 'Cronómetro regresivo por sesión' },
     { value: 'EVENTOS_CAIDAS', label: '🎯 Por Caídas', desc: 'Contador de eventos / caídas' }
@@ -220,8 +181,6 @@ export class AtraccionFormComponent {
       nombre: [data?.nombre || '', Validators.required],
       tarifaMinuto: [data?.tarifaMinuto || data?.precio || 1000, [Validators.required, Validators.min(0.01)]],
       capacidadMaxima: [data?.capacidadMaxima || data?.maxCapacity || 10, [Validators.required, Validators.min(1)]],
-      edadMin: [data?.edadMin || 2, Validators.required],
-      edadMax: [data?.edadMax || 12, Validators.required],
       tipo: [tipoVal, Validators.required],
       duracionMinutosBase: [data?.duracionMinutosBase || data?.duracion || 15, Validators.required],
       toleranciaMinutos: [data?.toleranciaMinutos ?? 1, [Validators.required, Validators.min(0), Validators.max(10)]],
@@ -237,7 +196,6 @@ export class AtraccionFormComponent {
   onSubmit() {
     if (this.form.invalid) return;
     const val = this.form.value;
-    if (val.edadMin > val.edadMax) return;
 
     this.loading.set(true);
 
@@ -251,7 +209,7 @@ export class AtraccionFormComponent {
     const payload: Atraccion = {
       ...this.data,
       nombre: val.nombre,
-      descripcion: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad ${val.edadMin}–${val.edadMax}`,
+      descripcion: `${duracionMinutosBase} min · máx ${capacidadMaxima}`,
       tarifaMinuto,
       capacidadMaxima,
       duracionMinutosBase,
@@ -263,9 +221,7 @@ export class AtraccionFormComponent {
       precio: tarifaMinuto,
       maxCapacity: capacidadMaxima,
       duracion: duracionMinutosBase,
-      edadMin: val.edadMin,
-      edadMax: val.edadMax,
-      tag: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad ${val.edadMin}–${val.edadMax}`
+      tag: `${duracionMinutosBase} min · máx ${capacidadMaxima}`
     };
 
     if (this.isEdit() && this.data?.id && typeof this.data.id === 'number') {

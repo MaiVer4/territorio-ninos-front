@@ -24,6 +24,4 @@ export interface Atraccion {
   precio?: number;
   maxCapacity?: number;
   duracion?: number;
-  edadMin?: number;
-  edadMax?: number;
 }

@@ -82,7 +82,7 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                 <p class="font-bold text-slate-800 text-base mb-0.5 truncate">{{ a.nombre }}</p>
                 <p class="text-xs text-slate-400 mb-3 truncate">{{ a.tag || ((a.duracion || a.duracionMinutosBase || 20) + ' min · máx ' + (a.maxCapacity || a.capacidadMaxima || 10)) }}</p>
 
-                <!-- Grid de 6 Métricas -->
+                <!-- Grid de Métricas -->
                 <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                   <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
                     <p class="text-slate-400 text-[10px]">Precio</p>
@@ -103,14 +103,6 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                     <p class="font-bold text-slate-700">
                       {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Por caídas' : ((a.duracionMinutosBase || a.duracion || 15) + ' min') }}
                     </p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
-                    <p class="text-slate-400 text-[10px]">Edad mín.</p>
-                    <p class="font-bold text-slate-700">{{ a.edadMin || 2 }} años</p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
-                    <p class="text-slate-400 text-[10px]">Edad máx.</p>
-                    <p class="font-bold text-slate-700">{{ a.edadMax || 12 }} años</p>
                   </div>
                 </div>
 
@@ -154,7 +146,6 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Capacidad</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo / Duración</th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Edades</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
                     <th class="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
                   </tr>
@@ -179,9 +170,6 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                       </td>
                       <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
                         {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Caídas' : ((a.duracionMinutosBase || a.duracion || 15) + ' min') }}
-                      </td>
-                      <td class="px-5 py-3.5 text-slate-500 text-xs whitespace-nowrap">
-                        {{ a.edadMin || 2 }} - {{ a.edadMax || 12 }} años
                       </td>
                       <td class="px-5 py-3.5 whitespace-nowrap">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
@@ -269,11 +257,9 @@ export class AtraccionesComponent implements OnInit {
                 duracion: duracionMinutosBase,
                 capacidadMaxima,
                 maxCapacity: capacidadMaxima,
-                edadMin: a.edadMin || 2,
-                edadMax: a.edadMax || 12,
                 color: a.color || colors[i % colors.length],
                 lightBg: a.lightBg || lightBgs[i % lightBgs.length],
-                tag: `${duracionMinutosBase} min · máx ${capacidadMaxima} · edad 2–12`
+                tag: `${duracionMinutosBase} min · máx ${capacidadMaxima}`
               };
             });
             this.atracciones.set(mapped);
