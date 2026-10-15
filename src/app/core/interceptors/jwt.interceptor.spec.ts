@@ -55,4 +55,24 @@ describe('jwtInterceptor', () => {
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
+
+  it('should not attach Authorization header to public auth endpoints even when token exists', () => {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: 'mock-jwt-token' }));
+
+    httpClient.post('/api/auth/login', {}).subscribe();
+    httpClient.post('/api/auth/forgot-password', {}).subscribe();
+    httpClient.post('/api/auth/reset-password', {}).subscribe();
+
+    const reqLogin = httpTesting.expectOne('/api/auth/login');
+    const reqForgot = httpTesting.expectOne('/api/auth/forgot-password');
+    const reqReset = httpTesting.expectOne('/api/auth/reset-password');
+
+    expect(reqLogin.request.headers.has('Authorization')).toBe(false);
+    expect(reqForgot.request.headers.has('Authorization')).toBe(false);
+    expect(reqReset.request.headers.has('Authorization')).toBe(false);
+
+    reqLogin.flush({});
+    reqForgot.flush({});
+    reqReset.flush({});
+  });
 });

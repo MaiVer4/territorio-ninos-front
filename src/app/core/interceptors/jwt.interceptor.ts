@@ -10,6 +10,13 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
+  // No adjuntar token en endpoints públicos de autenticación
+  if (req.url.includes('/api/auth/login') ||
+      req.url.includes('/api/auth/forgot-password') ||
+      req.url.includes('/api/auth/reset-password')) {
+    return next(req);
+  }
+
   // Evitar inyectar AuthService directamente para prevenir Dependencia Circular
   // con HttpClient (HttpClient -> Interceptor -> AuthService -> HttpClient)
   let token: string | null = null;
