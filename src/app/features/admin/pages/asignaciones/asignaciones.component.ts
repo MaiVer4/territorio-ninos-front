@@ -26,7 +26,7 @@ interface AttractionAssignmentRow {
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 class="font-bold text-slate-800 text-lg">Asignación de Operarios a Atracciones</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Control de vinculación de personal operativo en campo (HU-10 / RF-10)</p>
+          <p class="text-xs text-slate-400 mt-0.5">Control de vinculación de personal operativo en campo</p>
         </div>
 
         <button (click)="refresh()"
@@ -142,7 +142,7 @@ interface AttractionAssignmentRow {
         }
       </div>
 
-      <!-- Modal de Conflicto de Reasignación (HTTP 409) -->
+      <!-- Modal de Conflicto de Reasignación -->
       @if (conflicto()) {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
@@ -153,7 +153,7 @@ interface AttractionAssignmentRow {
             </div>
 
             <div class="text-center">
-              <h3 class="text-base font-bold text-slate-800">Conflicto de Asignación (HTTP 409)</h3>
+              <h3 class="text-base font-bold text-slate-800">Conflicto de Asignación</h3>
               <p class="text-xs text-slate-500 mt-2">
                 El operario <strong>{{ conflicto()?.operarioNombre }}</strong> ya tiene una asignación activa en otra atracción:
               </p>

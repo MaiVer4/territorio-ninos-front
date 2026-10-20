@@ -112,11 +112,11 @@ import { TipoAtraccion } from '../../../../core/models/enums';
           </div>
         }
 
-        <!-- Margen de Tolerancia (HU-12 / RF12) -->
+        <!-- Margen de Tolerancia -->
         <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-700">
-              Margen de tolerancia / tiempo de gracia (HU-12)
+              Margen de tolerancia / tiempo de gracia
             </label>
             <span class="text-xs font-bold text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded-md">
               {{ form.get('toleranciaMinutos')?.value ?? 0 }} min

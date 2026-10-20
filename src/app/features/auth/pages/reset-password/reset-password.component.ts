@@ -77,7 +77,7 @@ export function strictPasswordValidator(control: AbstractControl): ValidationErr
               <mat-error *ngIf="resetForm.get('nuevaContrasena')?.hasError('required')">La contraseña es requerida</mat-error>
             </mat-form-field>
 
-            <!-- Requisitos visuales en caliente (HU-02) -->
+            <!-- Requisitos visuales de contraseña -->
             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs flex flex-col gap-1.5 text-slate-600">
               <span class="font-semibold text-slate-700 mb-0.5">La contraseña debe incluir:</span>
               <div class="flex items-center gap-2" [class.text-emerald-600]="hasLength" [class.font-medium]="hasLength">

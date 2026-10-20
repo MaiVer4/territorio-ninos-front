@@ -133,7 +133,7 @@ interface ShiftSummary {
         </div>
 
         @if (atraccionesDb().length > 0) {
-          <!-- Grid responsivo con telemetría en tiempo real (HU-11 / SCRUM-67) -->
+          <!-- Grid responsivo con telemetría en tiempo real -->
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
             @for (a of atraccionesDb(); track a.id) {
               @let pct = getOccupancyPct(a);
@@ -185,7 +185,7 @@ interface ShiftSummary {
             }
           </div>
         } @else {
-          <!-- Empty State (Escenario 2 de HU-11 / SCRUM-67) -->
+          <!-- Empty State si no hay atracciones -->
           <div class="flex flex-col items-center justify-center py-10 px-4 text-center border-2 border-dashed border-slate-100 rounded-xl">
             <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -87,10 +87,10 @@ import { ConfiguracionParque } from '../../../../core/models/configuracion.model
               Generando QR...
             </div>
           }
-          <span class="text-[9px] text-slate-500 mt-1 tracking-widest font-bold">UUID-TDN-2026-DEMO</span>
+          <span class="text-[9px] text-slate-500 mt-1 tracking-widest font-bold">TDN-2026-00842</span>
         </div>
 
-        <!-- Términos y Recomendaciones de Seguridad (HU-13) -->
+        <!-- Términos y Recomendaciones de Seguridad -->
         <div class="border-t border-dashed border-slate-300 pt-2 mt-2 text-center text-[9px] leading-tight text-slate-600">
           <p class="font-bold mb-1 uppercase tracking-wider">Normas de Seguridad</p>
           <p class="whitespace-pre-line text-justify">

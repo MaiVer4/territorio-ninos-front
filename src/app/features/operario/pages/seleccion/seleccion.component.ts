@@ -45,7 +45,7 @@ import { AuthService } from '../../../../core/services/auth.service';
           <p class="font-bold text-slate-700">Estado de la cuenta:</p>
           <p>• Correo: <span class="font-mono text-slate-800">{{ authService.currentUser()?.correo }}</span></p>
           <p>• Rol activo: <span class="font-semibold text-emerald-600">OPERARIO</span></p>
-          <p>• Sesión segura y autenticada con JWT.</p>
+          <p>• Sesión segura y autenticada.</p>
         </div>
       </main>
     </div>

@@ -17,7 +17,7 @@ import { TicketPreviewComponent } from './ticket-preview.component';
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 class="font-bold text-slate-800 text-lg">Parámetros del Parque y Boletas Térmicas</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Configuración institucional e impresión de tickets POS (HU-13 / RF-13)</p>
+          <p class="text-xs text-slate-400 mt-0.5">Configuración institucional e impresión de boletas para taquilla</p>
         </div>
 
         <button (click)="onSubmit()" [disabled]="form.invalid || saving()"
@@ -169,11 +169,11 @@ import { TicketPreviewComponent } from './ticket-preview.component';
               </div>
             </div>
 
-            <!-- Tarjeta 3: Operación del Parque y Tolerancia de Tiempo (HU-12 / RF12) -->
+            <!-- Tarjeta 3: Operación del Parque y Tolerancia de Tiempo -->
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
               <div class="border-b border-slate-100 pb-3">
                 <h3 class="font-bold text-slate-800 text-sm">Operación del Parque y Tolerancia de Tiempo</h3>
-                <p class="text-[11px] text-slate-400">Margen de gracia operativo concedido a atracciones temporizadas antes de emitir alertas (HU-12 / RF12)</p>
+                <p class="text-[11px] text-slate-400">Margen de gracia operativo concedido a atracciones temporizadas antes de emitir alertas</p>
               </div>
 
               <div>

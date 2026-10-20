@@ -27,7 +27,7 @@ import { AuthService } from '../../../../core/services/auth.service';
         </div>
 
         <span class="px-3.5 py-1 text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 rounded-full mb-3">
-          Error 403 • Acceso Restringido
+          Acceso Restringido
         </span>
 
         <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight mb-3">

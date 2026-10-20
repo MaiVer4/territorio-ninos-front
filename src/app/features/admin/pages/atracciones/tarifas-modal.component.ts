@@ -43,16 +43,16 @@ import { forkJoin } from 'rxjs';
           </svg>
           @if (data.tipo === 'TEMPORIZADA') {
             <p>
-              <strong>HU-08:</strong> Configura los precios en pesos colombianos (COP) para los bloques de tiempo estándar (15, 30 y 60 min). Taquilla liquidará automáticamente las boletas con base en estos valores.
+              <strong>Tarifas por tiempo:</strong> Configura los precios en pesos colombianos (COP) para los bloques de tiempo estándar (15, 30 y 60 min). Taquilla liquidará automáticamente las boletas con base en estos valores.
             </p>
           } @else {
             <p>
-              <strong>HU-09:</strong> Configura los precios fijos por número de intentos o caídas para atracciones no temporizadas continuas (ej. Toro Mecánico).
+              <strong>Tarifas por eventos:</strong> Configura los precios fijos por número de intentos o caídas para atracciones no temporizadas continuas (ej. Toro Mecánico).
             </p>
           }
         </div>
 
-        <!-- FORMULARIO TEMPORIZADA (HU-08) -->
+        <!-- FORMULARIO TEMPORIZADA -->
         @if (data.tipo === 'TEMPORIZADA') {
           <form [formGroup]="timeForm" (ngSubmit)="saveTimeRates()" class="space-y-4">
             <div class="space-y-3">
@@ -123,7 +123,7 @@ import { forkJoin } from 'rxjs';
           </form>
         }
 
-        <!-- FORMULARIO EVENTOS / CAÍDAS (HU-09) -->
+        <!-- FORMULARIO EVENTOS / CAÍDAS -->
         @if (data.tipo === 'EVENTOS_CAIDAS') {
           <form [formGroup]="eventForm" (ngSubmit)="saveEventRates()" class="space-y-4">
             <div class="space-y-3">
