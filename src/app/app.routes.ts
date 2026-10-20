@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { cajaAbiertaGuard } from './core/guards/caja-abierta.guard';
 
 export const routes: Routes = [
   {
@@ -19,8 +20,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/pages/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
   {
-    path: 'taquilla/pos',
+    path: 'taquilla/apertura',
     canActivate: [authGuard],
+    data: { roles: ['TAQUILLERO', 'ADMINISTRADOR'] },
+    loadComponent: () => import('./features/taquilla/pages/apertura/apertura.component').then(m => m.AperturaComponent)
+  },
+  {
+    path: 'taquilla/pos',
+    canActivate: [authGuard, cajaAbiertaGuard],
     data: { roles: ['TAQUILLERO', 'ADMINISTRADOR'] },
     loadComponent: () => import('./features/taquilla/pages/pos/pos.component').then(m => m.TaquillaPosComponent)
   },
