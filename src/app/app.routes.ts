@@ -27,7 +27,7 @@ export const routes: Routes = [
   },
   {
     path: 'taquilla/pos',
-    canActivate: [authGuard, cajaAbiertaGuard],
+    canActivate: [authGuard],
     data: { roles: ['TAQUILLERO', 'ADMINISTRADOR'] },
     loadComponent: () => import('./features/taquilla/pages/pos/pos.component').then(m => m.TaquillaPosComponent)
   },
