@@ -1,19 +1,31 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CajaService } from '../../../../core/services/caja.service';
-import { TurnoResponseDTO } from '../../../../core/models/caja.model';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
+import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
 
 @Component({
   selector: 'app-taquilla-pos',
   standalone: true,
-  imports: [CommonModule, AperturaCajaModalComponent],
+  imports: [CommonModule, AperturaCajaModalComponent, ArqueoCajaModalComponent],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative">
       <!-- Modal Bloqueante de Apertura si no hay turno activo -->
       @if (mostrarModalApertura()) {
         <app-apertura-caja-modal (turnoIniciado)="onTurnoIniciado($event)"></app-apertura-caja-modal>
+      }
+
+      <!-- Modal de Arqueo y Cierre Asistido -->
+      @if (mostrarModalArqueo() && turnoActual()) {
+        <app-arqueo-caja-modal
+          [idTurno]="turnoActual()!.idTurno"
+          [montoEsperado]="montoEsperadoArqueo()"
+          (confirmarArqueo)="onArqueoConfirmado($event)"
+          (cancelar)="mostrarModalArqueo.set(false)">
+        </app-arqueo-caja-modal>
       }
 
       <!-- Cabecera del POS -->
@@ -28,14 +40,24 @@ import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal
           </div>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 sm:gap-4">
           @if (turnoActual(); as turno) {
-            <div class="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl text-xs text-emerald-800">
+            <div class="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl text-xs text-emerald-800">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span class="font-bold">Turno #{{ turno.idTurno }}</span>
               <span class="text-emerald-400">•</span>
               <span>Base: <strong>\${{ turno.montoInicial.toLocaleString('es-CO') }}</strong></span>
             </div>
+
+            <button
+              type="button"
+              (click)="iniciarArqueo()"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs">
+              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>Arqueo / Cerrar Caja</span>
+            </button>
           }
 
           <div class="text-right hidden sm:block">
@@ -44,6 +66,7 @@ import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal
               Taquillero
             </span>
           </div>
+
           <button (click)="logout()"
             class="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 text-xs font-semibold rounded-xl transition cursor-pointer">
             Cerrar sesión
@@ -76,6 +99,14 @@ import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal
               \${{ (turnoActual()?.montoInicial ?? 0).toLocaleString('es-CO') }} COP
             </span>
           </p>
+          @if (turnoActual()) {
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-slate-500">Saldo teórico actual:</span>
+              <span class="font-mono font-bold text-slate-800">
+                \${{ montoEsperadoArqueo().toLocaleString('es-CO') }}
+              </span>
+            </div>
+          }
         </div>
       </main>
     </div>
@@ -84,9 +115,16 @@ import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal
 export class TaquillaPosComponent implements OnInit {
   readonly authService = inject(AuthService);
   readonly cajaService = inject(CajaService);
+  private readonly notificationService = inject(NotificationService, { optional: true });
 
   readonly mostrarModalApertura = signal<boolean>(false);
+  readonly mostrarModalArqueo = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
+
+  readonly montoEsperadoArqueo = computed(() => {
+    const t = this.turnoActual();
+    return (t?.montoInicial ?? 0) + (t?.totalRecaudado ?? 0);
+  });
 
   ngOnInit(): void {
     this.verificarTurnoCaja();
@@ -113,6 +151,32 @@ export class TaquillaPosComponent implements OnInit {
   onTurnoIniciado(turno: TurnoResponseDTO): void {
     this.turnoActual.set(turno);
     this.mostrarModalApertura.set(false);
+  }
+
+  iniciarArqueo(): void {
+    this.mostrarModalArqueo.set(true);
+  }
+
+  onArqueoConfirmado(resultado: ResultadoArqueoDTO): void {
+    this.cajaService.cerrarTurno({
+      idTurno: resultado.idTurno,
+      montoFinal: resultado.totalFisico,
+      totalEfectivoReal: resultado.totalFisico,
+      observaciones: resultado.justificacion,
+      diferencia: resultado.diferencia,
+      justificacion: resultado.justificacion
+    }).subscribe({
+      next: () => {
+        this.mostrarModalArqueo.set(false);
+        this.turnoActual.set(null);
+        this.notificationService?.success('Arqueo de caja registrado y turno cerrado exitosamente.');
+        this.mostrarModalApertura.set(true);
+      },
+      error: (err) => {
+        const msg = err?.error?.mensaje || 'Error al procesar el cierre y arqueo de caja.';
+        this.notificationService?.error(msg);
+      }
+    });
   }
 
   logout(): void {
