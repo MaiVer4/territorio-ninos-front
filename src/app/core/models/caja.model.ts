@@ -43,4 +43,25 @@ export interface CierreTurnoDTO {
   montoFinal: number;
   totalEfectivoReal?: number;
   observaciones?: string;
+  diferencia?: number;
+  justificacion?: string;
+}
+
+export type EstadoBalanceArqueo = 'CUADRADO' | 'SOBRANTE' | 'FALTANTE';
+
+export interface DenominacionConteo {
+  valor: number;
+  tipo: 'BILLETE' | 'MONEDA';
+  cantidad: number;
+  subtotal: number;
+}
+
+export interface ResultadoArqueoDTO {
+  idTurno: number;
+  montoEsperado: number;
+  totalFisico: number;
+  diferencia: number;
+  estadoBalance: EstadoBalanceArqueo;
+  justificacion?: string;
+  desglose: DenominacionConteo[];
 }

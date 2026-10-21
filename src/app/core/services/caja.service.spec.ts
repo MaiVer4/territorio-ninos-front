@@ -170,6 +170,28 @@ describe('CajaService', () => {
     });
   });
 
+  describe('registrarArqueo', () => {
+    it('should send POST request with arqueo result', () => {
+      const mockArqueo = {
+        idTurno: 10,
+        montoEsperado: 200000,
+        totalFisico: 200000,
+        diferencia: 0,
+        estadoBalance: 'CUADRADO' as const,
+        desglose: []
+      };
+
+      service.registrarArqueo(10, mockArqueo).subscribe(res => {
+        expect(res).toEqual(mockArqueo);
+      });
+
+      const req = httpTesting.expectOne(request => request.url.endsWith('/turnos/10/arqueo'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(mockArqueo);
+      req.flush(mockArqueo);
+    });
+  });
+
   describe('limpiarEstado', () => {
     it('should reset turnoActual to null', () => {
       service.turnoActual.set(mockTurnoActivo);

@@ -7,7 +7,8 @@ import {
   TurnoCaja,
   TurnoResponseDTO,
   AperturaTurnoDTO,
-  CierreTurnoDTO
+  CierreTurnoDTO,
+  ResultadoArqueoDTO
 } from '../models/caja.model';
 
 @Injectable({
@@ -58,6 +59,13 @@ export class CajaService {
     return this.http.post<TurnoResponseDTO>(`${this.apiUrl}/cerrar`, data).pipe(
       tap(() => this.turnoActual.set(null))
     );
+  }
+
+  /**
+   * Registra el arqueo físico de caja para un turno
+   */
+  registrarArqueo(idTurno: number, data: ResultadoArqueoDTO): Observable<ResultadoArqueoDTO> {
+    return this.http.post<ResultadoArqueoDTO>(`${this.apiUrl}/${idTurno}/arqueo`, data);
   }
 
   /**
