@@ -1,9 +1,11 @@
-import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, OnInit, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CajaService } from '../../../../core/services/caja.service';
 import { exportToCsv } from '../../../../core/utils/csv-exporter';
 
-interface TurnoItem {
+export interface TurnoItem {
   id: number;
   cajero: string;
   rol: string;
@@ -28,8 +30,15 @@ interface TurnoItem {
           <p class="text-xs text-slate-400 mt-0.5">Control de aperturas, cierres y arqueo de cajas</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <input type="date" [(ngModel)]="fechaSeleccionada"
+          <input type="date" [(ngModel)]="fechaSeleccionada" (ngModelChange)="cargarTurnos()"
             class="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-400 text-slate-600 bg-white shadow-xs" />
+          <button (click)="cargarTurnos()" [disabled]="cargando()" title="Recargar turnos"
+            class="flex items-center gap-1.5 text-sm font-semibold text-slate-600 border border-slate-200 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition shadow-xs bg-white cursor-pointer disabled:opacity-40">
+            <svg class="w-4 h-4 text-slate-500" [class.animate-spin]="cargando()" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Refrescar
+          </button>
           <button (click)="exportarCsv()"
             [disabled]="turnos().length === 0"
             class="flex items-center gap-1.5 text-sm font-semibold text-slate-600 border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition shadow-xs bg-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
@@ -52,7 +61,15 @@ interface TurnoItem {
       <!-- Tabla de turnos -->
       <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-          @if (turnos().length > 0) {
+          @if (cargando()) {
+            <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <svg class="animate-spin w-8 h-8 text-blue-600 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p class="text-sm font-semibold text-slate-700">Cargando turnos...</p>
+            </div>
+          } @else if (turnos().length > 0) {
             <table class="w-full text-sm">
               <thead>
                 <tr class="bg-slate-50 border-b border-slate-100">
@@ -119,17 +136,49 @@ interface TurnoItem {
     </div>
   `
 })
-export class TurnosComponent {
-  fechaSeleccionada = new Date().toISOString().slice(0, 10);
+export class TurnosComponent implements OnInit {
+  private readonly cajaService = inject(CajaService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  // Inicia vacío hasta que se registren turnos en el backend
-  turnos = signal<TurnoItem[]>([]);
+  fechaSeleccionada = new Date().toISOString().slice(0, 10);
+  readonly cargando = signal<boolean>(false);
+  readonly turnos = signal<TurnoItem[]>([]);
+
+  ngOnInit(): void {
+    this.cargarTurnos();
+  }
+
+  cargarTurnos(): void {
+    this.cargando.set(true);
+    this.cajaService.getHistorial(this.fechaSeleccionada)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (turnosCaja) => {
+          const mapeados: TurnoItem[] = (turnosCaja || []).map(t => ({
+            id: t.id,
+            cajero: t.nombreCajero || `Cajero #${t.idUsuario}`,
+            rol: 'Taquillero',
+            apertura: t.fechaApertura,
+            base: t.montoInicial,
+            ventas: t.totalVentas ?? 0,
+            tiquetes: 0,
+            activo: t.estado === 'ABIERTO'
+          }));
+          this.turnos.set(mapeados);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.turnos.set([]);
+          this.cargando.set(false);
+        }
+      });
+  }
 
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).join('').slice(0, 2);
   }
 
-  exportarCsv() {
+  exportarCsv(): void {
     if (this.turnos().length === 0) return;
     const headers = ['Cajero', 'Rol', 'Apertura', 'Base Inicial', 'Ventas', 'Tiquetes', 'Estado'];
     const rows = this.turnos().map(t => [
@@ -138,8 +187,9 @@ export class TurnosComponent {
     exportToCsv(`historial_turnos_${this.fechaSeleccionada}`, headers, rows);
   }
 
-  exportarPdf() {
+  exportarPdf(): void {
     if (this.turnos().length === 0) return;
     window.print();
   }
 }
+
