@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -16,6 +16,7 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
 @Component({
   selector: 'app-taquilla-pos',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -331,7 +332,9 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   verificarTurnoCaja(): void {
-    this.cajaService.obtenerTurnoActivo().subscribe({
+    this.cajaService.obtenerTurnoActivo().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (turno) => {
         if (!turno || turno.estado !== 'ABIERTO') {
           this.turnoActual.set(null);
@@ -365,7 +368,9 @@ export class TaquillaPosComponent implements OnInit {
       observaciones: resultado.justificacion,
       diferencia: resultado.diferencia,
       justificacion: resultado.justificacion
-    }).subscribe({
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.mostrarModalArqueo.set(false);
         this.turnoActual.set(null);
