@@ -1,16 +1,27 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, filter, switchMap, finalize, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CajaService } from '../../../../core/services/caja.service';
+import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
+import { Cliente } from '../../../../core/models/cliente.model';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
 
 @Component({
   selector: 'app-taquilla-pos',
   standalone: true,
-  imports: [CommonModule, AperturaCajaModalComponent, ArqueoCajaModalComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    AperturaCajaModalComponent,
+    ArqueoCajaModalComponent
+  ],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative">
       <!-- Modal Bloqueante de Apertura si no hay turno activo -->
@@ -74,6 +85,132 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
         </div>
       </header>
 
+      <!-- Barra Superior de Identificación del Cliente -->
+      <section class="bg-white border-b border-slate-200 px-6 py-3.5 shadow-2xs">
+        <div class="max-w-7xl mx-auto">
+          <!-- Encabezado de la barra con estado y botón de limpiar -->
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <span class="text-xs font-bold text-slate-700 tracking-wide uppercase">Identificación del Cliente</span>
+
+              <!-- Badges de Estado -->
+              @if (buscandoCliente()) {
+                <span data-testid="badge-buscando" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+                  <svg data-testid="spinner-buscando" class="animate-spin w-3 h-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Buscando...</span>
+                </span>
+              } @else if (clienteSeleccionado()) {
+                <span data-testid="badge-cliente-registrado" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Cliente Registrado</span>
+                  @if (clienteSeleccionado()?.menores?.length) {
+                    <span class="text-emerald-600 font-normal">({{ clienteSeleccionado()!.menores!.length }} menor{{ clienteSeleccionado()!.menores!.length === 1 ? '' : 'es' }})</span>
+                  }
+                </span>
+              } @else if (esClienteNuevo()) {
+                <span data-testid="badge-nuevo-cliente" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span>Nuevo Cliente</span>
+                </span>
+              }
+            </div>
+
+            <!-- Botón Limpiar -->
+            <button
+              type="button"
+              data-testid="btn-limpiar"
+              (click)="limpiarCliente()"
+              class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Limpiar</span>
+            </button>
+          </div>
+
+          <!-- Formulario Reactivo de Cliente -->
+          <form [formGroup]="clienteForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- Documento -->
+            <div>
+              <label for="numeroDocumento" class="block text-[11px] font-bold text-slate-600 mb-1">
+                Documento / Cédula <span class="text-rose-500">*</span>
+              </label>
+              <div class="relative">
+                <input
+                  id="numeroDocumento"
+                  data-testid="input-documento"
+                  type="text"
+                  formControlName="numeroDocumento"
+                  placeholder="Doc. (mín. 5 dígitos)"
+                  class="w-full px-3 py-1.5 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
+                <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+                  @if (buscandoCliente()) {
+                    <svg class="animate-spin w-3.5 h-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  } @else {
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Nombre Completo -->
+            <div>
+              <label for="nombreCompleto" class="block text-[11px] font-bold text-slate-600 mb-1">
+                Nombre Completo <span class="text-rose-500">*</span>
+              </label>
+              <input
+                id="nombreCompleto"
+                data-testid="input-nombre"
+                type="text"
+                formControlName="nombreCompleto"
+                placeholder="Nombre del cliente"
+                class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
+            </div>
+
+            <!-- Teléfono -->
+            <div>
+              <label for="telefono" class="block text-[11px] font-bold text-slate-600 mb-1">
+                Teléfono <span class="text-rose-500">*</span>
+              </label>
+              <input
+                id="telefono"
+                data-testid="input-telefono"
+                type="tel"
+                formControlName="telefono"
+                placeholder="Ej: 3001234567"
+                class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
+            </div>
+
+            <!-- Correo Electrónico -->
+            <div>
+              <label for="correo" class="block text-[11px] font-bold text-slate-600 mb-1">
+                Correo Electrónico
+              </label>
+              <input
+                id="correo"
+                data-testid="input-correo"
+                type="email"
+                formControlName="correo"
+                placeholder="correo@ejemplo.com"
+                class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
+            </div>
+          </form>
+        </div>
+      </section>
+
       <!-- Contenido Principal -->
       <main class="flex-1 p-6 max-w-4xl mx-auto w-full flex flex-col justify-center items-center text-center">
         <div class="w-20 h-20 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 shadow-inner">
@@ -115,11 +252,25 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
 export class TaquillaPosComponent implements OnInit {
   readonly authService = inject(AuthService);
   readonly cajaService = inject(CajaService);
+  readonly clienteService = inject(ClienteService);
+  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly notificationService = inject(NotificationService, { optional: true });
 
   readonly mostrarModalApertura = signal<boolean>(false);
   readonly mostrarModalArqueo = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
+
+  readonly clienteSeleccionado = signal<Cliente | null>(null);
+  readonly esClienteNuevo = signal<boolean>(false);
+  readonly buscandoCliente = signal<boolean>(false);
+
+  readonly clienteForm = this.fb.group({
+    numeroDocumento: ['', [Validators.required, Validators.minLength(5)]],
+    nombreCompleto: ['', [Validators.required]],
+    telefono: ['', [Validators.required, Validators.pattern(/^[0-9+\s-]{7,15}$/)]],
+    correo: ['', [Validators.email]]
+  });
 
   readonly montoEsperadoArqueo = computed(() => {
     const t = this.turnoActual();
@@ -128,6 +279,55 @@ export class TaquillaPosComponent implements OnInit {
 
   ngOnInit(): void {
     this.verificarTurnoCaja();
+    this.iniciarBusquedaCliente();
+  }
+
+  iniciarBusquedaCliente(): void {
+    this.clienteForm.get('numeroDocumento')!.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      filter(doc => !!doc && doc.trim().length >= 5),
+      switchMap(doc => {
+        this.buscandoCliente.set(true);
+        return this.clienteService.buscarPorDocumento(doc!.trim()).pipe(
+          catchError(() => of(null)),
+          finalize(() => this.buscandoCliente.set(false))
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (cliente) => {
+        if (cliente) {
+          this.clienteSeleccionado.set(cliente);
+          this.esClienteNuevo.set(false);
+          this.clienteForm.patchValue({
+            nombreCompleto: cliente.nombreCompleto ?? '',
+            telefono: cliente.telefono ?? '',
+            correo: cliente.correo ?? ''
+          }, { emitEvent: false });
+        } else {
+          this.clienteSeleccionado.set(null);
+          this.esClienteNuevo.set(true);
+          this.clienteForm.patchValue({
+            nombreCompleto: '',
+            telefono: '',
+            correo: ''
+          }, { emitEvent: false });
+        }
+      }
+    });
+  }
+
+  limpiarCliente(): void {
+    this.clienteForm.reset({
+      numeroDocumento: '',
+      nombreCompleto: '',
+      telefono: '',
+      correo: ''
+    });
+    this.clienteSeleccionado.set(null);
+    this.esClienteNuevo.set(false);
+    this.buscandoCliente.set(false);
   }
 
   verificarTurnoCaja(): void {
