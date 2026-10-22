@@ -3,3 +3,29 @@
   height: 100%;
   width: 100%;
 }
+
+/* ==========================================================================
+   Estilos Globales para Notificaciones Toast (Angular Material MDC SnackBar)
+   Reset de contenedores oscuros para estilo Floating Glass Card / Sonner
+   ========================================================================== */
+.mat-mdc-snack-bar-container.toast-custom-pane,
+.toast-custom-pane.mat-mdc-snack-bar-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+
+  .mdc-snackbar__surface {
+    background-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 1rem !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+  }
+
+  .mat-mdc-snack-bar-label {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+}
