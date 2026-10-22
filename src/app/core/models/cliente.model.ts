@@ -24,6 +24,8 @@ export interface ClienteRegistroDTO {
   tipoDocumento?: string;
   numeroDocumento: string;
   nombreCompleto: string;
+  nombres?: string;
+  apellidos?: string;
   telefono: string;
   correo?: string;
   direccion?: string;

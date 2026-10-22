@@ -83,7 +83,7 @@ describe('ClienteService', () => {
       let errorResponse: any;
 
       service.buscarPorDocumento('1098765432').subscribe({
-        next: () => fail('should have failed with 500 error'),
+        next: () => { throw new Error('should have failed with 500 error'); },
         error: (err) => {
           errorResponse = err;
         }
