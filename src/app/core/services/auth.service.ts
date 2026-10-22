@@ -114,7 +114,12 @@ export class AuthService {
       // Verificar si el token ya expiró
       const isExpired = (decodedToken.exp * 1000) < Date.now();
       if (isExpired) {
-        this.logout(true); // Limpiar estado inválido preventivamente sin llamada remota
+        try {
+          localStorage.removeItem(this.TOKEN_KEY);
+        } catch (e) {
+          console.error('Error limpiando token expirado', e);
+        }
+        this.currentUser.set(null);
         return false;
       }
       return true;

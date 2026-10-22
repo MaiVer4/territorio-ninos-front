@@ -2,10 +2,14 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  // Evitar inyección en solicitudes hacia dominios externos no confiables (OWASP A07)
+  // Evitar inyección en solicitudes hacia dominios externos o assets locales no confiables (OWASP A07)
   const isApiUrl = req.url.startsWith(environment.apiUrl) || 
-                   req.url.startsWith('/') || 
-                   (typeof window !== 'undefined' && req.url.startsWith(window.location.origin));
+                   req.url.startsWith('/api') ||
+                   req.url.startsWith('/territorioninos/api') ||
+                   (typeof window !== 'undefined' && (
+                     req.url.startsWith(`${window.location.origin}/api`) ||
+                     req.url.startsWith(`${window.location.origin}/territorioninos/api`)
+                   ));
   if (!isApiUrl) {
     return next(req);
   }
