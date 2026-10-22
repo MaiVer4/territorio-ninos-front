@@ -3,20 +3,24 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { errorInterceptor } from './error.interceptor';
 import { AuthService } from '../services/auth.service';
+import { NotificationService } from '../services/notification.service';
 
 describe('errorInterceptor', () => {
   let httpTesting: HttpTestingController;
   let httpClient: HttpClient;
   let authServiceSpy: { logout: ReturnType<typeof vi.fn> };
+  let notificationServiceSpy: { error: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     authServiceSpy = { logout: vi.fn() };
+    notificationServiceSpy = { error: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: authServiceSpy }
+        { provide: AuthService, useValue: authServiceSpy },
+        { provide: NotificationService, useValue: notificationServiceSpy }
       ]
     });
 
@@ -59,5 +63,27 @@ describe('errorInterceptor', () => {
     req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
 
     expect(authServiceSpy.logout).not.toHaveBeenCalled();
+  });
+
+  it('should notify error message when API returns 403 with backend message', () => {
+    httpClient.get('/api/admin-resource').subscribe({
+      error: () => {}
+    });
+
+    const req = httpTesting.expectOne('/api/admin-resource');
+    req.flush({ mensaje: 'No tienes permisos de administrador' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notificationServiceSpy.error).toHaveBeenCalledWith('No tienes permisos de administrador');
+  });
+
+  it('should notify default message when API returns 403 without message', () => {
+    httpClient.get('/api/admin-resource').subscribe({
+      error: () => {}
+    });
+
+    const req = httpTesting.expectOne('/api/admin-resource');
+    req.flush(null, { status: 403, statusText: 'Forbidden' });
+
+    expect(notificationServiceSpy.error).toHaveBeenCalledWith('Acceso denegado: No tienes permisos suficientes para realizar esta acción.');
   });
 });
