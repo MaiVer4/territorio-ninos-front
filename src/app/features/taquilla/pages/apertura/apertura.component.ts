@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CajaService } from '../../../../core/services/caja.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -71,6 +72,7 @@ export class AperturaComponent {
   private readonly router = inject(Router);
   public readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
 
   montoInicial = 50000;
   observaciones = '';
@@ -86,7 +88,9 @@ export class AperturaComponent {
     this.cajaService.abrirTurno({
       montoInicial: this.montoInicial,
       observaciones: this.observaciones?.trim() || undefined
-    }).subscribe({
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.cargando.set(false);
         this.notificationService?.success('Turno de caja abierto correctamente. ¡Buenas ventas!');

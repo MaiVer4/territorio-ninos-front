@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -19,6 +19,7 @@ interface AttractionAssignmentRow {
 @Component({
   selector: 'app-asignaciones',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   template: `
     <div class="w-full space-y-5 font-sans">

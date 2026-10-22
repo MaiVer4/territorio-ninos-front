@@ -224,9 +224,9 @@ export class AdminLayoutComponent {
 
   constructor() {
     this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd),
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe((event: any) => {
+    ).subscribe((event: NavigationEnd) => {
       this.currentUrl.set(event.urlAfterRedirects || event.url);
       // Cerrar drawer móvil al navegar
       this.sidebarOpenMobile.set(false);

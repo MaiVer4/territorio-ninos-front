@@ -1,4 +1,4 @@
-import { Component, computed, model, output, signal } from '@angular/core';
+import { Component, computed, model, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -16,6 +16,7 @@ interface DenominacionDef {
 @Component({
   selector: 'app-arqueo-caja-modal',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   template: `
     <!-- Backdrop bloqueante -->

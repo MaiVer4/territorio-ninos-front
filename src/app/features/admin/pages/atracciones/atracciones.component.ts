@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -11,6 +11,7 @@ import { TarifasModalComponent } from './tarifas-modal.component';
 @Component({
   selector: 'app-atracciones',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, MatDialogModule],
   template: `
     <div class="w-full space-y-5 font-sans">

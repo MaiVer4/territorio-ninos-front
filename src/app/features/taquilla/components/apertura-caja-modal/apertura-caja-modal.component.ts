@@ -1,6 +1,7 @@
-import { Component, inject, signal, output } from '@angular/core';
+import { Component, inject, signal, output, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CajaService } from '../../../../core/services/caja.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -9,6 +10,7 @@ import { TurnoResponseDTO } from '../../../../core/models/caja.model';
 @Component({
   selector: 'app-apertura-caja-modal',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   template: `
     <!-- Backdrop bloqueante impenetrable -->
@@ -131,6 +133,7 @@ export class AperturaCajaModalComponent {
   private readonly cajaService = inject(CajaService);
   public readonly authService = inject(AuthService);
   private readonly notificationService = inject(NotificationService, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly turnoIniciado = output<TurnoResponseDTO>();
 
@@ -168,7 +171,9 @@ export class AperturaCajaModalComponent {
     this.cajaService.abrirTurno({
       montoInicial: this.montoNumerico(),
       observaciones: this.observaciones()?.trim() || undefined
-    }).subscribe({
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (turno) => {
         this.cargando.set(false);
         this.notificationService?.success('Caja abierta correctamente. ¡Buen turno de ventas!');

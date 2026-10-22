@@ -10,6 +10,13 @@ import { jwtDecode } from 'jwt-decode';
 
 import { NotificationService } from './notification.service';
 
+export interface JwtPayload {
+  exp: number;
+  sub?: string;
+  rol?: RolUsuario;
+  [key: string]: unknown;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -110,7 +117,7 @@ export class AuthService {
     if (!token) return false;
 
     try {
-      const decodedToken: any = jwtDecode(token);
+      const decodedToken = jwtDecode<JwtPayload>(token);
       // Verificar si el token ya expiró
       const isExpired = (decodedToken.exp * 1000) < Date.now();
       if (isExpired) {

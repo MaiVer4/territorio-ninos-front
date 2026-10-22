@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, inject, DestroyRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, inject, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -25,6 +25,7 @@ interface ShiftSummary {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule],
   template: `
     <div class="space-y-5 sm:space-y-6 w-full font-sans">
