@@ -11,7 +11,7 @@ describe('AperturaCajaModalComponent', () => {
   let component: AperturaCajaModalComponent;
   let fixture: ComponentFixture<AperturaCajaModalComponent>;
   let cajaServiceSpy: { abrirTurno: ReturnType<typeof vi.fn> };
-  let authServiceSpy: { currentUser: any; logout: ReturnType<typeof vi.fn> };
+  let authServiceSpy: { currentUser: any; currentUserName?: any; currentUserInitials?: any; logout: ReturnType<typeof vi.fn> };
   let notificationServiceSpy: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> };
 
   const mockTurno: TurnoResponseDTO = {
