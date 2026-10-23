@@ -21,6 +21,8 @@ describe('AperturaComponent', () => {
     };
     authServiceSpy = {
       currentUser: signal({ correo: 'cajero@tdn.com.co', nombre: 'Cajero Demo', rol: 'TAQUILLERO' }),
+      currentUserName: signal('Cajero Demo'),
+      currentUserInitials: signal('CD'),
       logout: vi.fn()
     };
     notificationServiceSpy = {

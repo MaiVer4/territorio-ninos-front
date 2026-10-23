@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest } from '../models/auth.model';
@@ -30,6 +30,40 @@ export class AuthService {
 
   // Manejo de estado reactivo moderno con Signals (Angular 16+)
   currentUser = signal<AuthResponse | null>(null);
+
+  readonly currentUserName = computed<string>(() => {
+    const user = this.currentUser();
+    if (user?.nombre && user.nombre.trim().length > 0) {
+      return user.nombre.trim();
+    }
+    if (user?.correo && user.correo.trim().length > 0) {
+      const prefix = user.correo.split('@')[0].trim();
+      if (prefix.length > 0) {
+        return prefix
+          .replace(/[._-]+/g, ' ')
+          .split(' ')
+          .filter(Boolean)
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ') || 'Usuario';
+      }
+    }
+    return 'Usuario';
+  });
+
+  readonly currentUserInitials = computed<string>(() => {
+    const name = this.currentUserName();
+    if (!name || name === 'Usuario') {
+      return 'U';
+    }
+    const words = name.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    if (words.length === 1 && words[0].length > 0) {
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return 'U';
+  });
 
   constructor() {
     this.loadTokenFromStorage();

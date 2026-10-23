@@ -13,7 +13,12 @@ import { By } from '@angular/platform-browser';
 describe('TaquillaPosComponent', () => {
   let component: TaquillaPosComponent;
   let fixture: ComponentFixture<TaquillaPosComponent>;
-  let authServiceSpy: { currentUser: any; logout: ReturnType<typeof vi.fn> };
+  let authServiceSpy: {
+    currentUser: any;
+    currentUserName: any;
+    currentUserInitials: any;
+    logout: ReturnType<typeof vi.fn>;
+  };
   let cajaServiceSpy: {
     obtenerTurnoActivo: ReturnType<typeof vi.fn>;
     abrirTurno: ReturnType<typeof vi.fn>;
@@ -58,6 +63,8 @@ describe('TaquillaPosComponent', () => {
   beforeEach(async () => {
     authServiceSpy = {
       currentUser: signal({ correo: 'taquillero@tdn.com.co', rol: 'TAQUILLERO' }),
+      currentUserName: signal('Taquillero Principal'),
+      currentUserInitials: signal('TP'),
       logout: vi.fn()
     };
     cajaServiceSpy = {
@@ -230,6 +237,14 @@ describe('TaquillaPosComponent', () => {
     await setupComponent(mockTurno);
     component.logout();
     expect(authServiceSpy.logout).toHaveBeenCalled();
+  });
+
+  it('should render user name and initials in bottom dock and station status', async () => {
+    await setupComponent(mockTurno);
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Taquillero Principal');
+    expect(compiled.textContent).toContain('TP');
+    expect(compiled.textContent).toContain('Taquillero');
   });
 
   describe('Búsqueda y Formulario Reactivo de Cliente', () => {

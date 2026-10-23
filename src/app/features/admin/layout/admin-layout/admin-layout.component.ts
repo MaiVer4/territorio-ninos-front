@@ -164,12 +164,10 @@ interface NavItem {
 
       <!-- Badge de Perfil Admin -->
       <div class="flex items-center gap-2 pl-2 border-l border-slate-100">
-        <div class="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-          </svg>
+        <div class="w-8 h-8 bg-violet-100 text-violet-700 font-bold text-xs rounded-full flex items-center justify-center shrink-0">
+          {{ authService.currentUserInitials() }}
         </div>
-        <span class="text-sm font-semibold text-slate-700 hidden sm:inline">Admin TDN</span>
+        <span class="text-sm font-semibold text-slate-700 hidden sm:inline">{{ authService.currentUserName() }}</span>
       </div>
     </header>
 
@@ -190,7 +188,7 @@ interface NavItem {
   `]
 })
 export class AdminLayoutComponent {
-  private authService = inject(AuthService);
+  readonly authService = inject(AuthService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 

@@ -60,7 +60,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
         </form>
 
         <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-          <span>Usuario: <strong>{{ authService.currentUser()?.nombre || authService.currentUser()?.correo }}</strong></span>
+          <span>Usuario: <strong>{{ authService.currentUserName() }}</strong></span>
           <button (click)="logout()" class="text-red-500 hover:underline cursor-pointer">Cerrar sesión</button>
         </div>
       </div>

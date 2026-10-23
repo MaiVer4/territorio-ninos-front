@@ -24,7 +24,7 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
     ArqueoCajaModalComponent
   ],
   template: `
-    <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative">
+    <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
       <!-- Modal Bloqueante de Apertura si no hay turno activo -->
       @if (mostrarModalApertura()) {
         <app-apertura-caja-modal (turnoIniciado)="onTurnoIniciado($event)"></app-apertura-caja-modal>
@@ -71,18 +71,6 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
               <span>Arqueo / Cerrar Caja</span>
             </button>
           }
-
-          <div class="text-right hidden sm:block">
-            <p class="text-xs font-bold text-slate-800">{{ authService.currentUser()?.correo }}</p>
-            <span class="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              Taquillero
-            </span>
-          </div>
-
-          <button (click)="logout()"
-            class="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 text-xs font-semibold rounded-xl transition cursor-pointer">
-            Cerrar sesión
-          </button>
         </div>
       </header>
 
@@ -224,7 +212,7 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
 
         <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs text-slate-600 max-w-sm w-full text-left space-y-2">
           <p class="font-bold text-slate-700">Estado de la estación:</p>
-          <p>• Cajero: <span class="font-mono text-slate-800">{{ authService.currentUser()?.correo }}</span></p>
+          <p>• Cajero: <span class="font-mono text-slate-800">{{ authService.currentUserName() }}</span></p>
           <p>• Turno de caja: 
             @if (turnoActual(); as turno) {
               <span class="font-bold text-emerald-600">ABIERTO (Turno #{{ turno.idTurno }})</span>
@@ -247,6 +235,44 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
           }
         </div>
       </main>
+
+      <!-- Barra de Estado / Dock Fijo Inferior -->
+      <footer class="fixed bottom-0 inset-x-0 h-12 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-20 px-6 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span class="w-2 h-2 rounded-full" [ngClass]="turnoActual() ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+          <span class="font-medium">
+            @if (turnoActual(); as turno) {
+              Turno #{{ turno.idTurno }} Activo • Territorio de Niños
+            } @else {
+              Turno de Taquilla • Territorio de Niños
+            }
+          </span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center ring-1 ring-blue-300">
+              {{ authService.currentUserInitials() }}
+            </div>
+            <span class="text-xs font-bold text-slate-800">{{ authService.currentUserName() }}</span>
+            <span class="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              Taquillero
+            </span>
+          </div>
+
+          <div class="h-4 w-px bg-slate-200"></div>
+
+          <button
+            type="button"
+            (click)="logout()"
+            class="hover:bg-red-50 hover:text-red-600 text-xs text-slate-500 font-medium px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+      </footer>
     </div>
   `
 })

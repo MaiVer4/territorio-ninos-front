@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router, ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { signal } from '@angular/core';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -9,12 +10,12 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
-  let authServiceSpy: { login: ReturnType<typeof vi.fn> };
+  let authServiceSpy: { login: ReturnType<typeof vi.fn>; currentUserName: any };
   let notificationSpy: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let router: Router;
 
   beforeEach(async () => {
-    authServiceSpy = { login: vi.fn() };
+    authServiceSpy = { login: vi.fn(), currentUserName: signal('Administrador') };
     notificationSpy = { success: vi.fn(), error: vi.fn() };
 
     await TestBed.configureTestingModule({

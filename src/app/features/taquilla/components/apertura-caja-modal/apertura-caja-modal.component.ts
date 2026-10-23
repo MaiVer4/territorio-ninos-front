@@ -116,7 +116,7 @@ import { TurnoResponseDTO } from '../../../../core/models/caja.model';
         <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <div class="truncate max-w-[200px]">
             <span class="text-slate-400">Cajero:</span>
-            <strong class="ml-1 text-slate-700">{{ authService.currentUser()?.nombre || authService.currentUser()?.correo }}</strong>
+            <strong class="ml-1 text-slate-700">{{ authService.currentUserName() }}</strong>
           </div>
           <button
             type="button"

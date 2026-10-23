@@ -28,6 +28,8 @@ describe('AperturaCajaModalComponent', () => {
     };
     authServiceSpy = {
       currentUser: signal({ correo: 'cajero@tdn.com.co', nombre: 'Cajero Principal', rol: 'TAQUILLERO' }),
+      currentUserName: signal('Cajero Principal'),
+      currentUserInitials: signal('CP'),
       logout: vi.fn()
     };
     notificationServiceSpy = {

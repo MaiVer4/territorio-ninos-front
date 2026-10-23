@@ -169,7 +169,7 @@ export class LoginComponent {
         .subscribe({
           next: (res) => {
             this.isLoading = false;
-            this.notificationService.success(`¡Bienvenido al sistema! (${res.correo})`);
+            this.notificationService.success(`¡Bienvenido al sistema! (${this.authService.currentUserName()})`);
             
             // Si el usuario intentaba acceder a una ruta específica previa (deep linking)
             const returnUrl = this.route.snapshot.queryParams['returnUrl'];

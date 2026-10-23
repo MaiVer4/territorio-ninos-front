@@ -99,4 +99,72 @@ describe('AuthService', () => {
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
   });
+
+  describe('currentUserName & currentUserInitials computed signals', () => {
+    it('should return nombre when available in currentUser', () => {
+      service.currentUser.set({
+        token: 'token',
+        tipoToken: 'Bearer',
+        nombre: 'Carlos Gómez',
+        correo: 'carlos.gomez@tdn.com.co',
+        rol: 'ADMINISTRADOR'
+      });
+
+      expect(service.currentUserName()).toBe('Carlos Gómez');
+      expect(service.currentUserInitials()).toBe('CG');
+    });
+
+    it('should format email prefix when nombre is not provided', () => {
+      service.currentUser.set({
+        token: 'token',
+        tipoToken: 'Bearer',
+        correo: 'carlos.gomez@tdn.com.co',
+        rol: 'TAQUILLERO'
+      });
+
+      expect(service.currentUserName()).toBe('Carlos Gomez');
+      expect(service.currentUserInitials()).toBe('CG');
+    });
+
+    it('should handle hyphenated and underscore separated email prefixes', () => {
+      service.currentUser.set({
+        token: 'token',
+        tipoToken: 'Bearer',
+        correo: 'ana_maria-lopez@tdn.co',
+        rol: 'OPERARIO'
+      });
+
+      expect(service.currentUserName()).toBe('Ana Maria Lopez');
+      expect(service.currentUserInitials()).toBe('AM');
+    });
+
+    it('should compute two-letter initials for single word names', () => {
+      service.currentUser.set({
+        token: 'token',
+        tipoToken: 'Bearer',
+        nombre: 'Admin',
+        correo: 'admin@tdn.co',
+        rol: 'ADMINISTRADOR'
+      });
+
+      expect(service.currentUserName()).toBe('Admin');
+      expect(service.currentUserInitials()).toBe('AD');
+    });
+
+    it('should fallback to Usuario and U when currentUser is null or has empty fields', () => {
+      service.currentUser.set(null);
+      expect(service.currentUserName()).toBe('Usuario');
+      expect(service.currentUserInitials()).toBe('U');
+
+      service.currentUser.set({
+        token: 'token',
+        tipoToken: 'Bearer',
+        nombre: '   ',
+        correo: '',
+        rol: 'TAQUILLERO'
+      });
+      expect(service.currentUserName()).toBe('Usuario');
+      expect(service.currentUserInitials()).toBe('U');
+    });
+  });
 });
