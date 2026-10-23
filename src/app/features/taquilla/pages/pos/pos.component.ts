@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,9 +9,10 @@ import { CajaService } from '../../../../core/services/caja.service';
 import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
-import { Cliente } from '../../../../core/models/cliente.model';
+import { Cliente, Menor } from '../../../../core/models/cliente.model';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
+import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -21,7 +22,8 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
     CommonModule,
     ReactiveFormsModule,
     AperturaCajaModalComponent,
-    ArqueoCajaModalComponent
+    ArqueoCajaModalComponent,
+    MenoresChipsComponent
   ],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
@@ -52,7 +54,44 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
           </div>
         </div>
 
-        <div class="flex items-center gap-3 sm:gap-4">
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <!-- Atajos de Teclado Operativos (HU-15.12) -->
+          <div class="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+            <button
+              type="button"
+              data-testid="shortcut-badge-f2"
+              (click)="enfocarBuscarCliente()"
+              title="Atajo F2: Buscar / Identificar Cliente"
+              class="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer">
+              <kbd class="px-1 py-0.2 bg-white rounded border border-slate-300 font-mono text-[10px] font-bold shadow-2xs">F2</kbd>
+              <span class="hidden xl:inline">Cliente</span>
+            </button>
+
+            @if (!turnoActual()) {
+              <button
+                type="button"
+                data-testid="shortcut-badge-f4"
+                (click)="abrirCajaShortcut()"
+                title="Atajo F4: Apertura de Caja"
+                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition cursor-pointer">
+                <kbd class="px-1 py-0.2 bg-white rounded border border-blue-200 font-mono text-[10px] font-bold shadow-2xs">F4</kbd>
+                <span class="hidden xl:inline">Abrir Caja</span>
+              </button>
+            }
+
+            @if (turnoActual()) {
+              <button
+                type="button"
+                data-testid="shortcut-badge-f8"
+                (click)="arqueoCajaShortcut()"
+                title="Atajo F8: Arqueo / Cierre de Caja"
+                class="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer">
+                <kbd class="px-1 py-0.2 bg-white rounded border border-slate-300 font-mono text-[10px] font-bold shadow-2xs">F8</kbd>
+                <span class="hidden xl:inline">Arqueo</span>
+              </button>
+            }
+          </div>
+
           @if (turnoActual(); as turno) {
             <div class="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl text-xs text-emerald-800">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -197,6 +236,14 @@ import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arq
                 class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
             </div>
           </form>
+
+          <!-- Menores Asociados a la Orden (HU-15.11) -->
+          <div class="mt-4 pt-3 border-t border-slate-100">
+            <app-menores-chips
+              [menores]="menoresOrden()"
+              (menoresChange)="menoresOrden.set($event)">
+            </app-menores-chips>
+          </div>
         </div>
       </section>
 
@@ -291,6 +338,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly clienteSeleccionado = signal<Cliente | null>(null);
   readonly esClienteNuevo = signal<boolean>(false);
   readonly buscandoCliente = signal<boolean>(false);
+  readonly menoresOrden = signal<Menor[]>([]);
 
   readonly clienteForm = this.fb.group({
     numeroDocumento: ['', [Validators.required, Validators.minLength(5)]],
@@ -327,6 +375,7 @@ export class TaquillaPosComponent implements OnInit {
         if (cliente) {
           this.clienteSeleccionado.set(cliente);
           this.esClienteNuevo.set(false);
+          this.menoresOrden.set(cliente.menores ? [...cliente.menores] : []);
           this.clienteForm.patchValue({
             nombreCompleto: cliente.nombreCompleto ?? '',
             telefono: cliente.telefono ?? '',
@@ -335,6 +384,7 @@ export class TaquillaPosComponent implements OnInit {
         } else {
           this.clienteSeleccionado.set(null);
           this.esClienteNuevo.set(true);
+          this.menoresOrden.set([]);
           this.clienteForm.patchValue({
             nombreCompleto: '',
             telefono: '',
@@ -355,6 +405,46 @@ export class TaquillaPosComponent implements OnInit {
     this.clienteSeleccionado.set(null);
     this.esClienteNuevo.set(false);
     this.buscandoCliente.set(false);
+    this.menoresOrden.set([]);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboardShortcuts(event: KeyboardEvent): void {
+    if (event.key === 'F2') {
+      event.preventDefault();
+      this.enfocarBuscarCliente();
+    } else if (event.key === 'F4') {
+      event.preventDefault();
+      this.abrirCajaShortcut();
+    } else if (event.key === 'F8') {
+      event.preventDefault();
+      this.arqueoCajaShortcut();
+    }
+  }
+
+  enfocarBuscarCliente(): void {
+    const docInput = document.getElementById('numeroDocumento') as HTMLInputElement | null;
+    if (docInput) {
+      docInput.focus();
+      docInput.select();
+    }
+    this.notificationService?.info('Atajo F2: Campo de documento de cliente enfocado.');
+  }
+
+  abrirCajaShortcut(): void {
+    if (this.turnoActual()) {
+      this.notificationService?.info('El turno de caja actual ya se encuentra abierto.');
+    } else {
+      this.mostrarModalApertura.set(true);
+    }
+  }
+
+  arqueoCajaShortcut(): void {
+    if (!this.turnoActual()) {
+      this.notificationService?.warn('Debe tener un turno de caja abierto para realizar el arqueo.');
+    } else {
+      this.iniciarArqueo();
+    }
   }
 
   verificarTurnoCaja(): void {

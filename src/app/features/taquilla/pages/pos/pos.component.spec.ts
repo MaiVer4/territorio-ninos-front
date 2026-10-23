@@ -33,6 +33,7 @@ describe('TaquillaPosComponent', () => {
     success: ReturnType<typeof vi.fn>;
     error: ReturnType<typeof vi.fn>;
     warn: ReturnType<typeof vi.fn>;
+    info: ReturnType<typeof vi.fn>;
   };
 
   const mockTurno: TurnoResponseDTO = {
@@ -80,7 +81,8 @@ describe('TaquillaPosComponent', () => {
     notificationServiceSpy = {
       success: vi.fn(),
       error: vi.fn(),
-      warn: vi.fn()
+      warn: vi.fn(),
+      info: vi.fn()
     };
 
     await TestBed.configureTestingModule({
@@ -327,7 +329,7 @@ describe('TaquillaPosComponent', () => {
       vi.useRealTimers();
     });
 
-    it('should reset client form and signals when limpiarCliente is called', async () => {
+    it('should reset client form, minors list, and signals when limpiarCliente is called', async () => {
       vi.useFakeTimers();
       await setupComponent(mockTurno);
       clienteServiceSpy.buscarPorDocumento.mockReturnValue(of(mockCliente));
@@ -337,6 +339,7 @@ describe('TaquillaPosComponent', () => {
       fixture.detectChanges();
 
       expect(component.clienteSeleccionado()).toBeTruthy();
+      expect(component.menoresOrden().length).toBe(1);
 
       component.limpiarCliente();
       fixture.detectChanges();
@@ -344,10 +347,24 @@ describe('TaquillaPosComponent', () => {
       expect(component.clienteSeleccionado()).toBeNull();
       expect(component.esClienteNuevo()).toBe(false);
       expect(component.buscandoCliente()).toBe(false);
+      expect(component.menoresOrden()).toEqual([]);
       expect(component.clienteForm.get('numeroDocumento')?.value).toBe('');
       expect(component.clienteForm.get('nombreCompleto')?.value).toBe('');
       expect(component.clienteForm.get('telefono')?.value).toBe('');
       expect(component.clienteForm.get('correo')?.value).toBe('');
+      vi.useRealTimers();
+    });
+
+    it('should synchronize minors into menoresOrden when client is found', async () => {
+      vi.useFakeTimers();
+      await setupComponent(mockTurno);
+      clienteServiceSpy.buscarPorDocumento.mockReturnValue(of(mockCliente));
+
+      component.clienteForm.get('numeroDocumento')!.setValue('1098765432');
+      vi.advanceTimersByTime(350);
+      fixture.detectChanges();
+
+      expect(component.menoresOrden()).toEqual(mockCliente.menores!);
       vi.useRealTimers();
     });
 
@@ -360,6 +377,83 @@ describe('TaquillaPosComponent', () => {
       btnLimpiar.nativeElement.click();
 
       expect(limpiarSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Atajos de Teclado (HU-15.12)', () => {
+    it('should trigger F2 shortcut to focus document input and notify', async () => {
+      await setupComponent(mockTurno);
+      const enfocarSpy = vi.spyOn(component, 'enfocarBuscarCliente');
+
+      const event = new KeyboardEvent('keydown', { key: 'F2', cancelable: true });
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(enfocarSpy).toHaveBeenCalled();
+      expect(notificationServiceSpy.info).toHaveBeenCalledWith('Atajo F2: Campo de documento de cliente enfocado.');
+    });
+
+    it('should trigger F4 shortcut to open caja modal when caja is closed', async () => {
+      await setupComponent(null);
+      // Close modal first to test re-opening with F4
+      component.mostrarModalApertura.set(false);
+      fixture.detectChanges();
+
+      const event = new KeyboardEvent('keydown', { key: 'F4', cancelable: true });
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(component.mostrarModalApertura()).toBe(true);
+    });
+
+    it('should trigger F4 shortcut and show info notification if caja is already open', async () => {
+      await setupComponent(mockTurno);
+
+      const event = new KeyboardEvent('keydown', { key: 'F4', cancelable: true });
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(notificationServiceSpy.info).toHaveBeenCalledWith('El turno de caja actual ya se encuentra abierto.');
+    });
+
+    it('should trigger F8 shortcut to launch arqueo modal when caja is open', async () => {
+      await setupComponent(mockTurno);
+      const arqueoSpy = vi.spyOn(component, 'iniciarArqueo');
+
+      const event = new KeyboardEvent('keydown', { key: 'F8', cancelable: true });
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(arqueoSpy).toHaveBeenCalled();
+      expect(component.mostrarModalArqueo()).toBe(true);
+    });
+
+    it('should trigger F8 shortcut and show warn notification if caja is closed', async () => {
+      await setupComponent(null);
+      component.mostrarModalApertura.set(false);
+      fixture.detectChanges();
+
+      const event = new KeyboardEvent('keydown', { key: 'F8', cancelable: true });
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(notificationServiceSpy.warn).toHaveBeenCalledWith('Debe tener un turno de caja abierto para realizar el arqueo.');
+    });
+
+    it('should trigger shortcut methods when clicking header shortcut badges', async () => {
+      await setupComponent(mockTurno);
+      const enfocarSpy = vi.spyOn(component, 'enfocarBuscarCliente');
+      const arqueoSpy = vi.spyOn(component, 'arqueoCajaShortcut');
+
+      const badgeF2 = fixture.debugElement.query(By.css('[data-testid="shortcut-badge-f2"]'));
+      expect(badgeF2).toBeTruthy();
+      badgeF2.nativeElement.click();
+      expect(enfocarSpy).toHaveBeenCalled();
+
+      const badgeF8 = fixture.debugElement.query(By.css('[data-testid="shortcut-badge-f8"]'));
+      expect(badgeF8).toBeTruthy();
+      badgeF8.nativeElement.click();
+      expect(arqueoSpy).toHaveBeenCalled();
     });
   });
 });

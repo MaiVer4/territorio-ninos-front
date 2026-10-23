@@ -28,8 +28,8 @@ describe('ArqueoCajaModalComponent', () => {
   });
 
   it('should calculate balance as FALTANTE when totalFisico < montoEsperado', () => {
-    component.montoEsperado.set(150000);
-    component.idTurno.set(8);
+    component.montoEsperado = 150000;
+    component.idTurno = 8;
     fixture.detectChanges();
 
     expect(component.diferencia()).toBe(-150000);
@@ -39,7 +39,7 @@ describe('ArqueoCajaModalComponent', () => {
   });
 
   it('should calculate balance as SOBRANTE when totalFisico > montoEsperado', () => {
-    component.montoEsperado.set(50000);
+    component.montoEsperado = 50000;
     component.incrementar(100000);
     fixture.detectChanges();
 
@@ -51,7 +51,7 @@ describe('ArqueoCajaModalComponent', () => {
   });
 
   it('should require at least 5 characters in justificacion when there is inconsistency', () => {
-    component.montoEsperado.set(100000);
+    component.montoEsperado = 100000;
     fixture.detectChanges();
 
     expect(component.requiereJustificacion()).toBe(true);
@@ -105,8 +105,8 @@ describe('ArqueoCajaModalComponent', () => {
   });
 
   it('should emit confirmarArqueo with full breakdown when confirmed', () => {
-    component.montoEsperado.set(100000);
-    component.idTurno.set(25);
+    component.montoEsperado = 100000;
+    component.idTurno = 25;
     component.incrementar(100000);
     fixture.detectChanges();
 

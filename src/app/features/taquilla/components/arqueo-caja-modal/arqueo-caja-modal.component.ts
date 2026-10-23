@@ -1,4 +1,4 @@
-import { Component, computed, model, output, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, Input, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -44,7 +44,7 @@ interface DenominacionDef {
                 Arqueo Físico de Caja
               </h2>
               <p class="text-xs text-slate-400 mt-0.5">
-                Turno #{{ idTurno() }} • Conteo asistido por denominación de efectivo
+                Turno #{{ _idTurno() }} • Conteo asistido por denominación de efectivo
               </p>
             </div>
           </div>
@@ -65,7 +65,7 @@ interface DenominacionDef {
           <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-3.5 flex flex-col justify-between">
             <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Saldo Esperado</span>
             <span class="text-lg font-extrabold font-mono text-slate-800 mt-1">
-              {{ formatearCOP(montoEsperado()) }}
+              {{ formatearCOP(_montoEsperado()) }}
             </span>
             <span class="text-[10px] text-slate-400">Base + Ventas en efectivo</span>
           </div>
@@ -300,8 +300,13 @@ interface DenominacionDef {
   `
 })
 export class ArqueoCajaModalComponent {
-  readonly montoEsperado = model<number>(0);
-  readonly idTurno = model<number>(0);
+  @Input() set montoEsperado(val: number) { this._montoEsperado.set(val ?? 0); }
+  get montoEsperado(): number { return this._montoEsperado(); }
+  readonly _montoEsperado = signal<number>(0);
+
+  @Input() set idTurno(val: number) { this._idTurno.set(val ?? 0); }
+  get idTurno(): number { return this._idTurno(); }
+  readonly _idTurno = signal<number>(0);
 
   readonly confirmarArqueo = output<ResultadoArqueoDTO>();
   readonly cancelar = output<void>();
@@ -355,7 +360,7 @@ export class ArqueoCajaModalComponent {
 
   readonly totalFisico = computed(() => this.totalBilletes() + this.totalMonedas());
 
-  readonly diferencia = computed(() => this.totalFisico() - this.montoEsperado());
+  readonly diferencia = computed(() => this.totalFisico() - this._montoEsperado());
 
   readonly estadoBalance = computed<EstadoBalanceArqueo>(() => {
     const dif = this.diferencia();
@@ -444,8 +449,8 @@ export class ArqueoCajaModalComponent {
     ];
 
     const resultado: ResultadoArqueoDTO = {
-      idTurno: this.idTurno(),
-      montoEsperado: this.montoEsperado(),
+      idTurno: this._idTurno(),
+      montoEsperado: this._montoEsperado(),
       totalFisico: this.totalFisico(),
       diferencia: this.diferencia(),
       estadoBalance: this.estadoBalance(),
