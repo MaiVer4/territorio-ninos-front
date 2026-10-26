@@ -71,6 +71,14 @@ describe('AuditoriaComponent', () => {
     // Filter by search query
     component.searchQuery.set('carlos');
     expect(component.filteredLogs().length).toBe(2);
+
+    // Filter by date
+    component.searchQuery.set('');
+    component.filterDate.set('2026-10-09');
+    expect(component.filteredLogs().length).toBe(3);
+
+    component.filterDate.set('2026-10-10');
+    expect(component.filteredLogs().length).toBe(0);
   });
 
   it('should call exportToCsv when exportarCsv is invoked with logs', () => {

@@ -130,4 +130,36 @@ describe('LoginComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/configuracion');
     expect(router.navigate).not.toHaveBeenCalled();
   });
+
+  it('should ignore unsafe returnUrl (protocol-relative or external) and navigate to role route', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    (route.snapshot as any).queryParams = { returnUrl: '//evil.com/phishing' };
+
+    authServiceSpy.login.mockReturnValue(of({
+      token: 'valid-jwt',
+      tipoToken: 'Bearer',
+      correo: 'admin@tdn.com.co',
+      rol: 'ADMINISTRADOR'
+    }));
+
+    component.loginForm.setValue({
+      correo: 'admin@tdn.com.co',
+      contrasena: 'Admin1234'
+    });
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/admin/dashboard']);
+  });
+
+  it('should correctly identify safe and unsafe return URLs with isSafeReturnUrl', () => {
+    expect(component.isSafeReturnUrl('/admin/atracciones')).toBe(true);
+    expect(component.isSafeReturnUrl('/taquilla/pos?tab=1')).toBe(true);
+    expect(component.isSafeReturnUrl('//evil.com')).toBe(false);
+    expect(component.isSafeReturnUrl('https://evil.com')).toBe(false);
+    expect(component.isSafeReturnUrl('/login')).toBe(false);
+    expect(component.isSafeReturnUrl('')).toBe(false);
+    expect(component.isSafeReturnUrl(null)).toBe(false);
+  });
 });

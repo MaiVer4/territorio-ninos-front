@@ -4,6 +4,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
+import { CajaService } from './caja.service';
 import { AuthResponse } from '../models/auth.model';
 
 describe('AuthService', () => {
@@ -11,6 +12,7 @@ describe('AuthService', () => {
   let httpTesting: HttpTestingController;
   let routerSpy: { navigate: ReturnType<typeof vi.fn> };
   let notificationSpy: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn> };
+  let cajaServiceSpy: { limpiarEstado: ReturnType<typeof vi.fn> };
 
   const TOKEN_KEY = 'tdn_jwt_token';
 
@@ -18,6 +20,7 @@ describe('AuthService', () => {
     localStorage.clear();
     routerSpy = { navigate: vi.fn() };
     notificationSpy = { success: vi.fn(), error: vi.fn(), warn: vi.fn(), info: vi.fn() };
+    cajaServiceSpy = { limpiarEstado: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -25,7 +28,8 @@ describe('AuthService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: Router, useValue: routerSpy },
-        { provide: NotificationService, useValue: notificationSpy }
+        { provide: NotificationService, useValue: notificationSpy },
+        { provide: CajaService, useValue: cajaServiceSpy }
       ]
     });
 
@@ -73,6 +77,7 @@ describe('AuthService', () => {
 
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     expect(service.currentUser()).toBeNull();
+    expect(cajaServiceSpy.limpiarEstado).toHaveBeenCalled();
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
     expect(notificationSpy.info).toHaveBeenCalledWith('Sesión cerrada con éxito');
   });

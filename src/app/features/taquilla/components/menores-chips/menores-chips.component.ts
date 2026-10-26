@@ -1,11 +1,13 @@
-import { Component, computed, Input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, Input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Menor } from '../../../../core/models/cliente.model';
+import { extractInitials } from '../../../../core/utils/initials.util';
 
 @Component({
   selector: 'app-menores-chips',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-3 font-sans">
@@ -224,12 +226,7 @@ export class MenoresChipsComponent {
   }
 
   getInitials(nombre: string): string {
-    if (!nombre) return 'NI';
-    const parts = nombre.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return parts[0].substring(0, 2).toUpperCase();
+    return extractInitials(nombre, 'NI');
   }
 
   getColorClass(edad: number): string {

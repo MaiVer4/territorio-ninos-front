@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
 
 import { NotificationService } from './notification.service';
+import { CajaService } from './caja.service';
 
 export interface JwtPayload {
   exp: number;
@@ -24,6 +25,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private notificationService = inject(NotificationService);
+  private cajaService = inject(CajaService, { optional: true });
   
   private readonly apiUrl = `${environment.apiUrl}/auth`;
   private readonly TOKEN_KEY = 'tdn_jwt_token';
@@ -130,6 +132,7 @@ export class AuthService {
       console.error('Error limpiando localStorage', e);
     }
     this.currentUser.set(null);
+    this.cajaService?.limpiarEstado();
     this.router.navigate(['/login']);
   }
 

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -173,6 +173,7 @@ import { MenoresChipsComponent } from '../../components/menores-chips/menores-ch
               </label>
               <div class="relative">
                 <input
+                  #documentoInput
                   id="numeroDocumento"
                   data-testid="input-documento"
                   type="text"
@@ -339,6 +340,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly esClienteNuevo = signal<boolean>(false);
   readonly buscandoCliente = signal<boolean>(false);
   readonly menoresOrden = signal<Menor[]>([]);
+  readonly documentoInputRef = viewChild<ElementRef<HTMLInputElement>>('documentoInput');
 
   readonly clienteForm = this.fb.group({
     numeroDocumento: ['', [Validators.required, Validators.minLength(5)]],
@@ -410,6 +412,11 @@ export class TaquillaPosComponent implements OnInit {
 
   @HostListener('window:keydown', ['$event'])
   handleKeyboardShortcuts(event: KeyboardEvent): void {
+    // Evitar interceptar atajos si hay un modal bloqueante activo
+    if (this.mostrarModalApertura() || this.mostrarModalArqueo()) {
+      return;
+    }
+
     if (event.key === 'F2') {
       event.preventDefault();
       this.enfocarBuscarCliente();
@@ -423,7 +430,7 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   enfocarBuscarCliente(): void {
-    const docInput = document.getElementById('numeroDocumento') as HTMLInputElement | null;
+    const docInput = this.documentoInputRef()?.nativeElement ?? (document.getElementById('numeroDocumento') as HTMLInputElement | null);
     if (docInput) {
       docInput.focus();
       docInput.select();

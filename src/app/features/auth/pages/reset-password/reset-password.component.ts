@@ -13,20 +13,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { strictPasswordValidator } from '../../../../core/utils/password.validator';
 
-/** Validador estricto según HU-02: Mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula y 1 número */
-export function strictPasswordValidator(control: AbstractControl): ValidationErrors | null {
-  const value = control.value || '';
-  if (!value) return null;
-
-  const errors: ValidationErrors = {};
-  if (value.length < 8) errors['minlength'] = true;
-  if (!/[A-Z]/.test(value)) errors['missingUppercase'] = true;
-  if (!/[a-z]/.test(value)) errors['missingLowercase'] = true;
-  if (!/\d/.test(value)) errors['missingNumber'] = true;
-
-  return Object.keys(errors).length > 0 ? errors : null;
-}
+export { strictPasswordValidator };
 
 @Component({
   selector: 'app-reset-password',
@@ -51,79 +40,90 @@ export function strictPasswordValidator(control: AbstractControl): ValidationErr
     <mat-card class="!shadow-2xl !rounded-3xl !border !border-slate-100 !bg-white overflow-hidden">
       <mat-card-content class="!p-6 sm:!p-8">
         
-        <div *ngIf="isCompleted" class="py-6 text-center flex flex-col items-center gap-4">
-          <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-            <span class="material-symbols-outlined text-4xl">check_circle</span>
+        @if (isCompleted) {
+          <div class="py-6 text-center flex flex-col items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+              <span class="material-symbols-outlined text-4xl">check_circle</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800">¡Contraseña actualizada!</h3>
+            <p class="text-slate-500 text-sm max-w-xs leading-relaxed">
+              Tu contraseña se ha restablecido exitosamente. Ya puedes ingresar al sistema con tu nueva clave.
+            </p>
+            <a mat-flat-button color="primary" routerLink="/login" class="!py-6 !px-8 !text-base !font-bold !rounded-2xl !bg-blue-600 w-full mt-2">
+              Iniciar sesión
+            </a>
           </div>
-          <h3 class="text-xl font-bold text-slate-800">¡Contraseña actualizada!</h3>
-          <p class="text-slate-500 text-sm max-w-xs leading-relaxed">
-            Tu contraseña se ha restablecido exitosamente. Ya puedes ingresar al sistema con tu nueva clave.
-          </p>
-          <a mat-flat-button color="primary" routerLink="/login" class="!py-6 !px-8 !text-base !font-bold !rounded-2xl !bg-blue-600 w-full mt-2">
-            Iniciar sesión
-          </a>
-        </div>
+        } @else {
+          <form [formGroup]="resetForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+            
+            <div class="flex flex-col gap-1.5">
+              <label class="text-sm font-semibold text-slate-700 ml-1">Nueva Contraseña</label>
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-icon matPrefix class="text-slate-400 mr-2">lock</mat-icon>
+                <input matInput formControlName="nuevaContrasena" [type]="hidePassword ? 'password' : 'text'" placeholder="••••••••" autocomplete="new-password">
+                <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword" aria-label="Ver u ocultar contraseña">
+                  <mat-icon class="text-slate-400">{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                </button>
+                @if (resetForm.get('nuevaContrasena')?.hasError('required')) {
+                  <mat-error>La contraseña es requerida</mat-error>
+                }
+              </mat-form-field>
 
-        <form *ngIf="!isCompleted" [formGroup]="resetForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
-          
-          <div class="flex flex-col gap-1.5">
-            <label class="text-sm font-semibold text-slate-700 ml-1">Nueva Contraseña</label>
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-icon matPrefix class="text-slate-400 mr-2">lock</mat-icon>
-              <input matInput formControlName="nuevaContrasena" [type]="hidePassword ? 'password' : 'text'" placeholder="••••••••" autocomplete="new-password">
-              <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword" aria-label="Ver u ocultar contraseña">
-                <mat-icon class="text-slate-400">{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-              </button>
-              <mat-error *ngIf="resetForm.get('nuevaContrasena')?.hasError('required')">La contraseña es requerida</mat-error>
-            </mat-form-field>
-
-            <!-- Requisitos visuales de contraseña -->
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs flex flex-col gap-1.5 text-slate-600">
-              <span class="font-semibold text-slate-700 mb-0.5">La contraseña debe incluir:</span>
-              <div class="flex items-center gap-2" [class.text-emerald-600]="hasLength" [class.font-medium]="hasLength">
-                <span class="material-symbols-outlined text-sm">{{ hasLength ? 'check_circle' : 'radio_button_unchecked' }}</span>
-                <span>Mínimo 8 caracteres</span>
-              </div>
-              <div class="flex items-center gap-2" [class.text-emerald-600]="hasUpper" [class.font-medium]="hasUpper">
-                <span class="material-symbols-outlined text-sm">{{ hasUpper ? 'check_circle' : 'radio_button_unchecked' }}</span>
-                <span>Al menos una letra mayúscula (A-Z)</span>
-              </div>
-              <div class="flex items-center gap-2" [class.text-emerald-600]="hasLower" [class.font-medium]="hasLower">
-                <span class="material-symbols-outlined text-sm">{{ hasLower ? 'check_circle' : 'radio_button_unchecked' }}</span>
-                <span>Al menos una letra minúscula (a-z)</span>
-              </div>
-              <div class="flex items-center gap-2" [class.text-emerald-600]="hasNumber" [class.font-medium]="hasNumber">
-                <span class="material-symbols-outlined text-sm">{{ hasNumber ? 'check_circle' : 'radio_button_unchecked' }}</span>
-                <span>Al menos un número (0-9)</span>
+              <!-- Requisitos visuales de contraseña -->
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs flex flex-col gap-1.5 text-slate-600">
+                <span class="font-semibold text-slate-700 mb-0.5">La contraseña debe incluir:</span>
+                <div class="flex items-center gap-2" [class.text-emerald-600]="hasLength" [class.font-medium]="hasLength">
+                  <span class="material-symbols-outlined text-sm">{{ hasLength ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  <span>Mínimo 8 caracteres</span>
+                </div>
+                <div class="flex items-center gap-2" [class.text-emerald-600]="hasUpper" [class.font-medium]="hasUpper">
+                  <span class="material-symbols-outlined text-sm">{{ hasUpper ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  <span>Al menos una letra mayúscula (A-Z)</span>
+                </div>
+                <div class="flex items-center gap-2" [class.text-emerald-600]="hasLower" [class.font-medium]="hasLower">
+                  <span class="material-symbols-outlined text-sm">{{ hasLower ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  <span>Al menos una letra minúscula (a-z)</span>
+                </div>
+                <div class="flex items-center gap-2" [class.text-emerald-600]="hasNumber" [class.font-medium]="hasNumber">
+                  <span class="material-symbols-outlined text-sm">{{ hasNumber ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  <span>Al menos un número (0-9)</span>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div class="flex flex-col gap-1.5 mt-2">
-            <label class="text-sm font-semibold text-slate-700 ml-1">Confirmar Contraseña</label>
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-icon matPrefix class="text-slate-400 mr-2">verified_user</mat-icon>
-              <input matInput formControlName="confirmarContrasena" [type]="hideConfirm ? 'password' : 'text'" placeholder="Repite tu contraseña" autocomplete="new-password">
-              <button type="button" mat-icon-button matSuffix (click)="hideConfirm = !hideConfirm" aria-label="Ver u ocultar confirmación">
-                <mat-icon class="text-slate-400">{{hideConfirm ? 'visibility_off' : 'visibility'}}</mat-icon>
-              </button>
-              <mat-error *ngIf="resetForm.get('confirmarContrasena')?.hasError('required')">La confirmación es requerida</mat-error>
-              <mat-error *ngIf="resetForm.hasError('mismatch')">Las contraseñas no coinciden</mat-error>
-            </mat-form-field>
-          </div>
+            
+            <div class="flex flex-col gap-1.5 mt-2">
+              <label class="text-sm font-semibold text-slate-700 ml-1">Confirmar Contraseña</label>
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-icon matPrefix class="text-slate-400 mr-2">verified_user</mat-icon>
+                <input matInput formControlName="confirmarContrasena" [type]="hideConfirm ? 'password' : 'text'" placeholder="Repite tu contraseña" autocomplete="new-password">
+                <button type="button" mat-icon-button matSuffix (click)="hideConfirm = !hideConfirm" aria-label="Ver u ocultar confirmación">
+                  <mat-icon class="text-slate-400">{{hideConfirm ? 'visibility_off' : 'visibility'}}</mat-icon>
+                </button>
+                @if (resetForm.get('confirmarContrasena')?.hasError('required')) {
+                  <mat-error>La confirmación es requerida</mat-error>
+                }
+                @if (resetForm.hasError('mismatch')) {
+                  <mat-error>Las contraseñas no coinciden</mat-error>
+                }
+              </mat-form-field>
+            </div>
 
-          <button mat-flat-button color="primary" type="submit" [disabled]="resetForm.invalid || isLoading || !token" 
-                  class="!py-6 !text-base !font-extrabold !rounded-2xl !bg-blue-600 w-full mt-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60">
-            <span *ngIf="!isLoading">Restablecer Contraseña</span>
-            <mat-spinner *ngIf="isLoading" diameter="24" color="accent" class="mx-auto"></mat-spinner>
-          </button>
-        </form>
-        
-        <div class="mt-6 text-center" *ngIf="!isCompleted">
-          <a routerLink="/login" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1">
-            <span class="material-symbols-outlined text-base">arrow_back</span> Cancelar y volver
-          </a>
-        </div>
+            <button mat-flat-button color="primary" type="submit" [disabled]="resetForm.invalid || isLoading || !token" 
+                    class="!py-6 !text-base !font-extrabold !rounded-2xl !bg-blue-600 w-full mt-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60">
+              @if (!isLoading) {
+                <span>Restablecer Contraseña</span>
+              } @else {
+                <mat-spinner diameter="24" color="accent" class="mx-auto"></mat-spinner>
+              }
+            </button>
+          </form>
+          
+          <div class="mt-6 text-center">
+            <a routerLink="/login" class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1">
+              <span class="material-symbols-outlined text-base">arrow_back</span> Cancelar y volver
+            </a>
+          </div>
+        }
       </mat-card-content>
     </mat-card>
   </div>

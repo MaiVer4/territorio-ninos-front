@@ -455,5 +455,17 @@ describe('TaquillaPosComponent', () => {
       badgeF8.nativeElement.click();
       expect(arqueoSpy).toHaveBeenCalled();
     });
+
+    it('should ignore keyboard shortcuts when a blocking modal is open', async () => {
+      await setupComponent(mockTurno);
+      component.mostrarModalArqueo.set(true);
+      const enfocarSpy = vi.spyOn(component, 'enfocarBuscarCliente');
+
+      const event = new KeyboardEvent('keydown', { key: 'F2', cancelable: true });
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(enfocarSpy).not.toHaveBeenCalled();
+    });
   });
 });

@@ -173,6 +173,10 @@ export class AuditoriaComponent {
         l.attraction.toLowerCase().includes(q)
       );
     }
+    const d = this.filterDate().trim();
+    if (d) {
+      result = result.filter(l => l.timestamp.startsWith(d));
+    }
     return result;
   });
 

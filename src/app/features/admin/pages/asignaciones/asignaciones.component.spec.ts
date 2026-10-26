@@ -114,4 +114,14 @@ describe('AsignacionesComponent', () => {
     expect(asignacionServiceSpy.releaseAssignment).toHaveBeenCalledWith(100);
     expect(notificationSpy.info).toHaveBeenCalledWith('Estación liberada.');
   });
+
+  it('should update and clear selected operator signal via reactive methods', () => {
+    component.onSelectOperario(2, 11);
+    expect(component.getSelectedOperarioId(2)).toBe(11);
+
+    const row = component.rows().find(r => r.atraccion.id === 2);
+    component.asignarOperario(row!);
+    expect(asignacionServiceSpy.assignOperator).toHaveBeenCalledWith(2, 11, false);
+    expect(component.getSelectedOperarioId(2)).toBeUndefined();
+  });
 });

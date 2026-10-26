@@ -9,6 +9,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { Atraccion } from '../../../../core/models/atraccion.model';
 import { Usuario } from '../../../../core/models/usuario.model';
 import { AsignacionOperario } from '../../../../core/models/asignacion.model';
+import { extractInitials } from '../../../../core/utils/initials.util';
 
 interface AttractionAssignmentRow {
   atraccion: Atraccion;
@@ -124,7 +125,8 @@ interface AttractionAssignmentRow {
                 </button>
               } @else {
                 <div class="flex gap-2">
-                  <select [(ngModel)]="row.selectedOperarioId"
+                  <select [ngModel]="getSelectedOperarioId(row.atraccion.id) ?? row.selectedOperarioId"
+                    (ngModelChange)="onSelectOperario(row.atraccion.id, $event)"
                     class="flex-1 text-xs px-2.5 py-2 border border-slate-200 rounded-xl bg-white text-slate-700 focus:outline-none focus:border-blue-500">
                     <option [ngValue]="undefined">Seleccionar operario...</option>
                     @for (op of operariosDisponibles(); track op.id) {
@@ -132,7 +134,7 @@ interface AttractionAssignmentRow {
                     }
                   </select>
 
-                  <button (click)="asignarOperario(row)" [disabled]="!row.selectedOperarioId"
+                  <button (click)="asignarOperario(row)" [disabled]="!getSelectedOperarioId(row.atraccion.id) && !row.selectedOperarioId"
                     class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1">
                     Asignar
                   </button>
@@ -192,6 +194,7 @@ export class AsignacionesComponent implements OnInit {
   atracciones = signal<Atraccion[]>([]);
   operarios = signal<Usuario[]>([]);
   asignaciones = signal<AsignacionOperario[]>([]);
+  selectedOperarios = signal<Record<number | string, number | string | undefined>>({});
 
   conflicto = signal<{
     operarioId: number | string;
@@ -265,19 +268,32 @@ export class AsignacionesComponent implements OnInit {
   }
 
   getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    return extractInitials(name);
+  }
+
+  getSelectedOperarioId(atraccionId?: number | string): number | string | undefined {
+    if (atraccionId == null) return undefined;
+    return this.selectedOperarios()[atraccionId];
+  }
+
+  onSelectOperario(atraccionId: number | string | undefined, operarioId: number | string | undefined): void {
+    if (atraccionId == null) return;
+    this.selectedOperarios.update(curr => ({ ...curr, [atraccionId]: operarioId }));
   }
 
   asignarOperario(row: AttractionAssignmentRow) {
-    if (!row.selectedOperarioId || !row.atraccion.id) return;
+    const atraccionId = row.atraccion.id;
+    if (!atraccionId) return;
 
-    const opId = row.selectedOperarioId;
+    const opId = this.getSelectedOperarioId(atraccionId) ?? row.selectedOperarioId;
+    if (!opId) return;
+
     const op = this.operarios().find(u => u.id === opId);
     if (!op) return;
 
     // Verificar si ya está asignado en otra atracción (Escenario 2 de HU-10: Conflicto 409)
     const asignacionPrevia = this.asignaciones().find(a => a.operarioId === opId && a.activo);
-    if (asignacionPrevia && asignacionPrevia.atraccionId !== row.atraccion.id) {
+    if (asignacionPrevia && asignacionPrevia.atraccionId !== atraccionId) {
       this.conflicto.set({
         operarioId: opId,
         operarioNombre: op.nombre ?? 'Operario',
@@ -287,7 +303,7 @@ export class AsignacionesComponent implements OnInit {
       return;
     }
 
-    this.procederAsignacion(row.atraccion.id, op, false);
+    this.procederAsignacion(atraccionId, op, false);
   }
 
   procederAsignacion(atraccionId: number | string, op: Usuario, forzar: boolean) {
@@ -298,6 +314,11 @@ export class AsignacionesComponent implements OnInit {
           this.asignaciones.update(list => {
             const filtrada = forzar ? list.filter(a => a.operarioId !== op.id) : list;
             return [...filtrada, nueva];
+          });
+          this.selectedOperarios.update(curr => {
+            const next = { ...curr };
+            delete next[atraccionId];
+            return next;
           });
           this.notificationService.success(`Operario ${op.nombre} asignado correctamente.`);
         },

@@ -95,8 +95,12 @@ import { NotificationService } from '../../../../core/services/notification.serv
               <mat-form-field appearance="outline" class="w-full !text-base">
                 <mat-icon matPrefix class="text-slate-400 mr-2">mail</mat-icon>
                 <input matInput id="correo" formControlName="correo" placeholder="ejemplo@tdn.com.co" type="email" autocomplete="email">
-                <mat-error *ngIf="loginForm.get('correo')?.hasError('required')">El correo es requerido</mat-error>
-                <mat-error *ngIf="loginForm.get('correo')?.hasError('email')">Formato inválido</mat-error>
+                @if (loginForm.get('correo')?.hasError('required')) {
+                  <mat-error>El correo es requerido</mat-error>
+                }
+                @if (loginForm.get('correo')?.hasError('email')) {
+                  <mat-error>Formato inválido</mat-error>
+                }
               </mat-form-field>
             </div>
 
@@ -108,7 +112,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
                 <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword" aria-label="Ocultar o mostrar contraseña">
                   <mat-icon class="text-slate-400">{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
                 </button>
-                <mat-error *ngIf="loginForm.get('contrasena')?.hasError('required')">La contraseña es requerida</mat-error>
+                @if (loginForm.get('contrasena')?.hasError('required')) {
+                  <mat-error>La contraseña es requerida</mat-error>
+                }
               </mat-form-field>
             </div>
 
@@ -120,10 +126,13 @@ import { NotificationService } from '../../../../core/services/notification.serv
 
             <button mat-flat-button color="primary" type="submit" [disabled]="loginForm.invalid || isLoading" 
                     class="!py-6 !text-lg !font-extrabold !text-white !rounded-2xl !bg-gradient-to-r !from-blue-600 !to-indigo-600 !shadow-lg !shadow-blue-500/30 w-full transition-all hover:scale-[1.02] hover:shadow-blue-500/40 active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100 disabled:cursor-not-allowed">
-              <span *ngIf="!isLoading" class="flex items-center justify-center gap-2 tracking-wide">
-                Iniciar sesión <span class="material-symbols-outlined text-base">arrow_forward</span>
-              </span>
-              <mat-spinner *ngIf="isLoading" diameter="24" color="accent" class="mx-auto"></mat-spinner>
+              @if (!isLoading) {
+                <span class="flex items-center justify-center gap-2 tracking-wide">
+                  Iniciar sesión <span class="material-symbols-outlined text-base">arrow_forward</span>
+                </span>
+              } @else {
+                <mat-spinner diameter="24" color="accent" class="mx-auto"></mat-spinner>
+              }
             </button>
           </form>
           
@@ -171,9 +180,9 @@ export class LoginComponent {
             this.isLoading = false;
             this.notificationService.success(`¡Bienvenido al sistema! (${this.authService.currentUserName()})`);
             
-            // Si el usuario intentaba acceder a una ruta específica previa (deep linking)
+            // Si el usuario intentaba acceder a una ruta específica previa (deep linking) con validación anti Open Redirect
             const returnUrl = this.route.snapshot.queryParams['returnUrl'];
-            if (returnUrl) {
+            if (this.isSafeReturnUrl(returnUrl)) {
               this.router.navigateByUrl(returnUrl);
               return;
             }
@@ -202,5 +211,18 @@ export class LoginComponent {
           }
         });
     }
+  }
+
+  /**
+   * Valida que returnUrl sea una ruta relativa local interna segura,
+   * descartando URLs absolutas, de protocolo relativo (//) o bucles hacia /login.
+   */
+  isSafeReturnUrl(url: unknown): url is string {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    return trimmed.startsWith('/') &&
+      !trimmed.startsWith('//') &&
+      !trimmed.startsWith('/\\') &&
+      !trimmed.startsWith('/login');
   }
 }
