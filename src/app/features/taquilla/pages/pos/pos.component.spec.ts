@@ -4,10 +4,12 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CajaService } from '../../../../core/services/caja.service';
 import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente } from '../../../../core/models/cliente.model';
+import { Atraccion, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { By } from '@angular/platform-browser';
 
 describe('TaquillaPosComponent', () => {
@@ -29,11 +31,39 @@ describe('TaquillaPosComponent', () => {
     registrarCliente: ReturnType<typeof vi.fn>;
     actualizarCliente: ReturnType<typeof vi.fn>;
   };
+  let atraccionServiceSpy: {
+    getAll: ReturnType<typeof vi.fn>;
+  };
   let notificationServiceSpy: {
     success: ReturnType<typeof vi.fn>;
     error: ReturnType<typeof vi.fn>;
     warn: ReturnType<typeof vi.fn>;
     info: ReturnType<typeof vi.fn>;
+  };
+
+  const mockAtraccion1: Atraccion = {
+    id: 1,
+    nombre: 'Inflable Gigante',
+    tipo: 'TEMPORIZADA',
+    estado: 'ACTIVO',
+    tarifaMinuto: 600,
+    precio: 9000,
+    capacidadMaxima: 15,
+    ninosActivos: 5,
+    duracionMinutosBase: 15
+  };
+
+  const mockAtraccion2: Atraccion = {
+    id: 2,
+    nombre: 'Toro Mecánico',
+    tipo: 'EVENTOS_CAIDAS',
+    estado: 'ACTIVO',
+    tarifaMinuto: 10000,
+    precio: 10000,
+    capacidadMaxima: 5,
+    ninosActivos: 1,
+    duracionMinutosBase: 0,
+    caidasLimite: 3
   };
 
   const mockTurno: TurnoResponseDTO = {
@@ -78,6 +108,9 @@ describe('TaquillaPosComponent', () => {
       registrarCliente: vi.fn(),
       actualizarCliente: vi.fn()
     };
+    atraccionServiceSpy = {
+      getAll: vi.fn().mockReturnValue(of([mockAtraccion1, mockAtraccion2]))
+    };
     notificationServiceSpy = {
       success: vi.fn(),
       error: vi.fn(),
@@ -91,6 +124,7 @@ describe('TaquillaPosComponent', () => {
         { provide: AuthService, useValue: authServiceSpy },
         { provide: CajaService, useValue: cajaServiceSpy },
         { provide: ClienteService, useValue: clienteServiceSpy },
+        { provide: AtraccionService, useValue: atraccionServiceSpy },
         { provide: NotificationService, useValue: notificationServiceSpy }
       ]
     }).compileComponents();
@@ -466,6 +500,102 @@ describe('TaquillaPosComponent', () => {
       fixture.detectChanges();
 
       expect(enfocarSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Catálogo de Atracciones y Pre-Orden (CA-01)', () => {
+    it('should load and display attractions from AtraccionService on init', async () => {
+      await setupComponent(mockTurno);
+      expect(atraccionServiceSpy.getAll).toHaveBeenCalled();
+      expect(component.atracciones().length).toBe(2);
+
+      const catalogoComponent = fixture.debugElement.query(By.css('app-catalogo-atracciones'));
+      expect(catalogoComponent).toBeTruthy();
+    });
+
+    it('should add selected attraction and modality to itemsSeleccionados and calculate total', async () => {
+      await setupComponent(mockTurno);
+
+      const seleccion: SeleccionCatalogoPOS = {
+        atraccion: mockAtraccion1,
+        modalidad: {
+          tipo: 'TEMPORIZADA',
+          etiqueta: '15 min',
+          valor: 15,
+          precio: 9000
+        }
+      };
+
+      component.onAtraccionSeleccionada(seleccion);
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados().length).toBe(1);
+      expect(component.totalOrden()).toBe(9000);
+      expect(notificationServiceSpy.success).toHaveBeenCalledWith(
+        expect.stringContaining('Inflable Gigante')
+      );
+
+      const totalEl = fixture.debugElement.query(By.css('[data-testid="total-orden"]'));
+      expect(totalEl.nativeElement.textContent).toContain('$9.000');
+    });
+
+    it('should remove item from order when clicking remove button', async () => {
+      await setupComponent(mockTurno);
+
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 }
+        },
+        {
+          atraccion: mockAtraccion2,
+          modalidad: { tipo: 'EVENTOS_CAIDAS', etiqueta: '3 caídas', valor: 3, precio: 10000 }
+        }
+      ]);
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados().length).toBe(2);
+      expect(component.totalOrden()).toBe(19000);
+
+      const btnQuitar = fixture.debugElement.query(By.css('[data-testid="btn-quitar-item-0"]'));
+      expect(btnQuitar).toBeTruthy();
+      btnQuitar.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados().length).toBe(1);
+      expect(component.itemsSeleccionados()[0].atraccion.id).toBe(2);
+      expect(component.totalOrden()).toBe(10000);
+    });
+
+    it('should clear all items in order when clicking Vaciar', async () => {
+      await setupComponent(mockTurno);
+
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 }
+        }
+      ]);
+      fixture.detectChanges();
+
+      const btnVaciar = fixture.debugElement.query(By.css('[data-testid="btn-limpiar-orden"]'));
+      expect(btnVaciar).toBeTruthy();
+      btnVaciar.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados().length).toBe(0);
+      expect(component.totalOrden()).toBe(0);
+
+      const vaciaMsg = fixture.debugElement.query(By.css('[data-testid="orden-vacia"]'));
+      expect(vaciaMsg).toBeTruthy();
+    });
+
+    it('should handle error when loading attractions catalogue fails', async () => {
+      atraccionServiceSpy.getAll.mockReturnValue(throwError(() => new Error('Error al cargar')));
+      await setupComponent(mockTurno);
+
+      expect(component.atracciones()).toEqual([]);
+      expect(notificationServiceSpy.error).toHaveBeenCalledWith('Error al cargar el catálogo de atracciones.');
     });
   });
 });

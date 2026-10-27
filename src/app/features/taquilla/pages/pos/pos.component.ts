@@ -10,9 +10,12 @@ import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente, Menor } from '../../../../core/models/cliente.model';
+import { Atraccion, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
 import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
+import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -23,7 +26,8 @@ import { MenoresChipsComponent } from '../../components/menores-chips/menores-ch
     ReactiveFormsModule,
     AperturaCajaModalComponent,
     ArqueoCajaModalComponent,
-    MenoresChipsComponent
+    MenoresChipsComponent,
+    CatalogoAtraccionesComponent
   ],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
@@ -248,39 +252,126 @@ import { MenoresChipsComponent } from '../../components/menores-chips/menores-ch
         </div>
       </section>
 
-      <!-- Contenido Principal -->
-      <main class="flex-1 p-6 max-w-4xl mx-auto w-full flex flex-col justify-center items-center text-center">
-        <div class="w-20 h-20 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 shadow-inner">
-          <span class="material-symbols-outlined text-4xl">point_of_sale</span>
-        </div>
-        <h2 class="text-2xl font-extrabold text-slate-800 mb-2">Punto de Venta (POS) Operativo</h2>
-        <p class="text-sm text-slate-500 max-w-md leading-relaxed mb-6">
-          Has iniciado sesión con el rol <strong>TAQUILLERO</strong>. Tu estación de trabajo está sincronizada para la venta y liquidación de boletas.
-        </p>
-
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs text-slate-600 max-w-sm w-full text-left space-y-2">
-          <p class="font-bold text-slate-700">Estado de la estación:</p>
-          <p>• Cajero: <span class="font-mono text-slate-800">{{ authService.currentUserName() }}</span></p>
-          <p>• Turno de caja: 
-            @if (turnoActual(); as turno) {
-              <span class="font-bold text-emerald-600">ABIERTO (Turno #{{ turno.idTurno }})</span>
-            } @else {
-              <span class="font-bold text-amber-600">PENDIENTE DE APERTURA</span>
-            }
-          </p>
-          <p>• Base inicial: 
-            <span class="font-semibold text-slate-800">
-              \${{ (turnoActual()?.montoInicial ?? 0).toLocaleString('es-CO') }} COP
-            </span>
-          </p>
-          @if (turnoActual()) {
-            <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-              <span class="text-slate-500">Saldo teórico actual:</span>
-              <span class="font-mono font-bold text-slate-800">
-                \${{ montoEsperadoArqueo().toLocaleString('es-CO') }}
+      <!-- Contenido Principal: Catálogo y Orden -->
+      <main class="flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <!-- Columna Izquierda: Catálogo Interactivo de Atracciones -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-base font-extrabold text-slate-800">Catálogo de Atracciones</h2>
+                <p class="text-xs text-slate-400">Selecciona modalidad y añade atracciones a la orden del cliente</p>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
+                {{ atracciones().length }} atracciones
               </span>
             </div>
-          }
+
+            <app-catalogo-atracciones
+              [atracciones]="atracciones()"
+              [cargando]="cargandoAtracciones()"
+              (atraccionSeleccionada)="onAtraccionSeleccionada($event)">
+            </app-catalogo-atracciones>
+          </div>
+
+          <!-- Columna Derecha: Pre-Orden y Estado de Estación -->
+          <div class="space-y-4">
+            <!-- Panel de Pre-Orden / Boletas Seleccionadas -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 flex flex-col">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Orden en Curso</h3>
+                    <p class="text-[10px] text-slate-400">{{ itemsSeleccionados().length }} item{{ itemsSeleccionados().length === 1 ? '' : 's' }}</p>
+                  </div>
+                </div>
+
+                @if (itemsSeleccionados().length > 0) {
+                  <button
+                    type="button"
+                    data-testid="btn-limpiar-orden"
+                    (click)="limpiarOrden()"
+                    class="text-[11px] text-rose-600 hover:text-rose-700 font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-50 transition cursor-pointer">
+                    Vaciar
+                  </button>
+                }
+              </div>
+
+              <!-- Lista de Items en Orden -->
+              <div class="py-3 flex-1 space-y-2 max-h-72 overflow-y-auto">
+                @if (itemsSeleccionados().length === 0) {
+                  <div class="py-6 text-center text-slate-400 text-xs" data-testid="orden-vacia">
+                    <p class="font-medium">No hay atracciones seleccionadas.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Elige una modalidad en el catálogo y haz clic en "Añadir".</p>
+                  </div>
+                } @else {
+                  @for (item of itemsSeleccionados(); track $index) {
+                    <div
+                      [attr.data-testid]="'item-orden-' + $index"
+                      class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200/70 rounded-xl text-xs">
+                      <div class="min-w-0 pr-2">
+                        <p class="font-bold text-slate-800 truncate">{{ item.atraccion.nombre }}</p>
+                        <p class="text-[10px] text-slate-400">{{ item.modalidad.etiqueta }}</p>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0">
+                        <span class="font-bold font-mono text-slate-700">
+                          \${{ item.modalidad.precio.toLocaleString('es-CO') }}
+                        </span>
+                        <button
+                          type="button"
+                          [attr.data-testid]="'btn-quitar-item-' + $index"
+                          (click)="removerItemOrden($index)"
+                          class="w-5 h-5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+
+              <!-- Subtotal de Orden -->
+              <div class="pt-3 border-t border-slate-100 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Subtotal</span>
+                  <span data-testid="total-orden" class="text-base font-extrabold font-mono text-slate-800">
+                    \${{ totalOrden().toLocaleString('es-CO') }} COP
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Estado de la Estación -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs text-slate-600 space-y-2">
+              <p class="font-bold text-slate-700">Estado de la estación:</p>
+              <p>• Cajero: <span class="font-mono text-slate-800">{{ authService.currentUserName() }}</span></p>
+              <p>• Turno de caja: 
+                @if (turnoActual(); as turno) {
+                  <span class="font-bold text-emerald-600">ABIERTO (Turno #{{ turno.idTurno }})</span>
+                } @else {
+                  <span class="font-bold text-amber-600">PENDIENTE DE APERTURA</span>
+                }
+              </p>
+              <p>• Base inicial: 
+                <span class="font-semibold text-slate-800">
+                  \${{ (turnoActual()?.montoInicial ?? 0).toLocaleString('es-CO') }} COP
+                </span>
+              </p>
+              @if (turnoActual()) {
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span class="text-slate-500">Saldo teórico actual:</span>
+                  <span class="font-mono font-bold text-slate-800">
+                    \${{ montoEsperadoArqueo().toLocaleString('es-CO') }}
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
         </div>
       </main>
 
@@ -328,6 +419,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly authService = inject(AuthService);
   readonly cajaService = inject(CajaService);
   readonly clienteService = inject(ClienteService);
+  readonly atraccionService = inject(AtraccionService, { optional: true });
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notificationService = inject(NotificationService, { optional: true });
@@ -335,6 +427,10 @@ export class TaquillaPosComponent implements OnInit {
   readonly mostrarModalApertura = signal<boolean>(false);
   readonly mostrarModalArqueo = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
+
+  readonly atracciones = signal<Atraccion[]>([]);
+  readonly cargandoAtracciones = signal<boolean>(false);
+  readonly itemsSeleccionados = signal<SeleccionCatalogoPOS[]>([]);
 
   readonly clienteSeleccionado = signal<Cliente | null>(null);
   readonly esClienteNuevo = signal<boolean>(false);
@@ -354,9 +450,42 @@ export class TaquillaPosComponent implements OnInit {
     return (t?.montoInicial ?? 0) + (t?.totalRecaudado ?? 0);
   });
 
+  readonly totalOrden = computed(() => {
+    return this.itemsSeleccionados().reduce((acc, item) => acc + item.modalidad.precio, 0);
+  });
+
   ngOnInit(): void {
     this.verificarTurnoCaja();
     this.iniciarBusquedaCliente();
+    this.cargarCatalogoAtracciones();
+  }
+
+  cargarCatalogoAtracciones(): void {
+    if (!this.atraccionService) return;
+    this.cargandoAtracciones.set(true);
+    this.atraccionService.getAll().pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.cargandoAtracciones.set(false))
+    ).subscribe({
+      next: (lista) => this.atracciones.set(lista || []),
+      error: () => {
+        this.atracciones.set([]);
+        this.notificationService?.error('Error al cargar el catálogo de atracciones.');
+      }
+    });
+  }
+
+  onAtraccionSeleccionada(sel: SeleccionCatalogoPOS): void {
+    this.itemsSeleccionados.update(prev => [...prev, sel]);
+    this.notificationService?.success(`"${sel.atraccion.nombre}" (${sel.modalidad.etiqueta}) añadida a la orden.`);
+  }
+
+  removerItemOrden(index: number): void {
+    this.itemsSeleccionados.update(prev => prev.filter((_, i) => i !== index));
+  }
+
+  limpiarOrden(): void {
+    this.itemsSeleccionados.set([]);
   }
 
   iniciarBusquedaCliente(): void {

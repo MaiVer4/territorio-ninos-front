@@ -19,9 +19,22 @@ export interface Atraccion {
   tag?: string;
   operarioAsignado?: string;
   ninosActivos?: number;
+  imagenUrl?: string;
 
   // Alias de transición para compatibilidad con código existente
   precio?: number;
   maxCapacity?: number;
   duracion?: number;
+}
+
+export interface ModalidadSeleccionada {
+  tipo: TipoAtraccion;
+  etiqueta: string; // Ej: '15 min', '30 min', '60 min', '3 caídas'
+  valor: number;    // Minutos (15, 30, 60) o número de caídas (3, 5)
+  precio: number;   // Precio calculado o de tarifa en COP
+}
+
+export interface SeleccionCatalogoPOS {
+  atraccion: Atraccion;
+  modalidad: ModalidadSeleccionada;
 }
