@@ -1,4 +1,5 @@
 import { EstadoAtraccion, TipoAtraccion } from './enums';
+import { Menor } from './cliente.model';
 
 export interface Atraccion {
   id?: number | string;
@@ -37,4 +38,8 @@ export interface ModalidadSeleccionada {
 export interface SeleccionCatalogoPOS {
   atraccion: Atraccion;
   modalidad: ModalidadSeleccionada;
+  cantidad?: number;
+  menorAsignado?: Menor | null;
 }
+
+export type CartItemPOS = SeleccionCatalogoPOS;

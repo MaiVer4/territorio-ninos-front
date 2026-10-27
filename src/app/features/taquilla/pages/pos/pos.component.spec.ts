@@ -590,6 +590,67 @@ describe('TaquillaPosComponent', () => {
       expect(vaciaMsg).toBeTruthy();
     });
 
+    it('should preassign minor automatically if only one minor is present in order', async () => {
+      await setupComponent(mockTurno);
+      component.menoresOrden.set([{ idMenor: 99, nombreCompleto: 'Mateo', edad: 4 }]);
+
+      const seleccion: SeleccionCatalogoPOS = {
+        atraccion: mockAtraccion1,
+        modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 }
+      };
+
+      component.onAtraccionSeleccionada(seleccion);
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados().length).toBe(1);
+      expect(component.itemsSeleccionados()[0].menorAsignado?.nombreCompleto).toBe('Mateo');
+      expect(component.itemsSeleccionados()[0].cantidad).toBe(1);
+    });
+
+    it('should increment item quantity in cart and recalculate totalOrden', async () => {
+      await setupComponent(mockTurno);
+
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1
+        }
+      ]);
+      fixture.detectChanges();
+
+      const btnInc = fixture.debugElement.query(By.css('[data-testid="btn-incrementar-0"]'));
+      btnInc.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados()[0].cantidad).toBe(2);
+      expect(component.totalOrden()).toBe(18000);
+    });
+
+    it('should update assigned minor through cart dropdown', async () => {
+      await setupComponent(mockTurno);
+      component.menoresOrden.set([
+        { idMenor: 1, nombreCompleto: 'Lucas Gómez', edad: 5 },
+        { idMenor: 2, nombreCompleto: 'Sofía Gómez', edad: 8 }
+      ]);
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1,
+          menorAsignado: null
+        }
+      ]);
+      fixture.detectChanges();
+
+      const selectMenor = fixture.debugElement.query(By.css('[data-testid="select-menor-0"]'));
+      selectMenor.nativeElement.value = '2';
+      selectMenor.nativeElement.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados()[0].menorAsignado?.nombreCompleto).toBe('Sofía Gómez');
+    });
+
     it('should handle error when loading attractions catalogue fails', async () => {
       atraccionServiceSpy.getAll.mockReturnValue(throwError(() => new Error('Error al cargar')));
       await setupComponent(mockTurno);

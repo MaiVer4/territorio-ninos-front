@@ -16,6 +16,7 @@ import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
 import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
 import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
+import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -27,7 +28,8 @@ import { CatalogoAtraccionesComponent } from '../../components/catalogo-atraccio
     AperturaCajaModalComponent,
     ArqueoCajaModalComponent,
     MenoresChipsComponent,
-    CatalogoAtraccionesComponent
+    CatalogoAtraccionesComponent,
+    PosCartComponent
   ],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
@@ -276,75 +278,12 @@ import { CatalogoAtraccionesComponent } from '../../components/catalogo-atraccio
 
           <!-- Columna Derecha: Pre-Orden y Estado de Estación -->
           <div class="space-y-4">
-            <!-- Panel de Pre-Orden / Boletas Seleccionadas -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 flex flex-col">
-              <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div class="flex items-center gap-2">
-                  <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Orden en Curso</h3>
-                    <p class="text-[10px] text-slate-400">{{ itemsSeleccionados().length }} item{{ itemsSeleccionados().length === 1 ? '' : 's' }}</p>
-                  </div>
-                </div>
-
-                @if (itemsSeleccionados().length > 0) {
-                  <button
-                    type="button"
-                    data-testid="btn-limpiar-orden"
-                    (click)="limpiarOrden()"
-                    class="text-[11px] text-rose-600 hover:text-rose-700 font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-50 transition cursor-pointer">
-                    Vaciar
-                  </button>
-                }
-              </div>
-
-              <!-- Lista de Items en Orden -->
-              <div class="py-3 flex-1 space-y-2 max-h-72 overflow-y-auto">
-                @if (itemsSeleccionados().length === 0) {
-                  <div class="py-6 text-center text-slate-400 text-xs" data-testid="orden-vacia">
-                    <p class="font-medium">No hay atracciones seleccionadas.</p>
-                    <p class="text-[11px] text-slate-400 mt-1">Elige una modalidad en el catálogo y haz clic en "Añadir".</p>
-                  </div>
-                } @else {
-                  @for (item of itemsSeleccionados(); track $index) {
-                    <div
-                      [attr.data-testid]="'item-orden-' + $index"
-                      class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200/70 rounded-xl text-xs">
-                      <div class="min-w-0 pr-2">
-                        <p class="font-bold text-slate-800 truncate">{{ item.atraccion.nombre }}</p>
-                        <p class="text-[10px] text-slate-400">{{ item.modalidad.etiqueta }}</p>
-                      </div>
-                      <div class="flex items-center gap-2 shrink-0">
-                        <span class="font-bold font-mono text-slate-700">
-                          \${{ item.modalidad.precio.toLocaleString('es-CO') }}
-                        </span>
-                        <button
-                          type="button"
-                          [attr.data-testid]="'btn-quitar-item-' + $index"
-                          (click)="removerItemOrden($index)"
-                          class="w-5 h-5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer">
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  }
-                }
-              </div>
-
-              <!-- Subtotal de Orden -->
-              <div class="pt-3 border-t border-slate-100 space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Subtotal</span>
-                  <span data-testid="total-orden" class="text-base font-extrabold font-mono text-slate-800">
-                    \${{ totalOrden().toLocaleString('es-CO') }} COP
-                  </span>
-                </div>
-              </div>
-            </div>
+            <!-- Panel del Carrito Sincronizado (CA-04) -->
+            <app-pos-cart
+              [items]="itemsSeleccionados()"
+              [menores]="menoresOrden()"
+              (itemsChange)="itemsSeleccionados.set($event)">
+            </app-pos-cart>
 
             <!-- Estado de la Estación -->
             <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs text-slate-600 space-y-2">
@@ -451,7 +390,7 @@ export class TaquillaPosComponent implements OnInit {
   });
 
   readonly totalOrden = computed(() => {
-    return this.itemsSeleccionados().reduce((acc, item) => acc + item.modalidad.precio, 0);
+    return this.itemsSeleccionados().reduce((acc, item) => acc + ((item.cantidad ?? 1) * item.modalidad.precio), 0);
   });
 
   ngOnInit(): void {
@@ -476,7 +415,16 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   onAtraccionSeleccionada(sel: SeleccionCatalogoPOS): void {
-    this.itemsSeleccionados.update(prev => [...prev, sel]);
+    const menores = this.menoresOrden();
+    const menorPreasignado = sel.menorAsignado ?? (menores.length === 1 ? menores[0] : null);
+
+    const itemConValores: SeleccionCatalogoPOS = {
+      ...sel,
+      cantidad: sel.cantidad ?? 1,
+      menorAsignado: menorPreasignado
+    };
+
+    this.itemsSeleccionados.update(prev => [...prev, itemConValores]);
     this.notificationService?.success(`"${sel.atraccion.nombre}" (${sel.modalidad.etiqueta}) añadida a la orden.`);
   }
 
