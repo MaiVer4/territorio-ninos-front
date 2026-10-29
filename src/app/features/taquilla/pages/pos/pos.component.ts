@@ -14,6 +14,7 @@ import { Atraccion, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../..
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
+import { ConfirmarPagoModalComponent } from '../../components/confirmar-pago-modal/confirmar-pago-modal.component';
 import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
 import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
 import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
@@ -27,6 +28,7 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
     ReactiveFormsModule,
     AperturaCajaModalComponent,
     ArqueoCajaModalComponent,
+    ConfirmarPagoModalComponent,
     MenoresChipsComponent,
     CatalogoAtraccionesComponent,
     PosCartComponent
@@ -46,6 +48,17 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
           (confirmarArqueo)="onArqueoConfirmado($event)"
           (cancelar)="mostrarModalArqueo.set(false)">
         </app-arqueo-caja-modal>
+      }
+
+      <!-- Modal de Confirmación de Pago (Notion: CA-05) -->
+      @if (mostrarModalConfirmarPago() && resumenPendientePago()) {
+        <app-confirmar-pago-modal
+          [resumen]="resumenPendientePago()"
+          [clienteNombre]="nombreClienteTitular()"
+          [procesandoExterno]="procesandoPago()"
+          (confirmarPago)="onPagoConfirmado($event)"
+          (cancelar)="onCancelarConfirmacionPago()">
+        </app-confirmar-pago-modal>
       }
 
       <!-- Cabecera del POS -->
@@ -366,6 +379,9 @@ export class TaquillaPosComponent implements OnInit {
 
   readonly mostrarModalApertura = signal<boolean>(false);
   readonly mostrarModalArqueo = signal<boolean>(false);
+  readonly mostrarModalConfirmarPago = signal<boolean>(false);
+  readonly resumenPendientePago = signal<ResumenLiquidacionPOS | null>(null);
+  readonly procesandoPago = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
 
   readonly atracciones = signal<Atraccion[]>([]);
@@ -392,6 +408,10 @@ export class TaquillaPosComponent implements OnInit {
 
   readonly totalOrden = computed(() => {
     return this.itemsSeleccionados().reduce((acc, item) => acc + ((item.cantidad ?? 1) * item.modalidad.precio), 0);
+  });
+
+  readonly nombreClienteTitular = computed(() => {
+    return this.clienteSeleccionado()?.nombreCompleto || this.clienteForm.get('nombreCompleto')?.value || 'Cliente de Mostrador';
   });
 
   ngOnInit(): void {
@@ -438,10 +458,24 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   onLiquidarOrden(resumen: ResumenLiquidacionPOS): void {
+    this.resumenPendientePago.set(resumen);
+    this.mostrarModalConfirmarPago.set(true);
+  }
+
+  onCancelarConfirmacionPago(): void {
+    this.mostrarModalConfirmarPago.set(false);
+    this.resumenPendientePago.set(null);
+  }
+
+  onPagoConfirmado(resumen: ResumenLiquidacionPOS): void {
+    this.procesandoPago.set(true);
     this.notificationService?.success(
       `Orden liquidada exitosamente (${resumen.metodoPago}) por valor de $${resumen.granTotal.toLocaleString('es-CO')} COP.`
     );
     this.itemsSeleccionados.set([]);
+    this.mostrarModalConfirmarPago.set(false);
+    this.resumenPendientePago.set(null);
+    this.procesandoPago.set(false);
   }
 
   iniciarBusquedaCliente(): void {
@@ -498,7 +532,7 @@ export class TaquillaPosComponent implements OnInit {
   @HostListener('window:keydown', ['$event'])
   handleKeyboardShortcuts(event: KeyboardEvent): void {
     // Evitar interceptar atajos si hay un modal bloqueante activo
-    if (this.mostrarModalApertura() || this.mostrarModalArqueo()) {
+    if (this.mostrarModalApertura() || this.mostrarModalArqueo() || this.mostrarModalConfirmarPago()) {
       return;
     }
 

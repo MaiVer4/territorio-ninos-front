@@ -500,6 +500,16 @@ describe('TaquillaPosComponent', () => {
       fixture.detectChanges();
 
       expect(enfocarSpy).not.toHaveBeenCalled();
+
+      // Also verify when confirmar pago modal is active
+      component.mostrarModalArqueo.set(false);
+      component.mostrarModalConfirmarPago.set(true);
+      fixture.detectChanges();
+
+      window.dispatchEvent(event);
+      fixture.detectChanges();
+
+      expect(enfocarSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -659,7 +669,7 @@ describe('TaquillaPosComponent', () => {
       expect(notificationServiceSpy.error).toHaveBeenCalledWith('Error al cargar el catálogo de atracciones.');
     });
 
-    it('should handle liquidarOrden event from PosCartComponent, notify success, and clear itemsSeleccionados', async () => {
+    it('should open ConfirmarPagoModal when liquidarOrden is triggered from PosCartComponent', async () => {
       await setupComponent(mockTurno);
 
       component.itemsSeleccionados.set([
@@ -686,10 +696,68 @@ describe('TaquillaPosComponent', () => {
       component.onLiquidarOrden(resumen);
       fixture.detectChanges();
 
+      expect(component.mostrarModalConfirmarPago()).toBe(true);
+      expect(component.resumenPendientePago()).toEqual(resumen);
+
+      const modalEl = fixture.debugElement.query(By.css('app-confirmar-pago-modal'));
+      expect(modalEl).toBeTruthy();
+    });
+
+    it('should complete sale, notify success, and clear itemsSeleccionados when onPagoConfirmado is called', async () => {
+      await setupComponent(mockTurno);
+
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1
+        }
+      ]);
+      component.mostrarModalConfirmarPago.set(true);
+      fixture.detectChanges();
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: component.itemsSeleccionados(),
+        totalBoletas: 1,
+        subtotal: 7563,
+        porcentajeIva: 19,
+        impuestos: 1437,
+        granTotal: 9000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 10000,
+        cambio: 1000
+      };
+
+      component.onPagoConfirmado(resumen);
+      fixture.detectChanges();
+
       expect(component.itemsSeleccionados().length).toBe(0);
+      expect(component.mostrarModalConfirmarPago()).toBe(false);
+      expect(component.resumenPendientePago()).toBeNull();
       expect(notificationServiceSpy.success).toHaveBeenCalledWith(
         expect.stringContaining('Orden liquidada exitosamente')
       );
+    });
+
+    it('should close modal and retain items in order when onCancelarConfirmacionPago is called', async () => {
+      await setupComponent(mockTurno);
+
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1
+        }
+      ]);
+      component.mostrarModalConfirmarPago.set(true);
+      fixture.detectChanges();
+
+      component.onCancelarConfirmacionPago();
+      fixture.detectChanges();
+
+      expect(component.mostrarModalConfirmarPago()).toBe(false);
+      expect(component.resumenPendientePago()).toBeNull();
+      expect(component.itemsSeleccionados().length).toBe(1);
     });
   });
 });
