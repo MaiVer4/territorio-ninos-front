@@ -1,4 +1,4 @@
-import { Component, computed, Input, output, signal, ChangeDetectionStrategy, EventEmitter, Output } from '@angular/core';
+import { Component, computed, Input, signal, ChangeDetectionStrategy, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { MetodoPagoPOS } from '../../../../core/models/enums';

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, filter, switchMap, finalize, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CajaService } from '../../../../core/services/caja.service';
 import { ClienteService } from '../../../../core/services/cliente.service';
@@ -45,6 +45,7 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
         <app-arqueo-caja-modal
           [idTurno]="turnoActual()!.idTurno"
           [montoEsperado]="montoEsperadoArqueo()"
+          [procesandoExterno]="procesandoArqueo()"
           (confirmarArqueo)="onArqueoConfirmado($event)"
           (cancelar)="mostrarModalArqueo.set(false)">
         </app-arqueo-caja-modal>
@@ -261,7 +262,7 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
           <div class="mt-4 pt-3 border-t border-slate-100">
             <app-menores-chips
               [menores]="menoresOrden()"
-              (menoresChange)="menoresOrden.set($event)">
+              (menoresChange)="onMenoresOrdenChange($event)">
             </app-menores-chips>
           </div>
         </div>
@@ -348,7 +349,7 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
             </div>
             <span class="text-xs font-bold text-slate-800">{{ authService.currentUserName() }}</span>
             <span class="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              Taquillero
+              {{ authService.currentUser()?.rol === 'ADMINISTRADOR' ? 'Administrador' : 'Taquillero' }}
             </span>
           </div>
 
@@ -382,6 +383,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly mostrarModalConfirmarPago = signal<boolean>(false);
   readonly resumenPendientePago = signal<ResumenLiquidacionPOS | null>(null);
   readonly procesandoPago = signal<boolean>(false);
+  readonly procesandoArqueo = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
 
   readonly atracciones = signal<Atraccion[]>([]);
@@ -436,6 +438,19 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   onAtraccionSeleccionada(sel: SeleccionCatalogoPOS): void {
+    const capacidad = sel.atraccion.capacidadMaxima || sel.atraccion.maxCapacity || 10;
+    const ocupados = sel.atraccion.ninosActivos || 0;
+    const cuposDisponibles = Math.max(0, capacidad - ocupados);
+
+    const enCarrito = this.itemsSeleccionados()
+      .filter(it => it.atraccion.id === sel.atraccion.id)
+      .reduce((acc, it) => acc + (it.cantidad ?? 1), 0);
+
+    if (cuposDisponibles > 0 && enCarrito >= cuposDisponibles) {
+      this.notificationService?.warn(`No quedan más cupos disponibles para "${sel.atraccion.nombre}".`);
+      return;
+    }
+
     const menores = this.menoresOrden();
     const menorPreasignado = sel.menorAsignado ?? (menores.length === 1 ? menores[0] : null);
 
@@ -447,6 +462,25 @@ export class TaquillaPosComponent implements OnInit {
 
     this.itemsSeleccionados.update(prev => [...prev, itemConValores]);
     this.notificationService?.success(`"${sel.atraccion.nombre}" (${sel.modalidad.etiqueta}) añadida a la orden.`);
+  }
+
+  onMenoresOrdenChange(nuevosMenores: Menor[]): void {
+    this.menoresOrden.set(nuevosMenores);
+    const idsValidos = new Set(
+      nuevosMenores.map(m => m.idMenor !== undefined ? String(m.idMenor) : m.nombreCompleto)
+    );
+    this.itemsSeleccionados.update(items =>
+      items.map(item => {
+        if (!item.menorAsignado) return item;
+        const key = item.menorAsignado.idMenor !== undefined
+          ? String(item.menorAsignado.idMenor)
+          : item.menorAsignado.nombreCompleto;
+        if (!idsValidos.has(key)) {
+          return { ...item, menorAsignado: null };
+        }
+        return item;
+      })
+    );
   }
 
   removerItemOrden(index: number): void {
@@ -603,14 +637,32 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   onArqueoConfirmado(resultado: ResultadoArqueoDTO): void {
-    this.cajaService.cerrarTurno({
+    if (this.procesandoArqueo()) return;
+    this.procesandoArqueo.set(true);
+
+    const ejecutarCierre = () => this.cajaService.cerrarTurno({
       idTurno: resultado.idTurno,
       montoFinal: resultado.totalFisico,
       totalEfectivoReal: resultado.totalFisico,
       observaciones: resultado.justificacion,
       diferencia: resultado.diferencia,
       justificacion: resultado.justificacion
-    }).pipe(
+    });
+
+    const pipeline$ = (typeof this.cajaService.registrarArqueo === 'function')
+      ? this.cajaService.registrarArqueo(resultado.idTurno, resultado).pipe(
+          switchMap(() => ejecutarCierre()),
+          catchError((err) => {
+            if (err?.status === 404) {
+              return ejecutarCierre();
+            }
+            return throwError(() => err);
+          })
+        )
+      : ejecutarCierre();
+
+    pipeline$.pipe(
+      finalize(() => this.procesandoArqueo.set(false)),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {

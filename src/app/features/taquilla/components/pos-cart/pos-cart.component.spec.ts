@@ -369,5 +369,18 @@ describe('PosCartComponent', () => {
       expect(liquidacionResult!.items.length).toBe(2);
       expect(liquidacionResult!.fecha).toBeTruthy();
     });
+
+    it('should prevent incrementing when total across multiple lines reaches capacity', () => {
+      // mockItem1 has cap=10, ninosActivos=8 => 2 spots available.
+      // 2 separate lines of 1 ticket each = 2 tickets total.
+      const line1: SeleccionCatalogoPOS = { ...mockItem1, cantidad: 1 };
+      const line2: SeleccionCatalogoPOS = { ...mockItem1, cantidad: 1, modalidad: { ...mockItem1.modalidad, etiqueta: '30 min' } };
+      component.items = [line1, line2];
+      fixture.detectChanges();
+
+      expect(component.estaEnCapacidadMaxima(line1)).toBe(true);
+      const btnInc0 = fixture.debugElement.query(By.css('[data-testid="btn-incrementar-0"]'));
+      expect(btnInc0.nativeElement.disabled).toBe(true);
+    });
   });
 });

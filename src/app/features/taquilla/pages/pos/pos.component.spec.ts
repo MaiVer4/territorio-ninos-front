@@ -25,6 +25,7 @@ describe('TaquillaPosComponent', () => {
     obtenerTurnoActivo: ReturnType<typeof vi.fn>;
     abrirTurno: ReturnType<typeof vi.fn>;
     cerrarTurno: ReturnType<typeof vi.fn>;
+    registrarArqueo: ReturnType<typeof vi.fn>;
   };
   let clienteServiceSpy: {
     buscarPorDocumento: ReturnType<typeof vi.fn>;
@@ -101,7 +102,8 @@ describe('TaquillaPosComponent', () => {
     cajaServiceSpy = {
       obtenerTurnoActivo: vi.fn().mockReturnValue(of(null)),
       abrirTurno: vi.fn(),
-      cerrarTurno: vi.fn()
+      cerrarTurno: vi.fn(),
+      registrarArqueo: vi.fn().mockReturnValue(of({}))
     };
     clienteServiceSpy = {
       buscarPorDocumento: vi.fn().mockReturnValue(of(null)),
@@ -233,6 +235,7 @@ describe('TaquillaPosComponent', () => {
 
     component.onArqueoConfirmado(mockResultadoArqueo);
 
+    expect(cajaServiceSpy.registrarArqueo).toHaveBeenCalledWith(42, mockResultadoArqueo);
     expect(cajaServiceSpy.cerrarTurno).toHaveBeenCalledWith({
       idTurno: 42,
       montoFinal: 200000,
@@ -758,6 +761,60 @@ describe('TaquillaPosComponent', () => {
       expect(component.mostrarModalConfirmarPago()).toBe(false);
       expect(component.resumenPendientePago()).toBeNull();
       expect(component.itemsSeleccionados().length).toBe(1);
+    });
+
+    it('should warn and not add attraction when aggregate quantity in cart reaches capacity', async () => {
+      await setupComponent(mockTurno);
+      // mockAtraccion2 has cap=5, ninosActivos=1 => 4 available spots
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion2,
+          modalidad: { tipo: 'EVENTOS_CAIDAS', etiqueta: '3 caídas', valor: 3, precio: 10000 },
+          cantidad: 4
+        }
+      ]);
+
+      const selectionToAdd: SeleccionCatalogoPOS = {
+        atraccion: mockAtraccion2,
+        modalidad: { tipo: 'EVENTOS_CAIDAS', etiqueta: '5 caídas', valor: 5, precio: 15000 },
+        cantidad: 1
+      };
+
+      component.onAtraccionSeleccionada(selectionToAdd);
+
+      expect(component.itemsSeleccionados().length).toBe(1);
+      expect(notificationServiceSpy.warn).toHaveBeenCalledWith(
+        expect.stringContaining('No quedan más cupos disponibles')
+      );
+    });
+
+    it('should clean menorAsignado from cart items when the child is removed from menoresOrden', async () => {
+      await setupComponent(mockTurno);
+      const child1 = { idMenor: 101, nombreCompleto: 'Santi Pérez', edad: 4 };
+      const child2 = { idMenor: 102, nombreCompleto: 'Valentina Pérez', edad: 7 };
+
+      component.menoresOrden.set([child1, child2]);
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1,
+          menorAsignado: child1
+        },
+        {
+          atraccion: mockAtraccion2,
+          modalidad: { tipo: 'EVENTOS_CAIDAS', etiqueta: '3 caídas', valor: 3, precio: 10000 },
+          cantidad: 1,
+          menorAsignado: child2
+        }
+      ]);
+
+      // Remove child1, keeping only child2
+      component.onMenoresOrdenChange([child2]);
+
+      expect(component.menoresOrden().length).toBe(1);
+      expect(component.itemsSeleccionados()[0].menorAsignado).toBeNull();
+      expect(component.itemsSeleccionados()[1].menorAsignado).toEqual(child2);
     });
   });
 });

@@ -567,7 +567,10 @@ export class PosCartComponent {
     const capacidad = item.atraccion.capacidadMaxima || item.atraccion.maxCapacity || 10;
     const ocupados = item.atraccion.ninosActivos || 0;
     const cupos = Math.max(0, capacidad - ocupados);
-    return cupos > 0 && (item.cantidad ?? 1) >= cupos;
+    const reservadosEnCarrito = this._items()
+      .filter(it => it.atraccion.id === item.atraccion.id)
+      .reduce((acc, it) => acc + (it.cantidad ?? 1), 0);
+    return cupos <= 0 || reservadosEnCarrito >= cupos;
   }
 
   getIdentificadorMenor(menor: Menor | null | undefined): string {
