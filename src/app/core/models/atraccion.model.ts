@@ -1,4 +1,4 @@
-import { EstadoAtraccion, TipoAtraccion } from './enums';
+import { EstadoAtraccion, MetodoPagoPOS, TipoAtraccion } from './enums';
 import { Menor } from './cliente.model';
 
 export interface Atraccion {
@@ -43,3 +43,16 @@ export interface SeleccionCatalogoPOS {
 }
 
 export type CartItemPOS = SeleccionCatalogoPOS;
+
+export interface ResumenLiquidacionPOS {
+  items: SeleccionCatalogoPOS[];
+  totalBoletas?: number;
+  subtotal: number;
+  porcentajeIva: number;
+  impuestos: number;
+  granTotal: number;
+  metodoPago: MetodoPagoPOS;
+  montoRecibido: number;
+  cambio: number;
+  fecha?: Date;
+}

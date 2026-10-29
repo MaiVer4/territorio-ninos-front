@@ -9,7 +9,7 @@ import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente } from '../../../../core/models/cliente.model';
-import { Atraccion, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { Atraccion, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { By } from '@angular/platform-browser';
 
 describe('TaquillaPosComponent', () => {
@@ -657,6 +657,39 @@ describe('TaquillaPosComponent', () => {
 
       expect(component.atracciones()).toEqual([]);
       expect(notificationServiceSpy.error).toHaveBeenCalledWith('Error al cargar el catálogo de atracciones.');
+    });
+
+    it('should handle liquidarOrden event from PosCartComponent, notify success, and clear itemsSeleccionados', async () => {
+      await setupComponent(mockTurno);
+
+      component.itemsSeleccionados.set([
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1
+        }
+      ]);
+      fixture.detectChanges();
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: component.itemsSeleccionados(),
+        totalBoletas: 1,
+        subtotal: 7563,
+        porcentajeIva: 19,
+        impuestos: 1437,
+        granTotal: 9000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 10000,
+        cambio: 1000
+      };
+
+      component.onLiquidarOrden(resumen);
+      fixture.detectChanges();
+
+      expect(component.itemsSeleccionados().length).toBe(0);
+      expect(notificationServiceSpy.success).toHaveBeenCalledWith(
+        expect.stringContaining('Orden liquidada exitosamente')
+      );
     });
   });
 });

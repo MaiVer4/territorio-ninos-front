@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { PosCartComponent } from './pos-cart.component';
-import { SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { Menor } from '../../../../core/models/cliente.model';
 
 describe('PosCartComponent', () => {
@@ -111,7 +111,8 @@ describe('PosCartComponent', () => {
 
     expect(emittedItems.length).toBe(1);
     expect(emittedItems[0].cantidad).toBe(2);
-    expect(component.subtotal()).toBe(18000);
+    expect(component.granTotal()).toBe(18000);
+    expect(component.subtotal()).toBe(15126);
   });
 
   it('should disable + button when reaching available attraction capacity', () => {
@@ -222,5 +223,151 @@ describe('PosCartComponent', () => {
 
     expect(emittedItems.length).toBe(1);
     expect(emittedItems[0].menorAsignado).toBeNull();
+  });
+
+  describe('Panel de Liquidación, Métodos de Pago y Cambio (CA-01, CA-02, CA-03)', () => {
+    beforeEach(() => {
+      component.items = [mockItem1, mockItem2]; // total: 9000 + 20000 = 29000
+      component.menores = mockMenores;
+      fixture.detectChanges();
+    });
+
+    it('should calculate and display subtotal base, IVA 19%, and gran total correctly', () => {
+      // granTotal = 29.000
+      // subtotal = Math.round(29000 / 1.19) = 24.370
+      // impuestos = 29000 - 24370 = 4.630
+      expect(component.granTotal()).toBe(29000);
+      expect(component.subtotal()).toBe(24370);
+      expect(component.impuestos()).toBe(4630);
+
+      const subtotalEl = fixture.debugElement.query(By.css('[data-testid="subtotal-orden"]'));
+      const impuestosEl = fixture.debugElement.query(By.css('[data-testid="impuestos-orden"]'));
+      const granTotalEl = fixture.debugElement.query(By.css('[data-testid="gran-total-orden"]'));
+
+      expect(subtotalEl.nativeElement.textContent).toContain('$24.370');
+      expect(impuestosEl.nativeElement.textContent).toContain('$4.630');
+      expect(granTotalEl.nativeElement.textContent).toContain('$29.000');
+    });
+
+    it('should allow switching payment methods and adjust validation state', () => {
+      expect(component.metodoPago()).toBe('EFECTIVO');
+      // For EFECTIVO with montoRecibido = 0 and granTotal > 0, pagoValido is false
+      expect(component.pagoValido()).toBe(false);
+
+      // Switch to TARJETA_DEBITO
+      const btnDebito = fixture.debugElement.query(By.css('[data-testid="btn-metodo-tarjeta-debito"]'));
+      btnDebito.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.metodoPago()).toBe('TARJETA_DEBITO');
+      expect(component.pagoValido()).toBe(true);
+
+      // Input for cash should not be present
+      const inputEfectivo = fixture.debugElement.query(By.css('[data-testid="input-monto-recibido"]'));
+      expect(inputEfectivo).toBeNull();
+
+      // Switch to TARJETA_CREDITO
+      const btnCredito = fixture.debugElement.query(By.css('[data-testid="btn-metodo-tarjeta-credito"]'));
+      btnCredito.nativeElement.click();
+      fixture.detectChanges();
+      expect(component.metodoPago()).toBe('TARJETA_CREDITO');
+      expect(component.pagoValido()).toBe(true);
+
+      // Switch to TRANSFERENCIA
+      const btnTransf = fixture.debugElement.query(By.css('[data-testid="btn-metodo-transferencia"]'));
+      btnTransf.nativeElement.click();
+      fixture.detectChanges();
+      expect(component.metodoPago()).toBe('TRANSFERENCIA');
+      expect(component.pagoValido()).toBe(true);
+
+      // Switch back to EFECTIVO
+      const btnEfectivo = fixture.debugElement.query(By.css('[data-testid="btn-metodo-efectivo"]'));
+      btnEfectivo.nativeElement.click();
+      fixture.detectChanges();
+      expect(component.metodoPago()).toBe('EFECTIVO');
+      expect(component.pagoValido()).toBe(false);
+    });
+
+    it('should calculate cash change (vuelto) when received cash exceeds total', () => {
+      // Cash input of 50.000 COP for 29.000 COP order
+      const input = fixture.debugElement.query(By.css('[data-testid="input-monto-recibido"]'));
+      input.nativeElement.value = '50000';
+      input.nativeElement.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(50000);
+      expect(component.cambio()).toBe(21000);
+      expect(component.faltanteEfectivo()).toBe(0);
+      expect(component.pagoValido()).toBe(true);
+
+      const cambioEl = fixture.debugElement.query(By.css('[data-testid="valor-cambio"]'));
+      expect(cambioEl).toBeTruthy();
+      expect(cambioEl.nativeElement.textContent).toContain('$21.000');
+    });
+
+    it('should show faltante alert and disable confirm button when cash is insufficient', () => {
+      // Cash input of 20.000 COP for 29.000 COP order -> faltante = 9.000 COP
+      const input = fixture.debugElement.query(By.css('[data-testid="input-monto-recibido"]'));
+      input.nativeElement.value = '20000';
+      input.nativeElement.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(20000);
+      expect(component.cambio()).toBe(0);
+      expect(component.faltanteEfectivo()).toBe(9000);
+      expect(component.pagoValido()).toBe(false);
+
+      const faltanteEl = fixture.debugElement.query(By.css('[data-testid="valor-faltante"]'));
+      expect(faltanteEl).toBeTruthy();
+      expect(faltanteEl.nativeElement.textContent).toContain('$9.000');
+
+      const btnLiquidar = fixture.debugElement.query(By.css('[data-testid="btn-liquidar-orden"]'));
+      expect(btnLiquidar.nativeElement.disabled).toBe(true);
+    });
+
+    it('should select exact cash amount with shortcut button', () => {
+      const btnExacto = fixture.debugElement.query(By.css('[data-testid="btn-atajo-exacto"]'));
+      btnExacto.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(29000);
+      expect(component.cambio()).toBe(0);
+      expect(component.pagoValido()).toBe(true);
+    });
+
+    it('should select denomination shortcut button ($50.000)', () => {
+      const btn50k = fixture.debugElement.query(By.css('[data-testid="btn-atajo-50000"]'));
+      btn50k.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(50000);
+      expect(component.cambio()).toBe(21000);
+      expect(component.pagoValido()).toBe(true);
+    });
+
+    it('should emit liquidarOrden with full summary when clicking Cobrar y Liquidar Orden', () => {
+      let liquidacionResult: ResumenLiquidacionPOS | null = null;
+      component.liquidarOrden.subscribe(res => liquidacionResult = res);
+
+      // Select exact cash amount
+      component.seleccionarEfectivoExacto();
+      fixture.detectChanges();
+
+      const btnLiquidar = fixture.debugElement.query(By.css('[data-testid="btn-liquidar-orden"]'));
+      expect(btnLiquidar.nativeElement.disabled).toBe(false);
+      btnLiquidar.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(liquidacionResult).toBeTruthy();
+      expect(liquidacionResult!.granTotal).toBe(29000);
+      expect(liquidacionResult!.subtotal).toBe(24370);
+      expect(liquidacionResult!.impuestos).toBe(4630);
+      expect(liquidacionResult!.totalBoletas).toBe(3);
+      expect(liquidacionResult!.metodoPago).toBe('EFECTIVO');
+      expect(liquidacionResult!.montoRecibido).toBe(29000);
+      expect(liquidacionResult!.cambio).toBe(0);
+      expect(liquidacionResult!.items.length).toBe(2);
+      expect(liquidacionResult!.fecha).toBeTruthy();
+    });
   });
 });

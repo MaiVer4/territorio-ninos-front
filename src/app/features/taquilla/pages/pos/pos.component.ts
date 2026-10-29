@@ -10,7 +10,7 @@ import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente, Menor } from '../../../../core/models/cliente.model';
-import { Atraccion, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { Atraccion, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
@@ -282,7 +282,8 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
             <app-pos-cart
               [items]="itemsSeleccionados()"
               [menores]="menoresOrden()"
-              (itemsChange)="itemsSeleccionados.set($event)">
+              (itemsChange)="itemsSeleccionados.set($event)"
+              (liquidarOrden)="onLiquidarOrden($event)">
             </app-pos-cart>
 
             <!-- Estado de la Estación -->
@@ -433,6 +434,13 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   limpiarOrden(): void {
+    this.itemsSeleccionados.set([]);
+  }
+
+  onLiquidarOrden(resumen: ResumenLiquidacionPOS): void {
+    this.notificationService?.success(
+      `Orden liquidada exitosamente (${resumen.metodoPago}) por valor de $${resumen.granTotal.toLocaleString('es-CO')} COP.`
+    );
     this.itemsSeleccionados.set([]);
   }
 
