@@ -39,6 +39,25 @@ testem.log
 /typings
 __screenshots__/
 
+# Logs
+*.log
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# AI Assistants & Agents
+.gemini/
+.claude/
+.claude.json
+.cursor/
+.cursorrules
+.windsurf/
+.deska/
+.copilot/
+.aider*
+
 # System files
 .DS_Store
 Thumbs.db
