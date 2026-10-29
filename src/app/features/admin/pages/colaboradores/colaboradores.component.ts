@@ -188,7 +188,7 @@ export class ColaboradoresComponent implements OnInit {
   }
 
   getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    return name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
   }
 
   formatRol(rol?: string): string {

@@ -175,7 +175,7 @@ export class TurnosComponent implements OnInit {
   }
 
   getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2);
+    return name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2);
   }
 
   exportarCsv(): void {
