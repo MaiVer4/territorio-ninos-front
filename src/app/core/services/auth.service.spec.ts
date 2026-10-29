@@ -171,5 +171,16 @@ describe('AuthService', () => {
       expect(service.currentUserName()).toBe('Usuario');
       expect(service.currentUserInitials()).toBe('U');
     });
+
+    it('should extract role directly from decoded JWT when valid token is stored', () => {
+      // JWT with exp in the future and rol: 'OPERARIO', while localStorage object tampered with 'ADMINISTRADOR'
+      const fakeJwt = 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJleHAiOjk5OTk5OTk5OTksInJvbCI6Ik9QRVJBUklPIn0.';
+      localStorage.setItem(TOKEN_KEY, JSON.stringify({
+        token: fakeJwt,
+        rol: 'ADMINISTRADOR'
+      }));
+
+      expect(service.getRole()).toBe('OPERARIO');
+    });
   });
 });

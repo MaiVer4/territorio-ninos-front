@@ -39,6 +39,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [authGuard],
+    canActivateChild: [authGuard],
     data: { roles: ['ADMINISTRADOR'] },
     loadComponent: () => import('./features/admin/layout/admin-layout/admin-layout.component').then(m => m.AdminLayoutComponent),
     children: [

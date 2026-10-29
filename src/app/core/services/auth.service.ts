@@ -174,11 +174,23 @@ export class AuthService {
   }
 
   getRole(): RolUsuario | null {
+    const token = this.getToken();
+    if (token) {
+      try {
+        const decoded = jwtDecode<JwtPayload>(token);
+        if (decoded?.rol) {
+          return decoded.rol;
+        }
+      } catch {
+        // En caso de tokens mock en pruebas unitarias, recurrir al objeto persistido
+      }
+    }
+
     try {
       const authData = localStorage.getItem(this.TOKEN_KEY);
       if (authData) {
         const response: AuthResponse = JSON.parse(authData);
-        return response.rol;
+        return (response.rol as RolUsuario) || null;
       }
     } catch (e) {
       console.error('Error leyendo rol de localStorage', e);
