@@ -382,5 +382,69 @@ describe('PosCartComponent', () => {
       const btnInc0 = fixture.debugElement.query(By.css('[data-testid="btn-incrementar-0"]'));
       expect(btnInc0.nativeElement.disabled).toBe(true);
     });
+
+    it('should reset payment state (montoRecibido, format, and metodoPago) when items is set to empty array', () => {
+      // Set to tarjeta and some cash value
+      component.metodoPago.set('TARJETA_DEBITO');
+      component.montoRecibido.set(50000);
+      component.montoRecibidoFormateado.set('$50.000');
+      fixture.detectChanges();
+
+      // Parent component clears cart after successful sale
+      component.items = [];
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(0);
+      expect(component.montoRecibidoFormateado()).toBe('');
+      expect(component.metodoPago()).toBe('EFECTIVO');
+    });
+
+    it('should recalculate subtotal base and taxes dynamically when porcentajeIva input changes', () => {
+      component.porcentajeIva = 0; // Tax-exempt
+      fixture.detectChanges();
+
+      expect(component.granTotal()).toBe(29000);
+      expect(component.subtotal()).toBe(29000);
+      expect(component.impuestos()).toBe(0);
+
+      const subtotalEl = fixture.debugElement.query(By.css('[data-testid="subtotal-orden"]'));
+      const impuestosEl = fixture.debugElement.query(By.css('[data-testid="impuestos-orden"]'));
+      expect(subtotalEl.nativeElement.textContent).toContain('$29.000');
+      expect(impuestosEl.nativeElement.textContent).toContain('$0');
+    });
+
+    it('should sanitize non-numeric input in input-monto-recibido and format properly', () => {
+      const input = fixture.debugElement.query(By.css('[data-testid="input-monto-recibido"]'));
+
+      // Non-numeric characters sanitized
+      input.nativeElement.value = '$ 45.000 COP';
+      input.nativeElement.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(45000);
+      expect(component.montoRecibidoFormateado()).toBe('$45.000');
+
+      // Empty input
+      input.nativeElement.value = '';
+      input.nativeElement.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(component.montoRecibido()).toBe(0);
+      expect(component.montoRecibidoFormateado()).toBe('');
+    });
+
+    it('should not emit liquidarOrden if pagoValido is false', () => {
+      let emitted = false;
+      component.liquidarOrden.subscribe(() => emitted = true);
+
+      // Cash shortfall: 10.000 received for 29.000 total
+      component.montoRecibido.set(10000);
+      fixture.detectChanges();
+
+      expect(component.pagoValido()).toBe(false);
+      component.confirmarLiquidacion();
+
+      expect(emitted).toBe(false);
+    });
   });
 });

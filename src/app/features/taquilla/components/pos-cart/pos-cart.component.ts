@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, EventEmitter, Input, Output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, inject, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { Menor } from '../../../../core/models/cliente.model';
 import { MetodoPagoPOS } from '../../../../core/models/enums';
+import { VentaCalculoService } from '../../../../core/services/venta-calculo.service';
 
 @Component({
   selector: 'app-pos-cart',
@@ -374,8 +375,14 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
   `
 })
 export class PosCartComponent {
+  readonly ventaCalculoService = inject(VentaCalculoService);
+
   @Input() set items(val: SeleccionCatalogoPOS[] | null | undefined) {
-    this._items.set(val ? [...val] : []);
+    const list = val ? [...val] : [];
+    this._items.set(list);
+    if (list.length === 0) {
+      this.resetearEstadoCobro();
+    }
   }
   get items(): SeleccionCatalogoPOS[] {
     return this._items();
@@ -407,22 +414,19 @@ export class PosCartComponent {
   readonly atajosEfectivo = [20000, 50000, 100000];
 
   readonly totalBoletas = computed(() => {
-    return this._items().reduce((acc, it) => acc + (it.cantidad ?? 1), 0);
+    return this.ventaCalculoService.calcularTotalBoletas(this._items());
   });
 
   readonly granTotal = computed(() => {
-    return this._items().reduce((acc, it) => acc + ((it.cantidad ?? 1) * it.modalidad.precio), 0);
+    return this.ventaCalculoService.calcularGranTotal(this._items());
   });
 
   readonly subtotal = computed(() => {
-    const total = this.granTotal();
-    const iva = this._porcentajeIva();
-    if (iva <= 0) return total;
-    return Math.round(total / (1 + (iva / 100)));
+    return this.ventaCalculoService.calcularSubtotalBase(this.granTotal(), this._porcentajeIva());
   });
 
   readonly impuestos = computed(() => {
-    return this.granTotal() - this.subtotal();
+    return this.ventaCalculoService.calcularImpuestos(this.granTotal(), this._porcentajeIva());
   });
 
   readonly itemsSinMenor = computed(() => {
@@ -430,21 +434,20 @@ export class PosCartComponent {
   });
 
   readonly cambio = computed(() => {
-    if (this.metodoPago() !== 'EFECTIVO') return 0;
-    return Math.max(0, this.montoRecibido() - this.granTotal());
+    return this.ventaCalculoService.calcularCambio(this.granTotal(), this.montoRecibido(), this.metodoPago());
   });
 
   readonly faltanteEfectivo = computed(() => {
-    if (this.metodoPago() !== 'EFECTIVO') return 0;
-    return Math.max(0, this.granTotal() - this.montoRecibido());
+    return this.ventaCalculoService.calcularFaltanteEfectivo(this.granTotal(), this.montoRecibido(), this.metodoPago());
   });
 
   readonly pagoValido = computed(() => {
-    if (this._items().length === 0) return false;
-    if (this.metodoPago() === 'EFECTIVO') {
-      return this.montoRecibido() >= this.granTotal();
-    }
-    return true;
+    return this.ventaCalculoService.esPagoValido(
+      this._items(),
+      this.granTotal(),
+      this.montoRecibido(),
+      this.metodoPago()
+    );
   });
 
   incrementarCantidad(index: number): void {
@@ -489,14 +492,22 @@ export class PosCartComponent {
   removerItem(index: number): void {
     const list = this._items().filter((_, i) => i !== index);
     this._items.set(list);
+    if (list.length === 0) {
+      this.resetearEstadoCobro();
+    }
     this.itemsChange.emit(list);
   }
 
   limpiarCarrito(): void {
     this._items.set([]);
+    this.resetearEstadoCobro();
+    this.itemsChange.emit([]);
+  }
+
+  resetearEstadoCobro(): void {
     this.montoRecibido.set(0);
     this.montoRecibidoFormateado.set('');
-    this.itemsChange.emit([]);
+    this.metodoPago.set('EFECTIVO');
   }
 
   asignarMenor(index: number, identificador: string): void {
@@ -547,18 +558,13 @@ export class PosCartComponent {
   confirmarLiquidacion(): void {
     if (!this.pagoValido()) return;
 
-    const resumen: ResumenLiquidacionPOS = {
+    const resumen = this.ventaCalculoService.construirResumenLiquidacion({
       items: this._items(),
-      totalBoletas: this.totalBoletas(),
-      subtotal: this.subtotal(),
       porcentajeIva: this._porcentajeIva(),
-      impuestos: this.impuestos(),
-      granTotal: this.granTotal(),
       metodoPago: this.metodoPago(),
-      montoRecibido: this.metodoPago() === 'EFECTIVO' ? this.montoRecibido() : this.granTotal(),
-      cambio: this.cambio(),
+      montoRecibido: this.montoRecibido(),
       fecha: new Date()
-    };
+    });
 
     this.liquidarOrden.emit(resumen);
   }
@@ -579,6 +585,6 @@ export class PosCartComponent {
   }
 
   formatearCOP(valor: number): string {
-    return '$' + (valor || 0).toLocaleString('es-CO');
+    return this.ventaCalculoService.formatearCOP(valor);
   }
 }
