@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal, computed, DestroyRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { UsuarioService } from '../../../../core/services/usuario.service';
@@ -232,38 +234,24 @@ export class AsignacionesComponent implements OnInit {
   }
 
   refresh() {
-    // 1. Cargar atracciones
-    this.atraccionService.getAll()
+    forkJoin({
+      atracciones: this.atraccionService.getAll().pipe(catchError(() => of([] as Atraccion[]))),
+      usuarios: this.usuarioService.getAll().pipe(catchError(() => of([] as Usuario[]))),
+      asignaciones: this.asignacionService.getActiveAssignments().pipe(catchError(() => of([] as AsignacionOperario[])))
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          if (data && data.length > 0) {
-            this.atracciones.set(data.filter(a => a.estado !== 'INACTIVO'));
-          } else {
-            this.atracciones.set([]);
-          }
-        },
-        error: () => this.atracciones.set([])
-      });
-
-    // 2. Cargar operarios
-    this.usuarioService.getAll()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          if (data) {
-            this.operarios.set(data.filter(u => u.rol === 'OPERARIO' && u.estado === 'ACTIVO'));
-          }
-        },
-        error: () => this.operarios.set([])
-      });
-
-    // 3. Cargar asignaciones activas
-    this.asignacionService.getActiveAssignments()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => this.asignaciones.set(data || []),
-        error: () => this.asignaciones.set([])
+      .subscribe(({ atracciones, usuarios, asignaciones }) => {
+        this.atracciones.set(
+          atracciones && atracciones.length > 0
+            ? atracciones.filter(a => a.estado !== 'INACTIVO')
+            : []
+        );
+        this.operarios.set(
+          usuarios
+            ? usuarios.filter(u => u.rol === 'OPERARIO' && u.estado === 'ACTIVO')
+            : []
+        );
+        this.asignaciones.set(asignaciones || []);
       });
   }
 

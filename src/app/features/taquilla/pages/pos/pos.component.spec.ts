@@ -939,5 +939,54 @@ describe('TaquillaPosComponent', () => {
       expect(component.itemsSeleccionados()[0].menorAsignado).toBeNull();
       expect(component.itemsSeleccionados()[1].menorAsignado).toEqual(child2);
     });
+
+    it('should reset customer form and menoresOrden after payment confirmation and clear emission queue on shift close', async () => {
+      await setupComponent(mockTurno);
+      component.clienteForm.patchValue({
+        numeroDocumento: '12345678',
+        nombreCompleto: 'Carlos Ruiz',
+        telefono: '3001112233'
+      });
+      component.menoresOrden.set([{ idMenor: 1, nombreCompleto: 'Leo Ruiz', edad: 5 }]);
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: [
+          {
+            atraccion: mockAtraccion1,
+            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+            cantidad: 1
+          }
+        ],
+        totalBoletas: 1,
+        subtotal: 7563,
+        porcentajeIva: 19,
+        impuestos: 1437,
+        granTotal: 9000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 10000,
+        cambio: 1000
+      };
+
+      component.onPagoConfirmado(resumen);
+
+      expect(component.clienteForm.get('numeroDocumento')?.value).toBe('');
+      expect(component.clienteForm.get('nombreCompleto')?.value).toBe('');
+      expect(component.menoresOrden().length).toBe(0);
+      expect(component.colaEmisionService.ordenes().length).toBeGreaterThan(0);
+
+      // Now close shift via arqueo
+      cajaServiceSpy.cerrarTurno.mockReturnValue(of({ ...mockTurno, estado: 'CERRADO' }));
+      component.onArqueoConfirmado({
+        idTurno: 42,
+        totalEsperado: 159000,
+        totalFisico: 159000,
+        diferencia: 0,
+        estadoArqueo: 'EXACTO',
+        justificacion: '',
+        desglose: []
+      });
+      expect(component.colaEmisionService.ordenes().length).toBe(0);
+      expect(component.colaEmisionService.historialTicketsTurno().length).toBe(0);
+    });
   });
 });

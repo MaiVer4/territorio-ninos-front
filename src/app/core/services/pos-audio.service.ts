@@ -5,6 +5,7 @@ import { Injectable, signal } from '@angular/core';
 })
 export class PosAudioService {
   readonly sonidoHabilitado = signal<boolean>(true);
+  private activeCtx: AudioContext | null = null;
 
   /**
    * Reproduce un chime sutil y breve de confirmación de pago
@@ -27,7 +28,18 @@ export class PosAudioService {
         return false;
       }
 
+      // Cerrar preventivamente el contexto anterior si aún seguía abierto para evitar agotar el límite del navegador
+      if (this.activeCtx && this.activeCtx.state !== 'closed') {
+        try {
+          this.activeCtx.close().catch(() => {});
+        } catch {
+          // Ignorar errores al cerrar instancia previa
+        }
+        this.activeCtx = null;
+      }
+
       const ctx = new AudioCtxClass();
+      this.activeCtx = ctx;
 
       // En navegadores modernos con autoplay bloqueado, intentar reanudar
       if (ctx.state === 'suspended') {
@@ -57,6 +69,9 @@ export class PosAudioService {
 
       osc.onended = () => {
         try {
+          if (this.activeCtx === ctx) {
+            this.activeCtx = null;
+          }
           ctx.close().catch(() => {});
         } catch {
           // Ignorar errores al cerrar

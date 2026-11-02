@@ -619,7 +619,7 @@ export class TaquillaPosComponent implements OnInit {
   });
 
   readonly totalOrden = computed(() => {
-    return this.itemsSeleccionados().reduce((acc, item) => acc + ((item.cantidad ?? 1) * item.modalidad.precio), 0);
+    return this.ventaCalculoService.calcularGranTotal(this.itemsSeleccionados());
   });
 
   readonly nombreClienteTitular = computed(() => {
@@ -734,8 +734,9 @@ export class TaquillaPosComponent implements OnInit {
       });
     }
 
-    // 4. Limpiar carrito de compras
+    // 4. Limpiar carrito de compras y restablecer cliente/menores para la siguiente venta
     this.itemsSeleccionados.set([]);
+    this.limpiarCliente();
 
     // 5. Cerrar modal y mostrar cola de emisión física
     this.mostrarModalConfirmarPago.set(false);
@@ -949,6 +950,11 @@ export class TaquillaPosComponent implements OnInit {
       next: () => {
         this.mostrarModalArqueo.set(false);
         this.turnoActual.set(null);
+        this.itemsSeleccionados.set([]);
+        this.limpiarCliente();
+        this.colaEmisionService.limpiarTodo();
+        this.mostrarColaEmision.set(false);
+        this.indiceCarruselPorOrden.set({});
         this.notificationService?.success('Arqueo de caja registrado y turno cerrado exitosamente.');
         this.mostrarModalApertura.set(true);
       },
@@ -960,6 +966,7 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   logout(): void {
+    this.colaEmisionService.limpiarTodo();
     this.authService.logout();
   }
 }
