@@ -26,7 +26,6 @@ yarn-error.log
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-!.vscode/mcp.json
 .history/*
 
 # Miscellaneous
@@ -47,16 +46,32 @@ __screenshots__/
 .env.*
 !.env.example
 
-# AI Assistants & Agents
+# AI Assistants, Agents & MCP
 .gemini/
 .claude/
 .claude.json
+CLAUDE.md
 .cursor/
 .cursorrules
 .windsurf/
+.windsurfrules
 .deska/
 .copilot/
 .aider*
+.agents/
+AGENTS.md
+.cline/
+.clinerules
+.roo/
+.roomodes
+.continue/
+.codeium/
+.cody/
+*mcp.json
+.mcp/
+.system_generated/
+brain/
+*.prompt
 
 # System files
 .DS_Store
