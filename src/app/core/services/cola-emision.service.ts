@@ -1,0 +1,256 @@
+import { Injectable, computed, signal } from '@angular/core';
+import { BoletaEmisionFisica, OrdenEmisionFisica, ResumenLiquidacionPOS } from '../models/atraccion.model';
+import { ContextoVentaTicket, EstadoTicket, Ticket, VentaResponseDTO } from '../models/ticket.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ColaEmisionService {
+  readonly ordenes = signal<OrdenEmisionFisica[]>([]);
+  readonly ordenReciente = signal<OrdenEmisionFisica | null>(null);
+
+  /**
+   * Lista reactiva de boletas individuales generadas en la venta más reciente (HU-19.09 / SCRUM-368).
+   */
+  readonly boletasGeneradas = signal<Ticket[]>([]);
+
+  /**
+   * Historial acumulado de boletas generadas durante el turno activo.
+   */
+  readonly historialTicketsTurno = signal<Ticket[]>([]);
+
+  readonly totalBoletasGeneradas = computed(() => {
+    return this.boletasGeneradas().length;
+  });
+
+  readonly cantidadBoletasTurno = computed(() => {
+    return this.historialTicketsTurno().length;
+  });
+
+  readonly boletasGeneradasPendientes = computed(() => {
+    return this.boletasGeneradas().filter(b => b.estado === 'PENDIENTE' || b.estado === 'GENERADO');
+  });
+
+  readonly ordenesPendientes = computed(() => {
+    return this.ordenes().filter(o => o.estado === 'PENDIENTE');
+  });
+
+  readonly cantidadOrdenesPendientes = computed(() => {
+    return this.ordenesPendientes().length;
+  });
+
+  readonly totalBoletasPendientes = computed(() => {
+    return this.ordenesPendientes().reduce((acc, o) => {
+      return acc + o.boletas.filter(b => b.estado === 'PENDIENTE').length;
+    }, 0);
+  });
+
+  /**
+   * Mapea en el estado de la aplicación la lista de boletas generadas tras recibir la respuesta de venta (HU-19.09 / SCRUM-368).
+   * Acepta tanto DTOs del backend (`VentaResponseDTO`) como el resumen de cálculo POS (`ResumenLiquidacionPOS`).
+   */
+  mapearBoletasDesdeRespuestaVenta(
+    origen: ResumenLiquidacionPOS | VentaResponseDTO,
+    contexto?: ContextoVentaTicket
+  ): Ticket[] {
+    const timestamp = Date.now();
+    const boletasMapeadas: Ticket[] = [];
+
+    const origenDTO = origen as VentaResponseDTO;
+    const listaDTO = origenDTO.boletas || origenDTO.tickets;
+
+    if (Array.isArray(listaDTO) && listaDTO.length > 0) {
+      listaDTO.forEach((item, index) => {
+        const atraccionId = item.atraccionId ?? 0;
+        const codigoBoleta =
+          item.codigoBoleta?.trim() ||
+          `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(index + 1).padStart(3, '0')}`;
+        const codigoQr = item.codigoQr?.trim() || `TDN-QR:${codigoBoleta}`;
+
+        const ticket: Ticket = {
+          id: item.id ?? item.idTicket,
+          idTicket: item.idTicket ?? item.id,
+          idVenta: origenDTO.idVenta ?? contexto?.idVenta,
+          idOrden: item.idOrden ?? origenDTO.idOrden ?? contexto?.idOrden,
+          codigoBoleta,
+          codigoQr,
+          atraccionId,
+          atraccionNombre: item.atraccionNombre || 'Atracción',
+          tipoAtraccion: item.tipoAtraccion,
+          modalidadEtiqueta: item.modalidadEtiqueta || 'Estándar',
+          duracionMinutos: item.duracionMinutos,
+          caidasPermitidas: item.caidasPermitidas,
+          menorId: item.menorId,
+          menorNombre: item.menorNombre?.trim() || 'Sin menor asignado',
+          menorEdad: item.menorEdad,
+          clienteId: item.clienteId ?? origenDTO.clienteId ?? contexto?.clienteId,
+          clienteNombre:
+            item.clienteNombre?.trim() ||
+            origenDTO.clienteNombre?.trim() ||
+            contexto?.clienteNombre?.trim() ||
+            'Cliente de Mostrador',
+          clienteDocumento:
+            item.clienteDocumento?.trim() ||
+            origenDTO.clienteDocumento?.trim() ||
+            contexto?.clienteDocumento?.trim(),
+          precioUnitario: item.precioUnitario ?? 0,
+          metodoPago: item.metodoPago ?? origenDTO.metodoPago ?? contexto?.metodoPago,
+          fechaEmision: item.fechaEmision ?? origenDTO.fecha ?? contexto?.fechaEmision ?? new Date(),
+          estado: (item.estado as EstadoTicket) ?? 'GENERADO',
+          observaciones: item.observaciones
+        };
+
+        boletasMapeadas.push(ticket);
+      });
+    } else {
+      const resumenPOS = origen as ResumenLiquidacionPOS;
+      let contadorBoleta = 1;
+
+      for (const item of resumenPOS.items || []) {
+        const cantidad = Math.max(1, item.cantidad ?? 1);
+        const menorNombre = item.menorAsignado?.nombreCompleto?.trim() || 'Sin menor asignado';
+        const atraccionId = item.atraccion.id ?? 0;
+
+        for (let i = 0; i < cantidad; i++) {
+          const codigoBoleta = `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(contadorBoleta).padStart(3, '0')}`;
+          const codigoQr = `TDN-QR:${codigoBoleta}`;
+          contadorBoleta++;
+
+          const ticket: Ticket = {
+            idTicket: undefined,
+            idOrden: contexto?.idOrden,
+            idVenta: contexto?.idVenta,
+            codigoBoleta,
+            codigoQr,
+            atraccionId,
+            atraccionNombre: item.atraccion.nombre,
+            tipoAtraccion: item.atraccion.tipo,
+            modalidadEtiqueta: item.modalidad.etiqueta,
+            duracionMinutos: item.atraccion.tipo === 'TEMPORIZADA' ? item.modalidad.valor : undefined,
+            caidasPermitidas: item.atraccion.tipo === 'EVENTOS_CAIDAS' ? item.modalidad.valor : undefined,
+            menorId: item.menorAsignado?.idMenor,
+            menorNombre,
+            menorEdad: item.menorAsignado?.edad,
+            clienteId: contexto?.clienteId,
+            clienteNombre: contexto?.clienteNombre?.trim() || 'Cliente de Mostrador',
+            clienteDocumento: contexto?.clienteDocumento?.trim(),
+            precioUnitario: item.modalidad.precio,
+            metodoPago: resumenPOS.metodoPago ?? contexto?.metodoPago,
+            fechaEmision: contexto?.fechaEmision ?? new Date(),
+            estado: 'PENDIENTE'
+          };
+
+          boletasMapeadas.push(ticket);
+        }
+      }
+    }
+
+    // Actualizar estado reactivo de la aplicación
+    this.boletasGeneradas.set(boletasMapeadas);
+    this.historialTicketsTurno.update(prev => [...boletasMapeadas, ...prev]);
+
+    return boletasMapeadas;
+  }
+
+  /**
+   * Desglosa los ítems del resumen de liquidación en boletas físicas individuales,
+   * actualizando el estado de boletas generadas y encolando la orden para emisión física.
+   */
+  encolarVenta(
+    resumen: ResumenLiquidacionPOS,
+    clienteInfo?: string | ContextoVentaTicket
+  ): OrdenEmisionFisica {
+    const timestamp = Date.now();
+    const contexto: ContextoVentaTicket =
+      typeof clienteInfo === 'string'
+        ? { clienteNombre: clienteInfo }
+        : { ...(clienteInfo || {}) };
+
+    const idOrden = contexto.idOrden || `ORD-${timestamp}-${Math.floor(Math.random() * 900 + 100)}`;
+    contexto.idOrden = idOrden;
+    if (!contexto.metodoPago) {
+      contexto.metodoPago = resumen.metodoPago;
+    }
+
+    const boletas = this.mapearBoletasDesdeRespuestaVenta(resumen, contexto);
+
+    const nuevaOrden: OrdenEmisionFisica = {
+      idOrden,
+      clienteNombre: contexto.clienteNombre?.trim() || 'Cliente de Mostrador',
+      metodoPago: resumen.metodoPago,
+      granTotal: resumen.granTotal,
+      totalBoletas: boletas.length,
+      fechaEmision: new Date(),
+      boletas,
+      estado: 'PENDIENTE'
+    };
+
+    this.ordenes.update(lista => [nuevaOrden, ...lista]);
+    this.ordenReciente.set(nuevaOrden);
+
+    return nuevaOrden;
+  }
+
+  /**
+   * Marca una orden completa y todas sus boletas asociadas como EMITIDA.
+   * También actualiza el estado de las boletas en `boletasGeneradas` y en `historialTicketsTurno`.
+   */
+  marcarOrdenEmitida(idOrden: string): void {
+    this.ordenes.update(lista =>
+      lista.map(o => {
+        if (o.idOrden === idOrden) {
+          return {
+            ...o,
+            estado: 'EMITIDA',
+            boletas: o.boletas.map(b => ({ ...b, estado: 'EMITIDA' }))
+          };
+        }
+        return o;
+      })
+    );
+
+    if (this.ordenReciente()?.idOrden === idOrden) {
+      const actual = this.ordenReciente()!;
+      this.ordenReciente.set({
+        ...actual,
+        estado: 'EMITIDA',
+        boletas: actual.boletas.map(b => ({ ...b, estado: 'EMITIDA' }))
+      });
+    }
+
+    this.boletasGeneradas.update(lista =>
+      lista.map(b => (b.idOrden === idOrden ? { ...b, estado: 'EMITIDA' } : b))
+    );
+
+    this.historialTicketsTurno.update(lista =>
+      lista.map(b => (b.idOrden === idOrden ? { ...b, estado: 'EMITIDA' } : b))
+    );
+  }
+
+  /**
+   * Remueve de la memoria las órdenes que ya fueron emitidas físicamente.
+   */
+  limpiarEmitidas(): void {
+    this.ordenes.update(lista => lista.filter(o => o.estado !== 'EMITIDA'));
+    if (this.ordenReciente()?.estado === 'EMITIDA') {
+      this.ordenReciente.set(null);
+    }
+  }
+
+  /**
+   * Limpia la lista de boletas generadas en la venta actual.
+   */
+  limpiarBoletasGeneradas(): void {
+    this.boletasGeneradas.set([]);
+  }
+
+  /**
+   * Limpia toda la cola y el historial (útil para pruebas o cambio de turno).
+   */
+  limpiarTodo(): void {
+    this.ordenes.set([]);
+    this.ordenReciente.set(null);
+    this.boletasGeneradas.set([]);
+    this.historialTicketsTurno.set([]);
+  }
+}

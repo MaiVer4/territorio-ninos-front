@@ -230,4 +230,60 @@ describe('ConfirmarPagoModalComponent', () => {
     component.onCancelar();
     expect(cancelEmitted).toBe(false);
   });
+
+  it('should render badges, labels, and icons correctly for all payment methods', () => {
+    // TARJETA_CREDITO
+    component.resumen = { ...mockResumenTarjeta, metodoPago: 'TARJETA_CREDITO' };
+    fixture.detectChanges();
+    let metodoEl = fixture.debugElement.query(By.css('[data-testid="metodo-pago-seleccionado"]'));
+    expect(metodoEl.nativeElement.textContent).toContain('Tarjeta Crédito');
+    expect(metodoEl.nativeElement.textContent).toContain('💳');
+
+    // TRANSFERENCIA
+    component.resumen = { ...mockResumenTarjeta, metodoPago: 'TRANSFERENCIA' };
+    fixture.detectChanges();
+    metodoEl = fixture.debugElement.query(By.css('[data-testid="metodo-pago-seleccionado"]'));
+    expect(metodoEl.nativeElement.textContent).toContain('Transferencia');
+    expect(metodoEl.nativeElement.textContent).toContain('📱');
+
+    // Method helpers
+    expect(component.etiquetaMetodoPago(undefined)).toBe('Desconocido');
+    expect(component.iconoMetodoPago(undefined)).toBe('💰');
+    expect(component.badgeClassMetodoPago(undefined)).toContain('bg-slate-50');
+  });
+
+  it('should disable btn-procesar-pago and not emit when resumen is null', () => {
+    component.resumen = null;
+    fixture.detectChanges();
+
+    const btnProcesar = fixture.debugElement.query(By.css('[data-testid="btn-procesar-pago"]'));
+    expect(btnProcesar.nativeElement.disabled).toBe(true);
+
+    let emitted = false;
+    component.confirmarPago.subscribe(() => emitted = true);
+
+    component.onProcesarPago();
+    expect(emitted).toBe(false);
+  });
+
+  it('should calculate totalBoletasFallback when totalBoletas is omitted in resumen', () => {
+    component.resumen = {
+      ...mockResumenEfectivo,
+      totalBoletas: undefined
+    };
+    fixture.detectChanges();
+
+    // mockItem1 (qty: 1) + mockItem2 (qty: 2) = 3
+    expect(component.totalBoletasFallback()).toBe(3);
+  });
+
+  it('should emit cancelar event when clicking close icon button (✕)', () => {
+    let cancelEmitted = false;
+    component.cancelar.subscribe(() => cancelEmitted = true);
+
+    const btnCerrar = fixture.debugElement.query(By.css('[data-testid="btn-cerrar-modal"]'));
+    btnCerrar.nativeElement.click();
+
+    expect(cancelEmitted).toBe(true);
+  });
 });

@@ -11,7 +11,11 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente, Menor } from '../../../../core/models/cliente.model';
 import { Atraccion, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { Ticket } from '../../../../core/models/ticket.model';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
+import { PosAudioService } from '../../../../core/services/pos-audio.service';
+import { ColaEmisionService } from '../../../../core/services/cola-emision.service';
+import { VentaCalculoService } from '../../../../core/services/venta-calculo.service';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
 import { ConfirmarPagoModalComponent } from '../../components/confirmar-pago-modal/confirmar-pago-modal.component';
@@ -128,6 +132,18 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               <span>Arqueo / Cerrar Caja</span>
+            </button>
+          }
+
+          @if (colaEmisionService.cantidadOrdenesPendientes() > 0) {
+            <button
+              type="button"
+              data-testid="badge-cola-emision"
+              (click)="toggleColaEmision()"
+              class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+              title="Cola de Emisión Física">
+              <span>🎟️</span>
+              <span>Emisión: {{ colaEmisionService.cantidadOrdenesPendientes() }}</span>
             </button>
           }
         </div>
@@ -300,6 +316,107 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
               (liquidarOrden)="onLiquidarOrden($event)">
             </app-pos-cart>
 
+            <!-- Panel de Cola de Emisión Física -->
+            @if (mostrarColaEmision() || colaEmisionService.cantidadOrdenesPendientes() > 0) {
+              <div
+                data-testid="panel-cola-emision"
+                class="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 text-xs space-y-3 animate-in fade-in">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div class="flex items-center gap-2">
+                    <span class="text-base">🖨️</span>
+                    <div>
+                      <h3 class="font-bold text-slate-800">Cola de Emisión Física</h3>
+                      <p class="text-[10px] text-slate-400">
+                        {{ colaEmisionService.totalBoletasPendientes() }} boleta(s) por despachar
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    @if (colaEmisionService.ordenes().some(o => o.estado === 'EMITIDA')) {
+                      <button
+                        type="button"
+                        data-testid="btn-limpiar-emitidas"
+                        (click)="colaEmisionService.limpiarEmitidas()"
+                        class="text-[10px] text-slate-400 hover:text-slate-600 font-semibold cursor-pointer px-1.5 py-0.5 rounded">
+                        Limpiar emitidas
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      data-testid="btn-cerrar-cola-emision"
+                      (click)="mostrarColaEmision.set(false)"
+                      class="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                @if (colaEmisionService.ordenesPendientes().length === 0) {
+                  <div class="text-center py-4 text-slate-400 text-[11px]" data-testid="cola-emision-vacia">
+                    <p class="font-medium text-slate-600">No hay boletas pendientes de emisión.</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Las ventas finalizadas aparecerán aquí para entrega física.</p>
+                  </div>
+                } @else {
+                  <div class="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                    @for (orden of colaEmisionService.ordenesPendientes(); track orden.idOrden) {
+                      <div
+                        [attr.data-testid]="'orden-emision-' + orden.idOrden"
+                        class="p-2.5 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <span class="font-bold text-slate-800 text-xs">{{ orden.clienteNombre }}</span>
+                            <span class="text-[10px] text-slate-500 font-mono block">#{{ orden.idOrden }}</span>
+                          </div>
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/70 text-amber-900 uppercase">
+                            {{ orden.boletas.length }} boleta(s)
+                          </span>
+                        </div>
+
+                        <div class="space-y-1 bg-white/80 p-2 rounded-lg border border-amber-100 text-[11px]">
+                          @for (boleta of orden.boletas; track boleta.codigoBoleta; let bIndex = $index) {
+                            <div
+                              [attr.data-testid]="'ticket-generado-' + bIndex"
+                              class="flex items-center justify-between text-slate-700 py-0.5">
+                              <div class="truncate max-w-[160px]">
+                                <span class="truncate font-medium block">
+                                  {{ boleta.atraccionNombre }} ({{ boleta.modalidadEtiqueta }})
+                                </span>
+                                <span class="text-[9px] font-mono text-slate-400 block">
+                                  {{ boleta.codigoBoleta }}
+                                </span>
+                              </div>
+                              <div class="text-right shrink-0">
+                                <span class="text-slate-500 text-[10px] block font-medium">
+                                  {{ boleta.menorNombre }}
+                                </span>
+                                <span class="text-[9px] font-mono text-slate-400">
+                                  \${{ boleta.precioUnitario.toLocaleString('es-CO') }}
+                                </span>
+                              </div>
+                            </div>
+                          }
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                          <span class="font-mono font-bold text-slate-700 text-xs">
+                            \${{ orden.granTotal.toLocaleString('es-CO') }} COP
+                          </span>
+                          <button
+                            type="button"
+                            [attr.data-testid]="'btn-emitir-orden-' + orden.idOrden"
+                            (click)="emitirOrdenFisica(orden.idOrden)"
+                            class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1">
+                            <span>✓</span>
+                            <span>Emitir / Entregar</span>
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
             <!-- Estado de la Estación -->
             <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs text-slate-600 space-y-2">
               <p class="font-bold text-slate-700">Estado de la estación:</p>
@@ -374,6 +491,9 @@ export class TaquillaPosComponent implements OnInit {
   readonly cajaService = inject(CajaService);
   readonly clienteService = inject(ClienteService);
   readonly atraccionService = inject(AtraccionService, { optional: true });
+  readonly posAudioService = inject(PosAudioService);
+  readonly colaEmisionService = inject(ColaEmisionService);
+  readonly ventaCalculoService = inject(VentaCalculoService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notificationService = inject(NotificationService, { optional: true });
@@ -381,10 +501,17 @@ export class TaquillaPosComponent implements OnInit {
   readonly mostrarModalApertura = signal<boolean>(false);
   readonly mostrarModalArqueo = signal<boolean>(false);
   readonly mostrarModalConfirmarPago = signal<boolean>(false);
+  readonly mostrarColaEmision = signal<boolean>(false);
   readonly resumenPendientePago = signal<ResumenLiquidacionPOS | null>(null);
   readonly procesandoPago = signal<boolean>(false);
   readonly procesandoArqueo = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
+
+  /**
+   * Boletas individuales generadas mapeadas en el estado de la aplicación (SCRUM-368 / HU-19.09).
+   */
+  readonly boletasGeneradas = this.colaEmisionService.boletasGeneradas;
+  readonly historialTicketsTurno = this.colaEmisionService.historialTicketsTurno;
 
   readonly atracciones = signal<Atraccion[]>([]);
   readonly cargandoAtracciones = signal<boolean>(false);
@@ -503,13 +630,49 @@ export class TaquillaPosComponent implements OnInit {
 
   onPagoConfirmado(resumen: ResumenLiquidacionPOS): void {
     this.procesandoPago.set(true);
-    this.notificationService?.success(
-      `Orden liquidada exitosamente (${resumen.metodoPago}) por valor de $${resumen.granTotal.toLocaleString('es-CO')} COP.`
-    );
+
+    // 1. Emitir sonido sutil de confirmación
+    this.posAudioService.reproducirConfirmacionPago();
+
+    // 2. Pasar a la cola de emisión física y mapear boletas en el estado (HU-19.09)
+    const clienteContexto = {
+      clienteNombre: this.nombreClienteTitular(),
+      clienteDocumento: this.clienteForm.get('numeroDocumento')?.value?.trim() || undefined,
+      clienteId: this.clienteSeleccionado()?.idCliente
+    };
+    const ordenFisica = this.colaEmisionService.encolarVenta(resumen, clienteContexto);
+
+    // 3. Si el pago es en efectivo, acumular en turnoActual para balance de arqueo
+    const turno = this.turnoActual();
+    if (turno && resumen.metodoPago === 'EFECTIVO') {
+      this.turnoActual.set({
+        ...turno,
+        totalRecaudado: (turno.totalRecaudado ?? 0) + resumen.granTotal
+      });
+    }
+
+    // 4. Limpiar carrito de compras
     this.itemsSeleccionados.set([]);
+
+    // 5. Cerrar modal y mostrar cola de emisión física
     this.mostrarModalConfirmarPago.set(false);
     this.resumenPendientePago.set(null);
+    this.mostrarColaEmision.set(true);
+
+    this.notificationService?.success(
+      `Orden liquidada exitosamente (${resumen.metodoPago}) por valor de $${resumen.granTotal.toLocaleString('es-CO')} COP. Pasada a cola de emisión física (#${ordenFisica.idOrden}).`
+    );
+
     this.procesandoPago.set(false);
+  }
+
+  emitirOrdenFisica(idOrden: string): void {
+    this.colaEmisionService.marcarOrdenEmitida(idOrden);
+    this.notificationService?.success(`Boletas de la orden #${idOrden} marcadas como emitidas.`);
+  }
+
+  toggleColaEmision(): void {
+    this.mostrarColaEmision.update(v => !v);
   }
 
   iniciarBusquedaCliente(): void {

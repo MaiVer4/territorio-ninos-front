@@ -1,5 +1,8 @@
 import { EstadoAtraccion, MetodoPagoPOS, TipoAtraccion } from './enums';
 import { Menor } from './cliente.model';
+import { EstadoTicket, Ticket } from './ticket.model';
+
+export type { EstadoTicket, Ticket } from './ticket.model';
 
 export interface Atraccion {
   id?: number | string;
@@ -55,4 +58,19 @@ export interface ResumenLiquidacionPOS {
   montoRecibido: number;
   cambio: number;
   fecha?: Date;
+}
+
+export type EstadoEmisionFisica = EstadoTicket;
+
+export type BoletaEmisionFisica = Ticket;
+
+export interface OrdenEmisionFisica {
+  idOrden: string;
+  clienteNombre: string;
+  metodoPago: MetodoPagoPOS;
+  granTotal: number;
+  totalBoletas: number;
+  fechaEmision: Date;
+  boletas: BoletaEmisionFisica[];
+  estado: EstadoEmisionFisica;
 }

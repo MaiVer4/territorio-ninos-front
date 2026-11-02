@@ -737,9 +737,64 @@ describe('TaquillaPosComponent', () => {
       expect(component.itemsSeleccionados().length).toBe(0);
       expect(component.mostrarModalConfirmarPago()).toBe(false);
       expect(component.resumenPendientePago()).toBeNull();
+      expect(component.boletasGeneradas().length).toBe(1);
+      expect(component.boletasGeneradas()[0].codigoBoleta).toContain('TDN-');
+      expect(component.boletasGeneradas()[0].atraccionNombre).toBe('Inflable Gigante');
       expect(notificationServiceSpy.success).toHaveBeenCalledWith(
         expect.stringContaining('Orden liquidada exitosamente')
       );
+    });
+
+    it('[SCRUM-368] HU-19.09: should map generated tickets into application state on payment confirmation', async () => {
+      await setupComponent(mockTurno);
+      component.colaEmisionService.limpiarTodo();
+
+      component.clienteForm.patchValue({
+        numeroDocumento: '1094888999',
+        nombreCompleto: 'María Cardona',
+        telefono: '3109998888',
+        correo: 'maria@ejemplo.com'
+      });
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: [
+          {
+            atraccion: mockAtraccion1,
+            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+            cantidad: 2,
+            menorAsignado: { idMenor: 5, nombreCompleto: 'Sofía', edad: 6 }
+          }
+        ],
+        totalBoletas: 2,
+        subtotal: 15126,
+        porcentajeIva: 19,
+        impuestos: 2874,
+        granTotal: 18000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 20000,
+        cambio: 2000
+      };
+
+      component.onPagoConfirmado(resumen);
+      fixture.detectChanges();
+
+      // Verificar que el estado reactivo expone las boletas generadas
+      const boletas = component.boletasGeneradas();
+      expect(boletas.length).toBe(2);
+      expect(boletas[0].clienteNombre).toBe('María Cardona');
+      expect(boletas[0].clienteDocumento).toBe('1094888999');
+      expect(boletas[0].menorNombre).toBe('Sofía');
+      expect(boletas[0].atraccionNombre).toBe('Inflable Gigante');
+      expect(boletas[0].codigoBoleta).toContain('TDN-1-');
+      expect(boletas[0].codigoQr).toContain('TDN-QR:');
+      expect(boletas[0].estado).toBe('PENDIENTE');
+
+      // Verificar que se renderizan en el panel de emisión física
+      const itemTicket0 = fixture.debugElement.query(By.css('[data-testid="ticket-generado-0"]'));
+      expect(itemTicket0).toBeTruthy();
+      expect(itemTicket0.nativeElement.textContent).toContain('Inflable Gigante');
+      expect(itemTicket0.nativeElement.textContent).toContain('Sofía');
+      expect(itemTicket0.nativeElement.textContent).toContain(boletas[0].codigoBoleta);
     });
 
     it('should close modal and retain items in order when onCancelarConfirmacionPago is called', async () => {
