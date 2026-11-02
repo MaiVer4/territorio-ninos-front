@@ -30,6 +30,7 @@ export class OperacionService {
 
   private readonly apiUrl = `${environment.apiUrl}/operacion`;
   private readonly STORAGE_ESTACION_KEY = 'tdn_operario_estacion_activa_v1';
+  private readonly salidasTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   // Signals Principales
   readonly estacionActiva = signal<EstacionTrabajo | null>(null);
@@ -122,23 +123,31 @@ export class OperacionService {
         const userId = this.authService.currentUser()?.id;
         const miAsignacion = asignaciones.find(a => String(a.operarioId) === String(userId) || !userId);
 
-        const mapeadas: EstacionTrabajo[] = asignaciones.map(a => ({
-          idAsignacion: a.id || 1,
-          atraccionId: a.atraccionId,
-          atraccionNombre: a.atraccionNombre || 'Atracción Asignada',
-          tipoAtraccion: (a.atraccionNombre?.toLowerCase().includes('toro') ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA'),
-          capacidadMaxima: 12,
-          ocupacionActual: 0,
-          duracionMinutosBase: 15,
-          toleranciaMinutos: 2,
-          caidasMaximas: 3,
-          edadMinima: 3,
-          edadMaxima: 12,
-          operarioId: a.operarioId,
-          operarioNombre: a.operarioNombre || this.authService.currentUserName(),
-          confirmada: false,
-          estadoEnlace: this.wsService.estadoConexion()
-        }));
+        const mapeadas: EstacionTrabajo[] = asignaciones.map(a => {
+          const asignacionExt = a as { tipoAtraccion?: string; capacidadMaxima?: number };
+          const esEventoCaidas =
+            asignacionExt.tipoAtraccion === 'EVENTOS_CAIDAS' ||
+            (a.atraccionNombre?.toLowerCase().includes('toro') ?? false) ||
+            (a.atraccionNombre?.toLowerCase().includes('evento') ?? false);
+
+          return {
+            idAsignacion: a.id || 1,
+            atraccionId: a.atraccionId,
+            atraccionNombre: a.atraccionNombre || 'Atracción Asignada',
+            tipoAtraccion: esEventoCaidas ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA',
+            capacidadMaxima: asignacionExt.capacidadMaxima ?? 12,
+            ocupacionActual: 0,
+            duracionMinutosBase: 15,
+            toleranciaMinutos: 2,
+            caidasMaximas: 3,
+            edadMinima: 3,
+            edadMaxima: 12,
+            operarioId: a.operarioId,
+            operarioNombre: a.operarioNombre || this.authService.currentUserName(),
+            confirmada: false,
+            estadoEnlace: this.wsService.estadoConexion()
+          };
+        });
 
         this.estacionesDisponibles.set(mapeadas);
 
@@ -243,6 +252,8 @@ export class OperacionService {
   }
 
   limpiarEstacionLocal(): void {
+    this.salidasTimers.forEach(timer => clearTimeout(timer));
+    this.salidasTimers.clear();
     this.estacionActiva.set(null);
     this.colaActiva.set([]);
     this.resultadoValidacionActual.set(null);
@@ -532,12 +543,17 @@ export class OperacionService {
       cola.map(s => (s.idSesion === idSesion ? { ...s, saliendo: true } : s))
     );
 
-    // 3. Remoción reactiva tras completar micro-animación de 300ms
-    setTimeout(() => {
+    // 3. Remoción reactiva tras completar micro-animación de 300ms con gestión de timer
+    if (this.salidasTimers.has(idSesion)) {
+      clearTimeout(this.salidasTimers.get(idSesion)!);
+    }
+    const timer = setTimeout(() => {
+      this.salidasTimers.delete(idSesion);
       this.colaActiva.update(cola => cola.filter(s => s.idSesion !== idSesion));
       this.modalAforoCompletoAbierto.set(false);
       this.notificationService.info(`Salida confirmada para ${sesion.menorNombre}. Cupo liberado.`);
     }, 300);
+    this.salidasTimers.set(idSesion, timer);
 
     // 4. Notificar o encolar offline
     if (this.wsService.estadoConexion() !== 'CONECTADO') {
@@ -589,8 +605,18 @@ export class OperacionService {
   }
 
   autorizarIngresoForzadoSupervisor(clave?: string): boolean {
-    // Acepta clave de supervisor o bypass directo
-    if (!clave || clave === '1234' || clave === 'SUPERVISOR') {
+    const pin = (clave || '').trim();
+    if (!pin) {
+      this.notificationService.error('Se requiere ingresar el PIN de supervisor.');
+      return false;
+    }
+
+    const rol = typeof this.authService?.getRole === 'function'
+      ? this.authService.getRole()
+      : this.authService?.currentUser()?.rol;
+    const esAdmin = rol === 'ADMINISTRADOR';
+
+    if (esAdmin || pin === '1234' || pin === 'SUPERVISOR') {
       this.ingresoForzadoSupervisor.set(true);
       this.modalAforoCompletoAbierto.set(false);
       this.notificationService.warn('Ingreso forzado autorizado por supervisor/administrador');

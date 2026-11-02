@@ -109,7 +109,7 @@ import { SesionJuegoMenor } from '../../../../core/models/operador.model';
                   <div
                     [attr.data-testid]="'stopwatch-ronda-' + sesion.idSesion"
                     class="text-2xl font-black font-mono tracking-tight text-white mt-0.5">
-                    {{ formatearMmSs(segundosRondaActiva()) }}
+                    {{ formatearMmSs(obtenerSegundosRonda(sesion)) }}
                   </div>
                 </div>
 
@@ -163,7 +163,7 @@ import { SesionJuegoMenor } from '../../../../core/models/operador.model';
 export class ModoEventoComponent implements OnInit, OnDestroy {
   operacionService = inject(OperacionService);
 
-  readonly segundosRondaActiva = signal<number>(0);
+  readonly segundosRondaPorSesion = signal<Record<string, number>>({});
   private timerStopwatch: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
@@ -174,10 +174,23 @@ export class ModoEventoComponent implements OnInit, OnDestroy {
     this.detenerStopwatch();
   }
 
+  obtenerSegundosRonda(sesion: SesionJuegoMenor): number {
+    return this.segundosRondaPorSesion()[sesion.idSesion] ?? sesion.segundosRondaActual ?? 0;
+  }
+
   private iniciarStopwatch(): void {
     this.timerStopwatch = setInterval(() => {
-      if (this.operacionService.ocupacionActual() > 0 && !this.operacionService.paradaEmergenciaActiva()) {
-        this.segundosRondaActiva.update(s => s + 1);
+      const cola = this.operacionService.colaActiva();
+      if (cola.length > 0 && !this.operacionService.paradaEmergenciaActiva()) {
+        this.segundosRondaPorSesion.update(mapa => {
+          const nuevo = { ...mapa };
+          for (const s of cola) {
+            if (!s.enPausa && (s.intentosRealizados || 0) < (s.intentosMaximos || 3)) {
+              nuevo[s.idSesion] = (nuevo[s.idSesion] ?? s.segundosRondaActual ?? 0) + 1;
+            }
+          }
+          return nuevo;
+        });
       }
     }, 1000);
   }
@@ -190,9 +203,9 @@ export class ModoEventoComponent implements OnInit, OnDestroy {
   }
 
   registrarCaida(sesion: SesionJuegoMenor): void {
-    const tiempo = this.segundosRondaActiva();
+    const tiempo = this.obtenerSegundosRonda(sesion);
     this.operacionService.registrarCaidaModoEvento(sesion.idSesion, tiempo);
-    this.segundosRondaActiva.set(0); // Reinicia cronómetro de ronda
+    this.segundosRondaPorSesion.update(mapa => ({ ...mapa, [sesion.idSesion]: 0 }));
   }
 
   confirmarSalida(sesion: SesionJuegoMenor): void {

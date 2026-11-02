@@ -19,6 +19,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
   let authServiceSpy: {
     currentUser: ReturnType<typeof signal>;
     currentUserName: ReturnType<typeof signal>;
+    getRole: ReturnType<typeof vi.fn>;
   };
   let asignacionServiceSpy: {
     getActiveAssignments: ReturnType<typeof vi.fn>;
@@ -48,7 +49,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
 
     authServiceSpy = {
       currentUser: signal({ id: 10, nombre: 'Operador Test', correo: 'op@tdn.com', rol: 'OPERARIO' as const, token: 'mock', tipoToken: 'Bearer' }),
-      currentUserName: signal('Operador Test')
+      currentUserName: signal('Operador Test'),
+      getRole: vi.fn().mockReturnValue('OPERARIO')
     };
 
     asignacionServiceSpy = {
@@ -263,6 +265,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(service.escanerDesbloqueado()).toBe(false);
 
     // Supervisor override
+    expect(service.autorizarIngresoForzadoSupervisor('')).toBe(false);
+    expect(service.autorizarIngresoForzadoSupervisor('wrong-pin')).toBe(false);
     const autorizado = service.autorizarIngresoForzadoSupervisor('1234');
     expect(autorizado).toBe(true);
     expect(service.escanerDesbloqueado()).toBe(true);

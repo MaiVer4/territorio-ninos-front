@@ -92,7 +92,7 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
           <section class="pb-2 mb-2 border-b border-dashed border-black/80 space-y-1" data-testid="print-ticket-atraccion">
             <div class="flex justify-between font-extrabold text-xs">
               <span class="uppercase">{{ boleta.atraccionNombre }}</span>
-              <span data-testid="print-ticket-total">\${{ boleta.precioUnitario.toLocaleString('es-CO') }}</span>
+              <span data-testid="print-ticket-total">\${{ formatearPrecio(boleta.precioUnitario) }}</span>
             </div>
             <div class="flex justify-between text-[10px] text-black/80">
               <span>Modalidad / Duración:</span>
@@ -104,7 +104,7 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
             </div>
             <div class="flex justify-between font-extrabold text-xs pt-1 border-t border-dotted border-black/60">
               <span>VALOR BOLETA</span>
-              <span>\${{ boleta.precioUnitario.toLocaleString('es-CO') }} COP</span>
+              <span>\${{ formatearPrecio(boleta.precioUnitario) }} COP</span>
             </div>
           </section>
 
@@ -268,6 +268,11 @@ export class TicketPrintTemplateComponent {
       mensajePie: c?.mensajePie || '¡Gracias por su visita a Territorio de Niños!'
     };
   });
+
+  formatearPrecio(precio?: number | null): string {
+    const val = typeof precio === 'number' && !isNaN(precio) ? precio : 0;
+    return val.toLocaleString('es-CO');
+  }
 
   formatearFecha(fecha?: Date | string | null): string {
     const f = fecha ? new Date(fecha) : new Date();

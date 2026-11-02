@@ -80,6 +80,8 @@ export class CronometroComponent implements OnInit, OnDestroy {
   private notificadoAgotado = false;
   private notificadoPreExpiracion = false;
   private timerId: ReturnType<typeof setInterval> | null = null;
+  private ultimoSegundoEmitido: number | null = null;
+  private ultimoExcedidoEmitido: number | null = null;
 
   readonly displayTexto = computed<string>(() => {
     if (this.enPausa && this.segundosCongelados !== undefined) {
@@ -138,12 +140,16 @@ export class CronometroComponent implements OnInit, OnDestroy {
         this.preExpiracion.emit();
       }
 
-      this.tiempoActualizado.emit({
-        segundosRestantes: restSeg,
-        segundosExcedidos: 0,
-        agotado: false,
-        preExpiracion: esPre
-      });
+      if (this.ultimoSegundoEmitido !== restSeg) {
+        this.ultimoSegundoEmitido = restSeg;
+        this.ultimoExcedidoEmitido = 0;
+        this.tiempoActualizado.emit({
+          segundosRestantes: restSeg,
+          segundosExcedidos: 0,
+          agotado: false,
+          preExpiracion: esPre
+        });
+      }
     } else {
       // 00:00 o tiempo excedido (HU-31.05)
       const excedidoSeg = Math.floor(Math.abs(diffMs) / 1000);
@@ -157,12 +163,16 @@ export class CronometroComponent implements OnInit, OnDestroy {
         this.tiempoAgotado.emit();
       }
 
-      this.tiempoActualizado.emit({
-        segundosRestantes: 0,
-        segundosExcedidos: excedidoSeg,
-        agotado: true,
-        preExpiracion: false
-      });
+      if (this.ultimoExcedidoEmitido !== excedidoSeg) {
+        this.ultimoExcedidoEmitido = excedidoSeg;
+        this.ultimoSegundoEmitido = 0;
+        this.tiempoActualizado.emit({
+          segundosRestantes: 0,
+          segundosExcedidos: excedidoSeg,
+          agotado: true,
+          preExpiracion: false
+        });
+      }
     }
   }
 

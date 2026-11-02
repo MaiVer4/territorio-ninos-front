@@ -5,6 +5,7 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { EventoReimpresionDTO, ReimpresionRequestDTO, Ticket } from '../models/ticket.model';
 import { AuthService } from './auth.service';
+import { OfflineQueueService } from './offline-queue.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +13,7 @@ import { AuthService } from './auth.service';
 export class TicketReimpresionService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService, { optional: true });
+  private readonly offlineQueue = inject(OfflineQueueService, { optional: true });
 
   private readonly apiUrl = `${environment.apiUrl}/tickets`;
 
@@ -114,6 +116,21 @@ export class TicketReimpresionService {
           };
 
           this.registrarEventoEnHistorial(eventoFallback);
+
+          // Encolar evento para sincronización diferida cuando se recupere la conexión (HU-35.06)
+          this.offlineQueue?.encolarAccion(
+            'REIMPRIMIR_TICKET',
+            ticket.atraccionId || 1,
+            {
+              ticketUuid: uuid,
+              codigoBoleta: ticket.codigoBoleta,
+              motivo: motivoLimpio,
+              fechaReimpresion: eventoFallback.fechaReimpresion
+            },
+            undefined,
+            uuid
+          );
+
           return of(eventoFallback);
         }
 

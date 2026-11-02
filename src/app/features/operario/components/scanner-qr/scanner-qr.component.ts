@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   OnDestroy,
   OnInit,
@@ -9,6 +10,7 @@ import {
   signal,
   viewChild
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BrowserMultiFormatReader } from '@zxing/browser';
@@ -174,6 +176,7 @@ import { ResultadoValidacionQr } from '../../../../core/models/operador.model';
 export class ScannerQrComponent implements OnInit, OnDestroy {
   operacionService = inject(OperacionService);
   soundService = inject(SoundNotificationService);
+  private destroyRef = inject(DestroyRef);
 
   codigoDetectado = output<string>();
 
@@ -253,7 +256,10 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
     if (!limpio) return;
 
     this.codigoDetectado.emit(limpio);
-    this.operacionService.validarTicketQr(limpio).subscribe();
+    this.operacionService
+      .validarTicketQr(limpio)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 
   validarCodigoManual(): void {
@@ -272,6 +278,14 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   }
 
   detenerCamara(): void {
+    if (this.codeReader) {
+      try {
+        (this.codeReader as unknown as { reset?: () => void }).reset?.();
+      } catch {
+        // Ignorar
+      }
+      this.codeReader = null;
+    }
     if (this.scanningStream) {
       this.scanningStream.getTracks().forEach(t => t.stop());
       this.scanningStream = null;

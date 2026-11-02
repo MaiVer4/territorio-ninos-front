@@ -243,22 +243,41 @@ export class ColaUsuariosComponent {
   }
 
   alActualizarTiempo(sesion: SesionJuegoMenor, info: InfoCronometroTick): void {
-    sesion.segundosRestantes = info.segundosRestantes;
-    sesion.segundosExcedidos = info.segundosExcedidos;
-    if (!sesion.enPausa) {
-      if (info.agotado) {
-        sesion.estadoSemaforo = 'ROJO';
-      } else if (info.preExpiracion) {
-        sesion.estadoSemaforo = 'AMARILLO';
-      } else {
-        sesion.estadoSemaforo = 'VERDE';
-      }
+    if (
+      sesion.segundosRestantes === info.segundosRestantes &&
+      sesion.segundosExcedidos === info.segundosExcedidos
+    ) {
+      return;
     }
+
+    const nuevoSemaforo = sesion.enPausa
+      ? sesion.estadoSemaforo
+      : info.agotado
+        ? 'ROJO'
+        : info.preExpiracion
+          ? 'AMARILLO'
+          : 'VERDE';
+
+    this.operacionService.colaActiva.update(cola =>
+      cola.map(s => {
+        if (s.idSesion === sesion.idSesion) {
+          return {
+            ...s,
+            segundosRestantes: info.segundosRestantes,
+            segundosExcedidos: info.segundosExcedidos,
+            estadoSemaforo: nuevoSemaforo
+          };
+        }
+        return s;
+      })
+    );
   }
 
   alPreExpirar(sesion: SesionJuegoMenor): void {
     if (!sesion.preExpiracionNotificada) {
-      sesion.preExpiracionNotificada = true;
+      this.operacionService.colaActiva.update(cola =>
+        cola.map(s => (s.idSesion === sesion.idSesion ? { ...s, preExpiracionNotificada: true } : s))
+      );
       this.soundService.vibrarPreExpiracion();
     }
   }
@@ -268,7 +287,9 @@ export class ColaUsuariosComponent {
   }
 
   silenciarAlarma(sesion: SesionJuegoMenor): void {
-    sesion.alarmaSilenciada = true;
+    this.operacionService.colaActiva.update(cola =>
+      cola.map(s => (s.idSesion === sesion.idSesion ? { ...s, alarmaSilenciada: true } : s))
+    );
     this.soundService.silenciarAlarma(sesion.idSesion);
   }
 

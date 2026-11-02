@@ -88,10 +88,14 @@ export class WebSocketService implements OnDestroy {
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           onConnect: () => {
+            const eraReconexion = this.reintentosReconexion() > 0 || this.estadoConexion() === 'RECONECTANDO';
             this.estadoConexion.set('CONECTADO');
             this.connected.set(true);
             this.reintentosReconexion.set(0);
             this.suscribirTopico();
+            if (eraReconexion) {
+              this.notificationService.success('Reconectado con éxito', 'Conexión Restablecida');
+            }
           },
           onDisconnect: () => {
             this.iniciarReconexionConBackoff();
@@ -213,9 +217,6 @@ export class WebSocketService implements OnDestroy {
     }
 
     this.conectarEstacion(this.atraccionIdActiva);
-    this.estadoConexion.set('CONECTADO');
-    this.connected.set(true);
-    this.notificationService.success('Reconectado con éxito', 'Conexión Restablecida');
   }
 
   desconectar(): void {

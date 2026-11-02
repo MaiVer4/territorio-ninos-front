@@ -107,7 +107,8 @@ export type TipoAccionOffline =
   | 'PAUSAR_SESION'
   | 'REANUDAR_SESION'
   | 'PARADA_EMERGENCIA'
-  | 'REGISTRAR_CAIDA';
+  | 'REGISTRAR_CAIDA'
+  | 'REIMPRIMIR_TICKET';
 
 export interface AccionOfflinePendiente {
   id: string;

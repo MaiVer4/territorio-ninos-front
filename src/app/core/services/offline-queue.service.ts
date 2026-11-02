@@ -83,9 +83,11 @@ export class OfflineQueueService {
             return true;
           }),
           catchError(() => {
-            this.accionesPendientes.update(lista =>
-              lista.map(a => (a.id === accion.id ? { ...a, reintentos: a.reintentos + 1 } : a))
-            );
+            this.accionesPendientes.update(lista => {
+              const actualizada = lista.map(a => (a.id === accion.id ? { ...a, reintentos: a.reintentos + 1 } : a));
+              this.guardarEnStorage(actualizada);
+              return actualizada;
+            });
             fallidas++;
             return of(false);
           })
