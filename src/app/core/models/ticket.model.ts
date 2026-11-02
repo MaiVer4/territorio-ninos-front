@@ -14,6 +14,7 @@ export type EstadoTicket =
 export interface Ticket {
   id?: number | string;
   idTicket?: number | string;
+  uuid?: string;
   idVenta?: number | string;
   idOrden?: string;
   codigoBoleta: string;
@@ -45,6 +46,16 @@ export interface ContextoVentaTicket {
   clienteId?: number;
   metodoPago?: MetodoPagoPOS;
   fechaEmision?: Date | string;
+}
+
+export interface ValidacionOpticaQr {
+  esValido: boolean;
+  versionQr: number;
+  tamanoMatriz: number;
+  nivelCorreccion: 'L' | 'M' | 'Q' | 'H';
+  margenModulos: number;
+  contrasteAlto: boolean;
+  detalles?: string;
 }
 
 export interface VentaResponseDTO {

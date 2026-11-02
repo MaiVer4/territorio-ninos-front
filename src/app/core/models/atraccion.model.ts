@@ -1,8 +1,8 @@
 import { EstadoAtraccion, MetodoPagoPOS, TipoAtraccion } from './enums';
 import { Menor } from './cliente.model';
-import { EstadoTicket, Ticket } from './ticket.model';
+import { EstadoTicket, Ticket, ValidacionOpticaQr } from './ticket.model';
 
-export type { EstadoTicket, Ticket } from './ticket.model';
+export type { EstadoTicket, Ticket, ValidacionOpticaQr } from './ticket.model';
 
 export interface Atraccion {
   id?: number | string;
