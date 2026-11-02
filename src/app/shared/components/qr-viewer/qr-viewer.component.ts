@@ -92,6 +92,11 @@ import { ValidacionOpticaQr } from '../../../core/models/ticket.model';
 export class QrViewerComponent {
   private readonly _value = signal<string>('');
   private readonly _uuid = signal<string>('');
+  private readonly _size = signal<number>(148);
+  private readonly _margin = signal<number>(4);
+  private readonly _errorCorrectionLevel = signal<'L' | 'M' | 'Q' | 'H'>('M');
+  private readonly _darkColor = signal<string>('#000000');
+  private readonly _lightColor = signal<string>('#FFFFFF');
 
   @Input()
   set value(val: string | null | undefined) {
@@ -110,14 +115,55 @@ export class QrViewerComponent {
   }
 
   @Input() codigoVisible: string = '';
-  @Input() size: number = 148;
-  @Input() margin: number = 4;
-  @Input() errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H' = 'M';
-  @Input() darkColor: string = '#000000';
-  @Input() lightColor: string = '#FFFFFF';
+
+  @Input()
+  set size(val: number) {
+    this._size.set(Number.isFinite(val) && val > 0 ? Math.round(val) : 148);
+  }
+  get size(): number {
+    return this._size();
+  }
+
+  @Input()
+  set margin(val: number) {
+    this._margin.set(Number.isFinite(val) && val >= 0 ? Math.round(val) : 4);
+  }
+  get margin(): number {
+    return this._margin();
+  }
+
+  @Input()
+  set errorCorrectionLevel(val: 'L' | 'M' | 'Q' | 'H') {
+    this._errorCorrectionLevel.set(val || 'M');
+  }
+  get errorCorrectionLevel(): 'L' | 'M' | 'Q' | 'H' {
+    return this._errorCorrectionLevel();
+  }
+
+  @Input()
+  set darkColor(val: string) {
+    this._darkColor.set(this.sanitizeColor(val, '#000000'));
+  }
+  get darkColor(): string {
+    return this._darkColor();
+  }
+
+  @Input()
+  set lightColor(val: string) {
+    this._lightColor.set(this.sanitizeColor(val, '#FFFFFF'));
+  }
+  get lightColor(): string {
+    return this._lightColor();
+  }
+
   @Input() mostrarLeyenda: boolean = true;
   @Input() mostrarInsigniaOptica: boolean = false;
   @Input() ariaLabel: string = 'Código QR de validación de boleta';
+
+  private sanitizeColor(color: string | null | undefined, fallback: string): string {
+    const clean = (color || '').trim();
+    return /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+$/.test(clean) ? clean : fallback;
+  }
 
   readonly payloadEfectivo = computed(() => {
     return this._value() || this._uuid();
@@ -125,11 +171,12 @@ export class QrViewerComponent {
 
   private readonly qrMatrix = computed(() => {
     const payload = this.payloadEfectivo();
+    const ecl = this._errorCorrectionLevel();
     if (!payload) return null;
 
     try {
       return QRCode.create(payload, {
-        errorCorrectionLevel: this.errorCorrectionLevel
+        errorCorrectionLevel: ecl
       });
     } catch {
       return null;
@@ -142,7 +189,8 @@ export class QrViewerComponent {
 
   readonly tamanoTotal = computed(() => {
     const size = this.tamanoMatriz();
-    return size > 0 ? size + this.margin * 2 : 0;
+    const margin = this._margin();
+    return size > 0 ? size + margin * 2 : 0;
   });
 
   readonly viewBox = computed(() => {
@@ -156,7 +204,7 @@ export class QrViewerComponent {
 
     const size = matrix.modules.size;
     const data = matrix.modules.data;
-    const margin = this.margin;
+    const margin = this._margin();
     let path = '';
 
     for (let r = 0; r < size; r++) {
@@ -193,13 +241,18 @@ export class QrViewerComponent {
    */
   readonly validacionOptica = computed<ValidacionOpticaQr>(() => {
     const payload = this.payloadEfectivo();
+    const ecl = this._errorCorrectionLevel();
+    const margin = this._margin();
+    const darkClean = this._darkColor().trim().toLowerCase();
+    const lightClean = this._lightColor().trim().toLowerCase();
+
     if (!payload) {
       return {
         esValido: false,
         versionQr: 0,
         tamanoMatriz: 0,
-        nivelCorreccion: this.errorCorrectionLevel,
-        margenModulos: this.margin,
+        nivelCorreccion: ecl,
+        margenModulos: margin,
         contrasteAlto: false,
         detalles: 'Carga útil vacía'
       };
@@ -211,28 +264,26 @@ export class QrViewerComponent {
         esValido: false,
         versionQr: 0,
         tamanoMatriz: 0,
-        nivelCorreccion: this.errorCorrectionLevel,
-        margenModulos: this.margin,
+        nivelCorreccion: ecl,
+        margenModulos: margin,
         contrasteAlto: false,
         detalles: 'Error al calcular matriz QR'
       };
     }
 
     const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.trim());
-    const darkClean = this.darkColor.trim().toLowerCase();
-    const lightClean = this.lightColor.trim().toLowerCase();
     const contrasteAlto =
       (darkClean === '#000000' || darkClean === '#000' || darkClean === 'black') &&
       (lightClean === '#ffffff' || lightClean === '#fff' || lightClean === 'white');
 
-    const esOptico = matrix.version <= 4 && this.margin >= 2 && contrasteAlto;
+    const esOptico = matrix.version <= 4 && margin >= 2 && contrasteAlto;
 
     return {
       esValido: esOptico,
       versionQr: matrix.version,
       tamanoMatriz: matrix.modules.size,
-      nivelCorreccion: this.errorCorrectionLevel,
-      margenModulos: this.margin,
+      nivelCorreccion: ecl,
+      margenModulos: margin,
       contrasteAlto,
       detalles: esUuid
         ? `UUID v4 óptimo para escáner móvil (Versión ${matrix.version}, ${matrix.modules.size}x${matrix.modules.size} módulos)`
@@ -249,10 +300,10 @@ export class QrViewerComponent {
 
     return QRCode.toString(payload, {
       type: 'svg',
-      margin: this.margin,
-      width: this.size,
-      errorCorrectionLevel: this.errorCorrectionLevel,
-      color: { dark: this.darkColor, light: this.lightColor }
+      margin: this._margin(),
+      width: this._size(),
+      errorCorrectionLevel: this._errorCorrectionLevel(),
+      color: { dark: this._darkColor(), light: this._lightColor() }
     });
   }
 
@@ -264,6 +315,10 @@ export class QrViewerComponent {
     const path = this.svgPath();
     if (!path) return '';
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${this.size}" height="${this.size}" shape-rendering="crispEdges"><rect x="0" y="0" width="${total}" height="${total}" fill="${this.lightColor}"/><path d="${path}" fill="${this.darkColor}"/></svg>`;
+    const safeSize = this._size();
+    const safeLight = this._lightColor();
+    const safeDark = this._darkColor();
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${safeSize}" height="${safeSize}" shape-rendering="crispEdges"><rect x="0" y="0" width="${total}" height="${total}" fill="${safeLight}"/><path d="${path}" fill="${safeDark}"/></svg>`;
   }
 }

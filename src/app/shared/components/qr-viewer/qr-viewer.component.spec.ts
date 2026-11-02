@@ -120,4 +120,22 @@ describe('QrViewerComponent (HU-20.05 / HU-20.06)', () => {
     expect(markup).toContain('<rect');
     expect(markup).toContain('<path');
   });
+
+  it('should reactively recalculate computed signals when margin or errorCorrectionLevel change and sanitize malformed colors', () => {
+    component.value = mockUuidV4;
+    fixture.detectChanges();
+    expect(component.tamanoTotal()).toBe(37); // 29 + 4*2
+
+    // Change margin dynamically without touching value
+    component.margin = 2;
+    fixture.detectChanges();
+    expect(component.tamanoTotal()).toBe(33); // 29 + 2*2
+    expect(component.viewBox()).toBe('0 0 33 33');
+
+    // Attempt to set malformed color payload -> falls back to safe default
+    component.darkColor = '"><script>alert(1)</script>';
+    component.lightColor = 'invalid"color';
+    expect(component.darkColor).toBe('#000000');
+    expect(component.lightColor).toBe('#FFFFFF');
+  });
 });
