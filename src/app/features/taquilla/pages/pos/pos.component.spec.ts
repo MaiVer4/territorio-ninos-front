@@ -978,10 +978,10 @@ describe('TaquillaPosComponent', () => {
       cajaServiceSpy.cerrarTurno.mockReturnValue(of({ ...mockTurno, estado: 'CERRADO' }));
       component.onArqueoConfirmado({
         idTurno: 42,
-        totalEsperado: 159000,
+        montoEsperado: 159000,
         totalFisico: 159000,
         diferencia: 0,
-        estadoArqueo: 'EXACTO',
+        estadoBalance: 'CUADRADO',
         justificacion: '',
         desglose: []
       });

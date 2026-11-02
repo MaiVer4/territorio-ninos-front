@@ -95,7 +95,7 @@ describe('ToastNotificationComponent', () => {
     expect(progressBar.classList.contains('bg-emerald-500')).toBe(true);
   });
 
-  it('should render rose capsule, progress bar, and role=alert for error type', async () => {
+  it('should render rose capsule and progress bar for error type', async () => {
     await createComponent({
       message: 'Ha ocurrido un problema',
       type: 'error',
@@ -106,10 +106,6 @@ describe('ToastNotificationComponent', () => {
     expect(component.capsuleClasses).toContain('text-rose-600');
     expect(component.capsuleClasses).toContain('border-rose-100');
     expect(component.progressBarClass).toBe('bg-rose-500');
-
-    const container = fixture.nativeElement.querySelector('[role="alert"]');
-    expect(container).toBeTruthy();
-    expect(container.getAttribute('aria-live')).toBe('assertive');
   });
 
   it('should render amber capsule and progress bar for warn type', async () => {

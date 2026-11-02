@@ -67,6 +67,7 @@ export class NotificationService {
     return this.snackBar.openFromComponent(ToastNotificationComponent, {
       ...this.defaultConfig,
       duration: actualDuration,
+      politeness: type === 'error' ? 'assertive' : 'polite',
       data,
       panelClass: ['toast-custom-pane', `toast-${type}`]
     });
