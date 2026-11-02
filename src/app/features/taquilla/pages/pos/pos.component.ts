@@ -22,9 +22,13 @@ import { ConfirmarPagoModalComponent } from '../../components/confirmar-pago-mod
 import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
 import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
 import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
+import { ReimpresionModalComponent } from '../../components/reimpresion-modal/reimpresion-modal.component';
+import { ConsultaTicketsComponent } from '../../components/consulta-tickets/consulta-tickets.component';
 import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-viewer.component';
 import { TicketPrintTemplateComponent } from '../../../../shared/components/ticket-print-template/ticket-print-template.component';
 import { PrintService } from '../../../../core/services/print.service';
+import { TicketReimpresionService } from '../../../../core/services/ticket-reimpresion.service';
+import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -36,6 +40,8 @@ import { PrintService } from '../../../../core/services/print.service';
     AperturaCajaModalComponent,
     ArqueoCajaModalComponent,
     ConfirmarPagoModalComponent,
+    ReimpresionModalComponent,
+    ConsultaTicketsComponent,
     MenoresChipsComponent,
     CatalogoAtraccionesComponent,
     PosCartComponent,
@@ -69,6 +75,33 @@ import { PrintService } from '../../../../core/services/print.service';
           (confirmarPago)="onPagoConfirmado($event)"
           (cancelar)="onCancelarConfirmacionPago()">
         </app-confirmar-pago-modal>
+      }
+
+      <!-- Modal de Reimpresión Auditada (HU-22.06 / SCRUM-382) -->
+      @if (mostrarModalReimpresion() && ticketPendienteReimpresion()) {
+        <app-reimpresion-modal
+          [ticket]="ticketPendienteReimpresion()"
+          [procesandoExterno]="procesandoReimpresion()"
+          (confirmarReimpresion)="onConfirmarReimpresion($event)"
+          (cancelar)="onCancelarReimpresion()">
+        </app-reimpresion-modal>
+      }
+
+      <!-- Modal de Consulta de Boletas y Estado de Tickets (HU-23.04, HU-23.05, HU-23.06) -->
+      @if (mostrarConsultaTickets()) {
+        <div
+          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          data-testid="modal-consulta-tickets">
+          <div class="w-full max-w-6xl my-auto animate-in fade-in zoom-in-95 duration-150" (click)="$event.stopPropagation()">
+            <app-consulta-tickets
+              [modoModal]="true"
+              (reimprimirTicket)="abrirModalReimpresionBoleta($event)"
+              (cerrar)="mostrarConsultaTickets.set(false)">
+            </app-consulta-tickets>
+          </div>
+        </div>
       }
 
       <!-- Cabecera del POS -->
@@ -139,6 +172,34 @@ import { PrintService } from '../../../../core/services/print.service';
               <span>Arqueo / Cerrar Caja</span>
             </button>
           }
+
+          <!-- Botón de Acceso Rápido: Reimprimir Última Boleta (HU-22.07 / SCRUM-383) -->
+          @if (turnoActual() && colaEmisionService.ultimaBoletaEmitida()) {
+            <button
+              type="button"
+              data-testid="btn-reimprimir-ultima-boleta"
+              (click)="abrirModalReimpresionUltimaBoleta()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+              title="Reimprimir última boleta emitida en el turno">
+              <span>🖨️</span>
+              <span class="hidden sm:inline">Reimprimir última boleta</span>
+              <span class="sm:hidden">Reimprimir</span>
+            </button>
+          }
+
+          <!-- Botón de Consulta de Boletas y Estado de Tickets (HU-23.04 / SCRUM-386) -->
+          <button
+            type="button"
+            data-testid="btn-abrir-consulta-tickets"
+            (click)="mostrarConsultaTickets.set(true)"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+            title="Consultar boletas por cédula o UUID">
+            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span class="hidden sm:inline">Consultar Boletas</span>
+            <span class="sm:hidden">Consultar</span>
+          </button>
 
           @if (colaEmisionService.cantidadOrdenesPendientes() > 0) {
             <button
@@ -481,6 +542,16 @@ import { PrintService } from '../../../../core/services/print.service';
                                       UUID: {{ boletaActiva.uuid }}
                                     </p>
                                   }
+
+                                  <!-- Botón de Reimpresión Auditada por Boleta en Carrusel -->
+                                  <button
+                                    type="button"
+                                    data-testid="btn-reimprimir-boleta-carrusel"
+                                    (click)="abrirModalReimpresionBoleta(boletaActiva)"
+                                    class="mt-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center justify-center gap-1 mx-auto shadow-2xs">
+                                    <span>🖨️</span>
+                                    <span>Reimprimir boleta</span>
+                                  </button>
                                 </div>
 
                                 <!-- Indicadores / Dots si hay más de 1 boleta -->
@@ -621,6 +692,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly colaEmisionService = inject(ColaEmisionService);
   readonly ventaCalculoService = inject(VentaCalculoService);
   readonly printService = inject(PrintService);
+  readonly ticketReimpresionService = inject(TicketReimpresionService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notificationService = inject(NotificationService, { optional: true });
@@ -628,10 +700,14 @@ export class TaquillaPosComponent implements OnInit {
   readonly mostrarModalApertura = signal<boolean>(false);
   readonly mostrarModalArqueo = signal<boolean>(false);
   readonly mostrarModalConfirmarPago = signal<boolean>(false);
+  readonly mostrarModalReimpresion = signal<boolean>(false);
+  readonly mostrarConsultaTickets = signal<boolean>(false);
   readonly mostrarColaEmision = signal<boolean>(false);
   readonly resumenPendientePago = signal<ResumenLiquidacionPOS | null>(null);
+  readonly ticketPendienteReimpresion = signal<Ticket | null>(null);
   readonly procesandoPago = signal<boolean>(false);
   readonly procesandoArqueo = signal<boolean>(false);
+  readonly procesandoReimpresion = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
 
   /**
@@ -805,6 +881,95 @@ export class TaquillaPosComponent implements OnInit {
   reimprimirOrdenFisica(orden: OrdenEmisionFisica): void {
     this.printService.imprimirOrden(orden);
     this.notificationService?.info(`Enviando orden #${orden.idOrden} a impresión.`);
+  }
+
+  /**
+   * Abre el modal de reimpresión para la última boleta emitida en el turno activo (HU-22.07 / SCRUM-383).
+   */
+  abrirModalReimpresionUltimaBoleta(): void {
+    const ultima = this.colaEmisionService.ultimaBoletaEmitida();
+    if (!ultima) {
+      this.notificationService?.warn('No hay boletas emitidas en el turno activo para reimprimir.');
+      return;
+    }
+    this.ticketPendienteReimpresion.set(ultima);
+    this.mostrarModalReimpresion.set(true);
+  }
+
+  /**
+   * Abre el modal de reimpresión para una boleta específica seleccionada en la cola o carrusel.
+   */
+  abrirModalReimpresionBoleta(ticket: Ticket): void {
+    if (!ticket) return;
+    this.ticketPendienteReimpresion.set(ticket);
+    this.mostrarModalReimpresion.set(true);
+  }
+
+  onCancelarReimpresion(): void {
+    this.mostrarModalReimpresion.set(false);
+    this.ticketPendienteReimpresion.set(null);
+  }
+
+  /**
+   * Procesa la confirmación del modal: registra la auditoría en el backend,
+   * estampa la marca visible ** REIMPRESIÓN **, dispara la impresión y notifica vía toast (HU-22.08 / SCRUM-384).
+   */
+  onConfirmarReimpresion(evento: {
+    ticket: Ticket;
+    motivo: string;
+    codigoMotivo: CodigoMotivoReimpresion;
+  }): void {
+    this.procesandoReimpresion.set(true);
+
+    this.ticketReimpresionService
+      .solicitarReimpresion(evento.ticket, { motivo: evento.motivo })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.procesandoReimpresion.set(false))
+      )
+      .subscribe({
+        next: (res) => {
+          // 1. Actualizar boleta con marca visible ** REIMPRESIÓN ** en estado reactivo (HU-22.05 / Notion: CA-02)
+          const ticketActualizado = this.colaEmisionService.actualizarBoletaReimpresa(
+            evento.ticket.uuid || String(evento.ticket.idTicket || evento.ticket.id),
+            {
+              esReimpresion: true,
+              marcaImpresion: res.marcaImpresion || '** REIMPRESIÓN **',
+              motivoUltimaReimpresion: res.motivo || evento.motivo,
+              fechaUltimaReimpresion: res.fechaReimpresion
+            }
+          );
+
+          // 2. Disparar impresión térmica individual de la boleta con marca
+          const boletaAImprimir = ticketActualizado || {
+            ...evento.ticket,
+            esReimpresion: true,
+            marcaImpresion: res.marcaImpresion || '** REIMPRESIÓN **',
+            motivoUltimaReimpresion: res.motivo || evento.motivo
+          };
+          this.printService.imprimirBoletas([boletaAImprimir]);
+
+          // 3. Notificación visual Toast con datos del evento registrado (HU-22.08 / SCRUM-384)
+          this.notificationService?.success(
+            `Reimpresión registrada (#${res.idLog || 'LOG'}) • Boleta ${res.codigoBoleta || evento.ticket.codigoBoleta} • Motivo: ${res.motivo || evento.motivo}`
+          );
+
+          // 4. Cerrar modal y limpiar selección
+          this.mostrarModalReimpresion.set(false);
+          this.ticketPendienteReimpresion.set(null);
+        },
+        error: (err) => {
+          if (err?.status === 409) {
+            this.notificationService?.error(
+              err?.error?.message || `No se puede reimprimir: la boleta #${evento.ticket.codigoBoleta} ya fue consumida o anulada.`
+            );
+          } else {
+            this.notificationService?.error(
+              err?.error?.message || err?.message || 'Error al procesar la reimpresión auditada en el servidor.'
+            );
+          }
+        }
+      });
   }
 
   cambiarAnchoPapelPos(ancho: 58 | 80): void {

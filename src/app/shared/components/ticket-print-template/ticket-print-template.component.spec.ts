@@ -118,4 +118,24 @@ describe('TicketPrintTemplateComponent (HU-21.05 / HU-21.07)', () => {
     expect(header.nativeElement.textContent).toContain('800.555.444-1');
     expect(header.nativeElement.textContent).toContain('Pereira, Risaralda');
   });
+
+  it('should render visible ** REIMPRESIÓN ** banner and metadata when ticket has esReimpresion or marcaImpresion (HU-22.05 / Notion: CA-02)', () => {
+    const reimpTicket: Ticket = {
+      ...mockTicket1,
+      esReimpresion: true,
+      marcaImpresion: '** REIMPRESIÓN **',
+      motivoUltimaReimpresion: 'Atasco de papel'
+    };
+
+    component.boletas = [reimpTicket];
+    fixture.detectChanges();
+
+    const banner = fixture.debugElement.query(By.css('[data-testid="print-ticket-reimpresion-banner"]'));
+    expect(banner).toBeTruthy();
+    expect(banner.nativeElement.textContent).toContain('** REIMPRESIÓN **');
+
+    const motivoEl = fixture.debugElement.query(By.css('[data-testid="print-ticket-motivo-reimpresion"]'));
+    expect(motivoEl).toBeTruthy();
+    expect(motivoEl.nativeElement.textContent).toContain('Atasco de papel');
+  });
 });

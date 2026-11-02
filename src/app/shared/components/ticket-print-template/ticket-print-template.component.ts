@@ -35,6 +35,15 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
             <p class="text-[9px] leading-tight">NIT: {{ datosParque().nit }}</p>
             <p class="text-[9px] leading-tight">{{ datosParque().direccion }}</p>
             <p class="text-[9px] leading-tight">{{ datosParque().ciudad }} · Tel: {{ datosParque().telefono }}</p>
+
+            <!-- Marca Visible de Reimpresión (HU-22.05 / Notion: CA-02) -->
+            @if (boleta.esReimpresion || boleta.marcaImpresion) {
+              <div
+                data-testid="print-ticket-reimpresion-banner"
+                class="mt-2 py-0.5 px-1.5 border-2 border-black bg-black text-white text-center font-extrabold uppercase tracking-widest text-[10px]">
+                {{ boleta.marcaImpresion || '** REIMPRESIÓN **' }}
+              </div>
+            }
           </header>
 
           <!-- Metadatos de la Transacción y Boleta -->
@@ -43,6 +52,18 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
               <span>BOLETA:</span>
               <span data-testid="print-ticket-codigo">{{ boleta.codigoBoleta }}</span>
             </div>
+            @if (boleta.esReimpresion || boleta.marcaImpresion) {
+              <div class="flex justify-between font-bold text-black" data-testid="print-ticket-reimpresion-tag">
+                <span>ESTADO:</span>
+                <span class="font-extrabold">{{ boleta.marcaImpresion || '** REIMPRESIÓN **' }}</span>
+              </div>
+            }
+            @if (boleta.motivoUltimaReimpresion) {
+              <div class="flex justify-between text-black/90 font-medium" data-testid="print-ticket-motivo-reimpresion">
+                <span>MOTIVO:</span>
+                <span class="truncate max-w-[150px]">{{ boleta.motivoUltimaReimpresion }}</span>
+              </div>
+            }
             <div class="flex justify-between text-black/80">
               <span>ORDEN:</span>
               <span>#{{ boleta.idOrden || orden?.idOrden || 'POS' }}</span>

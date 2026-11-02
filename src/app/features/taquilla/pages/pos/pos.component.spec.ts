@@ -1,4 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TaquillaPosComponent } from './pos.component';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CajaService } from '../../../../core/services/caja.service';
@@ -125,6 +128,8 @@ describe('TaquillaPosComponent', () => {
     await TestBed.configureTestingModule({
       imports: [TaquillaPosComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: authServiceSpy },
         { provide: CajaService, useValue: cajaServiceSpy },
         { provide: ClienteService, useValue: clienteServiceSpy },
@@ -1136,6 +1141,191 @@ describe('TaquillaPosComponent', () => {
       expect(notificationServiceSpy.info).toHaveBeenCalledWith(
         expect.stringContaining('80mm')
       );
+    });
+  });
+
+  describe('Reimpresión Auditada de Boletas (HU-22.06, HU-22.07, HU-22.08)', () => {
+    const mockResumenReimp: ResumenLiquidacionPOS = {
+      items: [
+        {
+          atraccion: mockAtraccion1,
+          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+          cantidad: 1
+        }
+      ],
+      totalBoletas: 1,
+      subtotal: 7563,
+      porcentajeIva: 19,
+      impuestos: 1437,
+      granTotal: 9000,
+      metodoPago: 'EFECTIVO',
+      montoRecibido: 10000,
+      cambio: 1000
+    };
+
+    it('should display "Reimprimir última boleta" button in header when shift is active and tickets exist (HU-22.07 / SCRUM-383)', async () => {
+      await setupComponent(mockTurno);
+
+      // Initially no tickets emitted -> button not visible
+      let btnReimp = fixture.debugElement.query(By.css('[data-testid="btn-reimprimir-ultima-boleta"]'));
+      expect(btnReimp).toBeNull();
+
+      // Enqueue a sale -> ticket emitted
+      component.colaEmisionService.encolarVenta(mockResumenReimp, 'Carlos Rojas');
+      fixture.detectChanges();
+
+      btnReimp = fixture.debugElement.query(By.css('[data-testid="btn-reimprimir-ultima-boleta"]'));
+      expect(btnReimp).toBeTruthy();
+    });
+
+    it('should open ReimpresionModalComponent when clicking "Reimprimir última boleta" button', async () => {
+      await setupComponent(mockTurno);
+      component.colaEmisionService.encolarVenta(mockResumenReimp, 'Carlos Rojas');
+      fixture.detectChanges();
+
+      const btnReimp = fixture.debugElement.query(By.css('[data-testid="btn-reimprimir-ultima-boleta"]'));
+      btnReimp.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.mostrarModalReimpresion()).toBe(true);
+      expect(component.ticketPendienteReimpresion()).toBeTruthy();
+      expect(component.ticketPendienteReimpresion()?.atraccionNombre).toBe('Inflable Gigante');
+
+      const modalEl = fixture.debugElement.query(By.css('app-reimpresion-modal'));
+      expect(modalEl).toBeTruthy();
+    });
+
+    it('should process confirmed re-print: invoke ticketReimpresionService, print single ticket with ** REIMPRESIÓN ** and notify with toast (HU-22.08 / SCRUM-384)', async () => {
+      await setupComponent(mockTurno);
+      const orden = component.colaEmisionService.encolarVenta(mockResumenReimp, 'Carlos Rojas');
+      const ticketObjetivo = orden.boletas[0];
+
+      const reimpServiceSpy = vi.spyOn(component.ticketReimpresionService, 'solicitarReimpresion').mockReturnValue(of({
+        idLog: 'LOG-999',
+        ticketUuid: ticketObjetivo.uuid!,
+        codigoBoleta: ticketObjetivo.codigoBoleta,
+        motivo: 'Atasco de papel',
+        marcaImpresion: '** REIMPRESIÓN **',
+        fechaReimpresion: '2026-11-02T19:30:00Z'
+      }));
+
+      const printBoletasSpy = vi.spyOn(component.printService, 'imprimirBoletas');
+
+      component.abrirModalReimpresionBoleta(ticketObjetivo);
+      expect(component.mostrarModalReimpresion()).toBe(true);
+
+      component.onConfirmarReimpresion({
+        ticket: ticketObjetivo,
+        motivo: 'Atasco de papel',
+        codigoMotivo: 'ATASCO_PAPEL'
+      });
+      fixture.detectChanges();
+
+      expect(reimpServiceSpy).toHaveBeenCalledWith(ticketObjetivo, { motivo: 'Atasco de papel' });
+      expect(printBoletasSpy).toHaveBeenCalled();
+
+      const boletasImpresas = printBoletasSpy.mock.calls[0][0];
+      expect(boletasImpresas.length).toBe(1);
+      expect(boletasImpresas[0].esReimpresion).toBe(true);
+      expect(boletasImpresas[0].marcaImpresion).toBe('** REIMPRESIÓN **');
+
+      expect(notificationServiceSpy.success).toHaveBeenCalledWith(
+        expect.stringContaining('Reimpresión registrada (#LOG-999)')
+      );
+      expect(notificationServiceSpy.success).toHaveBeenCalledWith(
+        expect.stringContaining('Atasco de papel')
+      );
+
+      expect(component.mostrarModalReimpresion()).toBe(false);
+      expect(component.ticketPendienteReimpresion()).toBeNull();
+    });
+
+    it('should notify error toast if server responds with 409 Conflict when ticket is consumed', async () => {
+      await setupComponent(mockTurno);
+      const orden = component.colaEmisionService.encolarVenta(mockResumenReimp, 'Carlos Rojas');
+      const ticketObjetivo = orden.boletas[0];
+
+      vi.spyOn(component.ticketReimpresionService, 'solicitarReimpresion').mockReturnValue(
+        throwError(() => new HttpErrorResponse({
+          status: 409,
+          statusText: 'Conflict',
+          error: { message: 'La boleta ya fue consumida en la atracción.' }
+        }))
+      );
+
+      component.onConfirmarReimpresion({
+        ticket: ticketObjetivo,
+        motivo: 'Falta de papel',
+        codigoMotivo: 'FALTA_PAPEL'
+      });
+      fixture.detectChanges();
+
+      expect(notificationServiceSpy.error).toHaveBeenCalledWith(
+        expect.stringContaining('ya fue consumida')
+      );
+      expect(component.procesandoReimpresion()).toBe(false);
+    });
+
+    it('should allow re-printing an individual ticket from the carousel button', async () => {
+      await setupComponent(mockTurno);
+      const orden = component.colaEmisionService.encolarVenta(mockResumenReimp, 'Carlos Rojas');
+      component.mostrarColaEmision.set(true);
+      fixture.detectChanges();
+
+      const btnReimpCarrusel = fixture.debugElement.query(By.css('[data-testid="btn-reimprimir-boleta-carrusel"]'));
+      expect(btnReimpCarrusel).toBeTruthy();
+
+      btnReimpCarrusel.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.mostrarModalReimpresion()).toBe(true);
+      expect(component.ticketPendienteReimpresion()?.codigoBoleta).toBe(orden.boletas[0].codigoBoleta);
+    });
+  });
+
+  describe('Consulta de Boletas en POS (HU-23.04, HU-23.05, HU-23.06)', () => {
+    it('should open ConsultaTicketsComponent modal when clicking "Consultar Boletas" button in header', async () => {
+      await setupComponent(mockTurno);
+
+      const btnConsultar = fixture.debugElement.query(By.css('[data-testid="btn-abrir-consulta-tickets"]'));
+      expect(btnConsultar).toBeTruthy();
+
+      btnConsultar.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.mostrarConsultaTickets()).toBe(true);
+
+      const modalConsulta = fixture.debugElement.query(By.css('[data-testid="modal-consulta-tickets"]'));
+      expect(modalConsulta).toBeTruthy();
+
+      const compConsulta = fixture.debugElement.query(By.css('app-consulta-tickets'));
+      expect(compConsulta).toBeTruthy();
+    });
+
+    it('should connect reimprimirTicket from ConsultaTicketsComponent to abrirModalReimpresionBoleta', async () => {
+      await setupComponent(mockTurno);
+      component.mostrarConsultaTickets.set(true);
+      fixture.detectChanges();
+
+      const testTicket: Ticket = {
+        codigoBoleta: 'TDN-TEST-123',
+        atraccionId: 1,
+        atraccionNombre: 'Inflable Gigante',
+        modalidadEtiqueta: '15 min',
+        menorNombre: 'Leo',
+        precioUnitario: 9000,
+        estado: 'PAGADO'
+      };
+
+      const consultaCompEl = fixture.debugElement.query(By.css('app-consulta-tickets'));
+      expect(consultaCompEl).toBeTruthy();
+      const consultaComp = consultaCompEl.componentInstance;
+
+      consultaComp.reimprimirTicket.emit(testTicket);
+      fixture.detectChanges();
+
+      expect(component.mostrarModalReimpresion()).toBe(true);
+      expect(component.ticketPendienteReimpresion()?.codigoBoleta).toBe('TDN-TEST-123');
     });
   });
 });
