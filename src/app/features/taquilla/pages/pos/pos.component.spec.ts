@@ -120,6 +120,8 @@ describe('TaquillaPosComponent', () => {
       info: vi.fn()
     };
 
+    vi.spyOn(window, 'print').mockImplementation(() => {});
+
     await TestBed.configureTestingModule({
       imports: [TaquillaPosComponent],
       providers: [
@@ -987,6 +989,153 @@ describe('TaquillaPosComponent', () => {
       });
       expect(component.colaEmisionService.ordenes().length).toBe(0);
       expect(component.colaEmisionService.historialTicketsTurno().length).toBe(0);
+    });
+  });
+
+  describe('Impresión Térmica POS (HU-21.05, HU-21.06, HU-21.07)', () => {
+    let windowPrintSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      windowPrintSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      windowPrintSpy.mockRestore();
+    });
+
+    it('should automatically trigger printService.imprimirOrden and window.print upon onPagoConfirmado (HU-21.06)', async () => {
+      await setupComponent(mockTurno);
+      const printSpy = vi.spyOn(component.printService, 'imprimirOrden');
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: [
+          {
+            atraccion: mockAtraccion1,
+            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+            cantidad: 1
+          }
+        ],
+        totalBoletas: 1,
+        subtotal: 7563,
+        porcentajeIva: 19,
+        impuestos: 1437,
+        granTotal: 9000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 10000,
+        cambio: 1000
+      };
+
+      component.onPagoConfirmado(resumen);
+
+      expect(printSpy).toHaveBeenCalled();
+      const ordenImpresa = printSpy.mock.calls[0][0];
+      expect(ordenImpresa.granTotal).toBe(9000);
+      expect(ordenImpresa.boletas.length).toBe(1);
+      expect(windowPrintSpy).toHaveBeenCalled();
+      expect(notificationServiceSpy.success).toHaveBeenCalledWith(
+        expect.stringContaining('Orden liquidada exitosamente')
+      );
+    });
+
+    it('should hide screen UI elements with .no-print and render ticket print template in .only-print container (HU-21.07)', async () => {
+      await setupComponent(mockTurno);
+
+      const header = fixture.debugElement.query(By.css('header.no-print'));
+      const seccionCliente = fixture.debugElement.query(By.css('section.no-print'));
+      const main = fixture.debugElement.query(By.css('main.no-print'));
+      const footer = fixture.debugElement.query(By.css('footer.no-print'));
+
+      expect(header).toBeTruthy();
+      expect(seccionCliente).toBeTruthy();
+      expect(main).toBeTruthy();
+      expect(footer).toBeTruthy();
+
+      const printContainer = fixture.debugElement.query(By.css('[data-testid="contenedor-impresion-pos"]'));
+      expect(printContainer).toBeTruthy();
+      expect(printContainer.nativeElement.classList.contains('only-print')).toBe(true);
+
+      const printTemplate = fixture.debugElement.query(By.css('app-ticket-print-template'));
+      expect(printTemplate).toBeTruthy();
+    });
+
+    it('should allow manual re-printing of an order from the emission queue', async () => {
+      await setupComponent(mockTurno);
+      const printSpy = vi.spyOn(component.printService, 'imprimirOrden');
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: [
+          {
+            atraccion: mockAtraccion1,
+            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+            cantidad: 1
+          }
+        ],
+        totalBoletas: 1,
+        subtotal: 7563,
+        porcentajeIva: 19,
+        impuestos: 1437,
+        granTotal: 9000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 10000,
+        cambio: 1000
+      };
+
+      const orden = component.colaEmisionService.encolarVenta(resumen, 'Juan Pérez');
+      component.mostrarColaEmision.set(true);
+      fixture.detectChanges();
+
+      const btnReimprimir = fixture.debugElement.query(By.css(`[data-testid="btn-imprimir-orden-${orden.idOrden}"]`));
+      expect(btnReimprimir).toBeTruthy();
+      btnReimprimir.nativeElement.click();
+
+      expect(printSpy).toHaveBeenCalledWith(orden);
+      expect(windowPrintSpy).toHaveBeenCalled();
+      expect(notificationServiceSpy.info).toHaveBeenCalledWith(
+        expect.stringContaining(`Enviando orden #${orden.idOrden} a impresión`)
+      );
+    });
+
+    it('should allow changing thermal paper width between 80mm and 58mm (HU-21.05)', async () => {
+      await setupComponent(mockTurno);
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: [
+          {
+            atraccion: mockAtraccion1,
+            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+            cantidad: 1
+          }
+        ],
+        totalBoletas: 1,
+        subtotal: 7563,
+        porcentajeIva: 19,
+        impuestos: 1437,
+        granTotal: 9000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 10000,
+        cambio: 1000
+      };
+
+      component.colaEmisionService.encolarVenta(resumen, 'Juan Pérez');
+      component.mostrarColaEmision.set(true);
+      fixture.detectChanges();
+
+      const btn58 = fixture.debugElement.query(By.css('[data-testid="btn-ancho-58mm"]'));
+      const btn80 = fixture.debugElement.query(By.css('[data-testid="btn-ancho-80mm"]'));
+      expect(btn58).toBeTruthy();
+      expect(btn80).toBeTruthy();
+
+      btn58.nativeElement.click();
+      expect(component.printService.anchoPapelMm()).toBe(58);
+      expect(notificationServiceSpy.info).toHaveBeenCalledWith(
+        expect.stringContaining('58mm')
+      );
+
+      btn80.nativeElement.click();
+      expect(component.printService.anchoPapelMm()).toBe(80);
+      expect(notificationServiceSpy.info).toHaveBeenCalledWith(
+        expect.stringContaining('80mm')
+      );
     });
   });
 });

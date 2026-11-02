@@ -23,6 +23,8 @@ import { MenoresChipsComponent } from '../../components/menores-chips/menores-ch
 import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
 import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
 import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-viewer.component';
+import { TicketPrintTemplateComponent } from '../../../../shared/components/ticket-print-template/ticket-print-template.component';
+import { PrintService } from '../../../../core/services/print.service';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -37,7 +39,8 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
     MenoresChipsComponent,
     CatalogoAtraccionesComponent,
     PosCartComponent,
-    QrViewerComponent
+    QrViewerComponent,
+    TicketPrintTemplateComponent
   ],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
@@ -69,7 +72,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
       }
 
       <!-- Cabecera del POS -->
-      <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs z-10">
+      <header class="no-print h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs z-10">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
             TDN
@@ -152,7 +155,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
       </header>
 
       <!-- Barra Superior de Identificación del Cliente -->
-      <section class="bg-white border-b border-slate-200 px-6 py-3.5 shadow-2xs">
+      <section class="no-print bg-white border-b border-slate-200 px-6 py-3.5 shadow-2xs">
         <div class="max-w-7xl mx-auto">
           <!-- Encabezado de la barra con estado y botón de limpiar -->
           <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -287,7 +290,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
       </section>
 
       <!-- Contenido Principal: Catálogo y Orden -->
-      <main class="flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full">
+      <main class="no-print flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <!-- Columna Izquierda: Catálogo Interactivo de Atracciones -->
           <div class="lg:col-span-2 space-y-4">
@@ -333,7 +336,27 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
                       </p>
                     </div>
                   </div>
-                  <div class="flex items-center gap-1">
+                  <div class="flex items-center gap-1.5">
+                    <!-- Selector de Ancho de Rollo Térmico (80mm / 58mm) -->
+                    <div class="flex items-center bg-slate-100 p-0.5 rounded-lg text-[10px]" data-testid="selector-ancho-papel-pos">
+                      <button
+                        type="button"
+                        data-testid="btn-ancho-80mm"
+                        (click)="cambiarAnchoPapelPos(80)"
+                        [class]="printService.anchoPapelMm() === 80 ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-1.5 py-0.5 rounded cursor-pointer transition">
+                        80mm
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="btn-ancho-58mm"
+                        (click)="cambiarAnchoPapelPos(58)"
+                        [class]="printService.anchoPapelMm() === 58 ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-1.5 py-0.5 rounded cursor-pointer transition">
+                        58mm
+                      </button>
+                    </div>
+
                     @if (colaEmisionService.ordenes().some(o => o.estado === 'EMITIDA')) {
                       <button
                         type="button"
@@ -480,18 +503,29 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
                           </div>
                         }
 
-                        <div class="flex items-center justify-between pt-1">
+                        <div class="flex items-center justify-between pt-1 gap-2">
                           <span class="font-mono font-bold text-slate-700 text-xs">
                             \${{ orden.granTotal.toLocaleString('es-CO') }} COP
                           </span>
-                          <button
-                            type="button"
-                            [attr.data-testid]="'btn-emitir-orden-' + orden.idOrden"
-                            (click)="emitirOrdenFisica(orden.idOrden)"
-                            class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1">
-                            <span>✓</span>
-                            <span>Emitir / Entregar</span>
-                          </button>
+                          <div class="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              [attr.data-testid]="'btn-imprimir-orden-' + orden.idOrden"
+                              (click)="reimprimirOrdenFisica(orden)"
+                              class="px-2 py-1 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-[11px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1"
+                              title="Reimprimir tirilla térmica">
+                              <span>🖨️</span>
+                              <span>Imprimir</span>
+                            </button>
+                            <button
+                              type="button"
+                              [attr.data-testid]="'btn-emitir-orden-' + orden.idOrden"
+                              (click)="emitirOrdenFisica(orden.idOrden)"
+                              class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1">
+                              <span>✓</span>
+                              <span>Emitir / Entregar</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     }
@@ -530,7 +564,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
       </main>
 
       <!-- Barra de Estado / Dock Fijo Inferior -->
-      <footer class="fixed bottom-0 inset-x-0 h-12 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-20 px-6 flex items-center justify-between shadow-xs">
+      <footer class="no-print fixed bottom-0 inset-x-0 h-12 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-20 px-6 flex items-center justify-between shadow-xs">
         <div class="flex items-center gap-2 text-xs text-slate-500">
           <span class="w-2 h-2 rounded-full" [ngClass]="turnoActual() ? 'bg-emerald-500' : 'bg-amber-500'"></span>
           <span class="font-medium">
@@ -566,6 +600,15 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
           </button>
         </div>
       </footer>
+
+      <!-- Plantilla de Impresión Térmica 80mm / 58mm (Visible únicamente en @media print - HU-21.05 / HU-21.07) -->
+      <div class="only-print" data-testid="contenedor-impresion-pos">
+        <app-ticket-print-template
+          [orden]="printService.ordenEnImpresion() || colaEmisionService.ordenReciente()"
+          [boletas]="printService.boletasEnImpresion().length > 0 ? printService.boletasEnImpresion() : boletasGeneradas()"
+          [paperWidthMm]="printService.anchoPapelMm()">
+        </app-ticket-print-template>
+      </div>
     </div>
   `
 })
@@ -577,6 +620,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly posAudioService = inject(PosAudioService);
   readonly colaEmisionService = inject(ColaEmisionService);
   readonly ventaCalculoService = inject(VentaCalculoService);
+  readonly printService = inject(PrintService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notificationService = inject(NotificationService, { optional: true });
@@ -725,7 +769,10 @@ export class TaquillaPosComponent implements OnInit {
     };
     const ordenFisica = this.colaEmisionService.encolarVenta(resumen, clienteContexto);
 
-    // 3. Si el pago es en efectivo, acumular en turnoActual para balance de arqueo
+    // 3. Disparar impresión automática inmediatamente tras confirmar la venta (SCRUM-377 / HU-21.06)
+    this.printService.imprimirOrden(ordenFisica);
+
+    // 4. Si el pago es en efectivo, acumular en turnoActual para balance de arqueo
     const turno = this.turnoActual();
     if (turno && resumen.metodoPago === 'EFECTIVO') {
       this.turnoActual.set({
@@ -734,11 +781,11 @@ export class TaquillaPosComponent implements OnInit {
       });
     }
 
-    // 4. Limpiar carrito de compras y restablecer cliente/menores para la siguiente venta
+    // 5. Limpiar carrito de compras y restablecer cliente/menores para la siguiente venta
     this.itemsSeleccionados.set([]);
     this.limpiarCliente();
 
-    // 5. Cerrar modal y mostrar cola de emisión física
+    // 6. Cerrar modal y mostrar cola de emisión física
     this.mostrarModalConfirmarPago.set(false);
     this.resumenPendientePago.set(null);
     this.mostrarColaEmision.set(true);
@@ -753,6 +800,16 @@ export class TaquillaPosComponent implements OnInit {
   emitirOrdenFisica(idOrden: string): void {
     this.colaEmisionService.marcarOrdenEmitida(idOrden);
     this.notificationService?.success(`Boletas de la orden #${idOrden} marcadas como emitidas.`);
+  }
+
+  reimprimirOrdenFisica(orden: OrdenEmisionFisica): void {
+    this.printService.imprimirOrden(orden);
+    this.notificationService?.info(`Enviando orden #${orden.idOrden} a impresión.`);
+  }
+
+  cambiarAnchoPapelPos(ancho: 58 | 80): void {
+    this.printService.configurarAnchoPapel(ancho);
+    this.notificationService?.info(`Formato de impresión térmica configurado a ${ancho}mm.`);
   }
 
   toggleColaEmision(): void {

@@ -79,3 +79,53 @@ body {
   color: #ffffff !important;
   font-weight: 700 !important;
 }
+
+/* ==========================================================================
+   Estilos de Impresión Térmica y Ocultamiento de UI (SCRUM-378 / HU-21.07)
+   ========================================================================== */
+.only-print {
+  display: none !important;
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar elementos de interfaz gráfica (navbar, sidebar, botones, modales, toasts) */
+  header,
+  footer,
+  nav,
+  aside,
+  button,
+  .no-print,
+  [data-no-print="true"],
+  .cdk-overlay-container,
+  .mat-mdc-snack-bar-container,
+  .mat-mdc-dialog-container {
+    display: none !important;
+  }
+
+  /* Mostrar exclusivamente el contenedor de plantilla de impresión */
+  .only-print {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+

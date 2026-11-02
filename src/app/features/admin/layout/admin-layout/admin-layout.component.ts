@@ -23,13 +23,13 @@ interface NavItem {
   <!-- BACKDROP MÓVIL (para cerrar el drawer en pantallas pequeñas) -->
   @if (sidebarOpenMobile()) {
     <div (click)="closeMobileSidebar()"
-      class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 md:hidden transition-opacity">
+      class="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 md:hidden transition-opacity">
     </div>
   }
 
   <!-- SIDEBAR: Altura fija a pantalla (h-full), footer siempre anclado abajo sin scroll -->
   <aside
-    class="bg-slate-900 flex flex-col shrink-0 transition-all duration-200 overflow-hidden h-full border-r border-slate-800
+    class="no-print bg-slate-900 flex flex-col shrink-0 transition-all duration-200 overflow-hidden h-full border-r border-slate-800
            fixed md:static inset-y-0 left-0 z-50 md:z-auto"
     [ngClass]="{
       'translate-x-0': sidebarOpenMobile(),
@@ -145,7 +145,7 @@ interface NavItem {
   <!-- CONTENIDO PRINCIPAL: Altura 100% con scroll independiente en main -->
   <div class="flex-1 flex flex-col h-full min-w-0 overflow-hidden w-full">
     <!-- Header Superior Adaptable -->
-    <header class="h-14 bg-white border-b border-slate-200 flex items-center px-4 sm:px-6 md:px-8 gap-3 shrink-0 shadow-xs z-10">
+    <header class="no-print h-14 bg-white border-b border-slate-200 flex items-center px-4 sm:px-6 md:px-8 gap-3 shrink-0 shadow-xs z-10">
       <!-- Botón menú hamburguesa -->
       <button (click)="toggleSidebar()" class="text-slate-500 hover:text-slate-700 transition p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
