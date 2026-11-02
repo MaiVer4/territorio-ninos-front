@@ -310,7 +310,11 @@ export class ArqueoCajaModalComponent {
   readonly _idTurno = signal<number>(0);
 
   @Input() set procesandoExterno(val: boolean | null | undefined) {
-    this._procesandoExterno.set(!!val);
+    const isProc = !!val;
+    this._procesandoExterno.set(isProc);
+    if (!isProc) {
+      this.cargando.set(false);
+    }
   }
   get procesandoExterno(): boolean {
     return this._procesandoExterno();
