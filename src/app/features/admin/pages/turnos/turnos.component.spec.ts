@@ -5,40 +5,87 @@ import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TurnosComponent } from './turnos.component';
 import { CajaService } from '../../../../core/services/caja.service';
-import { TurnoCaja } from '../../../../core/models/caja.model';
+import { ReporteService } from '../../../../core/services/reporte.service';
+import { ReporteTurno } from '../../../../core/models/reporte.model';
+import { By } from '@angular/platform-browser';
 
-describe('TurnosComponent', () => {
+describe('TurnosComponent (HU-36.09..11, HU-39.06..08)', () => {
   let component: TurnosComponent;
   let fixture: ComponentFixture<TurnosComponent>;
-  let cajaServiceSpy: { getHistorial: ReturnType<typeof vi.fn> };
 
-  const mockTurnosCaja: TurnoCaja[] = [
+  let cajaServiceSpy: { getHistorial: ReturnType<typeof vi.fn> };
+  let reporteServiceSpy: {
+    consultarTurnosConciliacion: ReturnType<typeof vi.fn>;
+    obtenerDetalleConciliacionTurno: ReturnType<typeof vi.fn>;
+    descargarReporteFinancieroBlob: ReturnType<typeof vi.fn>;
+    descargandoArchivo: ReturnType<typeof vi.fn>;
+    formatoDescargaActivo: ReturnType<typeof vi.fn>;
+  };
+
+  const mockReporteTurnos: ReporteTurno[] = [
     {
       id: 1,
-      idCaja: 1,
       idUsuario: 10,
-      nombreCajero: 'Carlos Gómez',
-      montoInicial: 50000,
-      montoFinal: 250000,
-      totalVentas: 200000,
-      fechaApertura: '2026-10-22T08:00:00Z',
-      estado: 'ABIERTO'
+      cajero: 'Carlos Gómez',
+      rol: 'Taquillero',
+      apertura: '2026-10-22T08:00:00Z',
+      cierre: '2026-10-22T17:00:00Z',
+      base: 50000,
+      efectivo: 150000,
+      electronico: 50000,
+      ventas: 200000,
+      esperado: 200000,
+      fisico: 200000,
+      diferencia: 0,
+      tieneDescuadre: false,
+      tiquetes: 12,
+      activo: true
     },
     {
       id: 2,
-      idCaja: 2,
       idUsuario: 11,
-      montoInicial: 40000,
-      montoFinal: 150000,
-      totalVentas: 110000,
-      fechaApertura: '2026-10-22T09:00:00Z',
-      estado: 'CERRADO'
+      cajero: 'Mariana López',
+      rol: 'Taquillero',
+      apertura: '2026-10-22T09:00:00Z',
+      cierre: '2026-10-22T18:00:00Z',
+      base: 40000,
+      efectivo: 100000,
+      electronico: 10000,
+      ventas: 110000,
+      esperado: 140000,
+      fisico: 120000,
+      diferencia: -20000, // Descuadre faltante (HU-36.10)
+      tieneDescuadre: true,
+      tiquetes: 8,
+      activo: false
     }
   ];
 
   beforeEach(async () => {
     cajaServiceSpy = {
-      getHistorial: vi.fn().mockReturnValue(of(mockTurnosCaja))
+      getHistorial: vi.fn().mockReturnValue(of([]))
+    };
+
+    reporteServiceSpy = {
+      consultarTurnosConciliacion: vi.fn().mockReturnValue(of(mockReporteTurnos)),
+      obtenerDetalleConciliacionTurno: vi.fn().mockReturnValue(of({
+        turnoId: 2,
+        boletasVendidas: [
+          {
+            idBoleta: 'B1',
+            codigoBoleta: 'BOL-001',
+            uuid: 'u-1',
+            horaVenta: '09:30 AM',
+            atraccionNombre: 'Laberinto Mágico',
+            menorNombre: 'Lucas',
+            metodoPago: 'EFECTIVO',
+            valor: 15000
+          }
+        ]
+      })),
+      descargarReporteFinancieroBlob: vi.fn().mockReturnValue(of(new Blob())),
+      descargandoArchivo: vi.fn().mockReturnValue(false),
+      formatoDescargaActivo: vi.fn().mockReturnValue(null)
     };
 
     await TestBed.configureTestingModule({
@@ -46,7 +93,8 @@ describe('TurnosComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: CajaService, useValue: cajaServiceSpy }
+        { provide: CajaService, useValue: cajaServiceSpy },
+        { provide: ReporteService, useValue: reporteServiceSpy }
       ]
     }).compileComponents();
 
@@ -58,91 +106,74 @@ describe('TurnosComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should load shift history and map fields correctly on init', () => {
+  it('should load shift history and map accounting reconciliation fields on init (HU-36.09, HU-36.10)', () => {
     fixture.detectChanges();
 
-    expect(cajaServiceSpy.getHistorial).toHaveBeenCalledWith(component.fechaSeleccionada);
-    expect(component.cargando()).toBe(false);
+    expect(reporteServiceSpy.consultarTurnosConciliacion).toHaveBeenCalled();
     expect(component.turnos().length).toBe(2);
 
     const first = component.turnos()[0];
-    expect(first.id).toBe(1);
     expect(first.cajero).toBe('Carlos Gómez');
-    expect(first.rol).toBe('Taquillero');
-    expect(first.apertura).toBe('2026-10-22T08:00:00Z');
     expect(first.base).toBe(50000);
     expect(first.ventas).toBe(200000);
-    expect(first.tiquetes).toBe(0);
-    expect(first.activo).toBe(true);
+    expect(first.diferencia).toBe(0);
+    expect(first.tieneDescuadre).toBe(false);
 
     const second = component.turnos()[1];
-    expect(second.id).toBe(2);
-    expect(second.cajero).toBe('Cajero #11');
-    expect(second.activo).toBe(false);
+    expect(second.cajero).toBe('Mariana López');
+    expect(second.diferencia).toBe(-20000);
+    expect(second.tieneDescuadre).toBe(true);
   });
 
-  it('should reload turnos when fechaSeleccionada changes', () => {
+  it('should highlight shifts with cash discrepancy in red (HU-36.10 / CA-03)', () => {
     fixture.detectChanges();
-    cajaServiceSpy.getHistorial.mockClear();
-    cajaServiceSpy.getHistorial.mockReturnValue(of([]));
 
-    component.fechaSeleccionada = '2026-10-25';
-    component.cargarTurnos();
-
-    expect(cajaServiceSpy.getHistorial).toHaveBeenCalledWith('2026-10-25');
-    expect(component.turnos().length).toBe(0);
-    expect(component.cargando()).toBe(false);
+    const filaDescuadre = fixture.debugElement.query(By.css('[data-testid="fila-turno-descuadre-2"]'));
+    expect(filaDescuadre).toBeTruthy();
+    expect(filaDescuadre.nativeElement.classList.contains('bg-red-50/80') || filaDescuadre.nativeElement.className.includes('red')).toBe(true);
+    expect(filaDescuadre.nativeElement.textContent).toContain('-$20.000');
   });
 
-  it('should handle service errors gracefully', () => {
-    cajaServiceSpy.getHistorial.mockReturnValue(throwError(() => new Error('Error al cargar')));
-
+  it('should filter turnos by cashier name reactively (HU-36.09)', () => {
     fixture.detectChanges();
 
-    expect(component.turnos()).toEqual([]);
-    expect(component.cargando()).toBe(false);
+    component.filtroCajero = 'Mariana';
+    fixture.detectChanges();
+
+    expect(component.turnosFiltrados().length).toBe(1);
+    expect(component.turnosFiltrados()[0].cajero).toBe('Mariana López');
   });
 
-  it('should export turnos to CSV with correct headers and mapped rows', () => {
+  it('should open detailed audit modal and list sold tickets (HU-36.11 / CA-04)', () => {
     fixture.detectChanges();
-    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
-    const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-    let clicked = false;
-    let downloadedFilename = '';
-    const originalCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      const el = originalCreateElement(tagName);
-      if (tagName === 'a') {
-        el.click = () => {
-          clicked = true;
-          downloadedFilename = el.getAttribute('download') || '';
-        };
-      }
-      return el;
-    });
+
+    const btnAuditar = fixture.debugElement.query(By.css('[data-testid="btn-auditar-turno-2"]'));
+    expect(btnAuditar).toBeTruthy();
+
+    btnAuditar.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(reporteServiceSpy.obtenerDetalleConciliacionTurno).toHaveBeenCalledWith(2);
+    expect(component.turnoSeleccionadoParaAuditoria()).toBeTruthy();
+
+    const modal = fixture.debugElement.query(By.css('[data-testid="modal-detalle-conciliacion-turno"]'));
+    expect(modal).toBeTruthy();
+    expect(modal.nativeElement.textContent).toContain('Auditoría de Turno #2');
+    expect(modal.nativeElement.textContent).toContain('BOL-001');
+    expect(modal.nativeElement.textContent).toContain('Laberinto Mágico');
+
+    component.cerrarModalDetalleTurno();
+    fixture.detectChanges();
+    expect(component.turnoSeleccionadoParaAuditoria()).toBeNull();
+  });
+
+  it('should trigger blob download for CSV and PDF (HU-39.06..08)', () => {
+    fixture.detectChanges();
 
     component.exportarCsv();
+    expect(reporteServiceSpy.descargarReporteFinancieroBlob).toHaveBeenCalledWith('csv', component.fechaSeleccionada);
 
-    expect(createObjectUrlSpy).toHaveBeenCalled();
-    expect(clicked).toBe(true);
-    expect(downloadedFilename).toBe(`historial_turnos_${component.fechaSeleccionada}.csv`);
-
-    createObjectUrlSpy.mockRestore();
-    revokeObjectUrlSpy.mockRestore();
-  });
-
-  it('should not export CSV if there are no turnos', () => {
-    component.turnos.set([]);
-    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
-
-    component.exportarCsv();
-
-    expect(createObjectUrlSpy).not.toHaveBeenCalled();
-    createObjectUrlSpy.mockRestore();
-  });
-
-  it('should get initials from name correctly', () => {
-    expect(component.getInitials('Carlos Gómez')).toBe('CG');
-    expect(component.getInitials('María')).toBe('M');
+    component.exportarPdf();
+    expect(reporteServiceSpy.descargarReporteFinancieroBlob).toHaveBeenCalledWith('pdf', component.fechaSeleccionada);
   });
 });
