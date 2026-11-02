@@ -46,6 +46,13 @@ export class ColaEmisionService {
   });
 
   /**
+   * Última boleta emitida en el turno activo (HU-22.07 / SCRUM-383).
+   */
+  readonly ultimaBoletaEmitida = computed<Ticket | null>(() => {
+    return this.historialTicketsTurno()[0] ?? this.boletasGeneradas()[0] ?? null;
+  });
+
+  /**
    * Genera un identificador universal único (UUID v4) para cada ticket.
    * Utiliza la API nativa crypto.randomUUID() cuando está disponible,
    * con algoritmo pseudoaleatorio RFC 4122 v4 como respaldo.
@@ -252,6 +259,55 @@ export class ColaEmisionService {
     this.historialTicketsTurno.update(lista =>
       lista.map(b => (b.idOrden === idOrden ? { ...b, estado: 'EMITIDA' } : b))
     );
+  }
+
+  /**
+   * Actualiza el estado de una boleta tras su reimpresión auditada (HU-22.04 / HU-22.05).
+   * Refleja los cambios reactivamente en `boletasGeneradas`, `historialTicketsTurno` y `ordenes`.
+   */
+  actualizarBoletaReimpresa(ticketUuidOId: string, cambios: Partial<Ticket> = {}): Ticket | null {
+    let boletaActualizada: Ticket | null = null;
+
+    const actualizar = (b: Ticket): Ticket => {
+      const coincide =
+        (b.uuid && b.uuid === ticketUuidOId) ||
+        (b.idTicket && String(b.idTicket) === ticketUuidOId) ||
+        (b.id && String(b.id) === ticketUuidOId) ||
+        b.codigoBoleta === ticketUuidOId;
+
+      if (coincide) {
+        boletaActualizada = {
+          ...b,
+          ...cambios,
+          esReimpresion: true,
+          marcaImpresion: cambios.marcaImpresion || '** REIMPRESIÓN **',
+          totalReimpresiones: (b.totalReimpresiones || 0) + 1,
+          fechaUltimaReimpresion: cambios.fechaUltimaReimpresion || new Date()
+        };
+        return boletaActualizada;
+      }
+      return b;
+    };
+
+    this.boletasGeneradas.update(lista => lista.map(actualizar));
+    this.historialTicketsTurno.update(lista => lista.map(actualizar));
+
+    this.ordenes.update(lista =>
+      lista.map(o => ({
+        ...o,
+        boletas: o.boletas.map(actualizar)
+      }))
+    );
+
+    if (this.ordenReciente()) {
+      const o = this.ordenReciente()!;
+      this.ordenReciente.set({
+        ...o,
+        boletas: o.boletas.map(actualizar)
+      });
+    }
+
+    return boletaActualizada;
   }
 
   /**

@@ -335,5 +335,37 @@ describe('ColaEmisionService', () => {
         expect(boleta.codigoQr).toBe(boleta.uuid);
       }
     });
+
+    it('[SCRUM-383] HU-22.07: should compute ultimaBoletaEmitida correctly from tickets history', () => {
+      expect(service.ultimaBoletaEmitida()).toBeNull();
+
+      const orden = service.encolarVenta(mockResumen, 'Cliente Test');
+      expect(service.ultimaBoletaEmitida()).toBeTruthy();
+      expect(service.ultimaBoletaEmitida()?.codigoBoleta).toBe(service.historialTicketsTurno()[0].codigoBoleta);
+    });
+
+    it('should update reprinted ticket reactively across boletasGeneradas, historial and ordenes', () => {
+      const orden = service.encolarVenta(mockResumen, 'Cliente Reimpresion');
+      const ticketObjetivo = orden.boletas[0];
+      const uuid = ticketObjetivo.uuid!;
+
+      const actualizado = service.actualizarBoletaReimpresa(uuid, {
+        motivoUltimaReimpresion: 'Atasco de papel'
+      });
+
+      expect(actualizado).toBeTruthy();
+      expect(actualizado?.esReimpresion).toBe(true);
+      expect(actualizado?.marcaImpresion).toBe('** REIMPRESIÓN **');
+      expect(actualizado?.motivoUltimaReimpresion).toBe('Atasco de papel');
+      expect(actualizado?.totalReimpresiones).toBe(1);
+
+      // Verify reactive signals
+      const enGeneradas = service.boletasGeneradas().find(b => b.uuid === uuid);
+      expect(enGeneradas?.esReimpresion).toBe(true);
+
+      const enHistorial = service.historialTicketsTurno().find(b => b.uuid === uuid);
+      expect(enHistorial?.esReimpresion).toBe(true);
+      expect(enHistorial?.marcaImpresion).toBe('** REIMPRESIÓN **');
+    });
   });
 });

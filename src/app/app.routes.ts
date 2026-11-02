@@ -31,6 +31,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/taquilla/pages/pos/pos.component').then(m => m.TaquillaPosComponent)
   },
   {
+    path: 'taquilla/consulta',
+    canActivate: [authGuard],
+    data: { roles: ['TAQUILLERO', 'ADMINISTRADOR'] },
+    loadComponent: () => import('./features/taquilla/components/consulta-tickets/consulta-tickets.component').then(m => m.ConsultaTicketsComponent)
+  },
+  {
     path: 'operario/seleccion',
     canActivate: [authGuard],
     data: { roles: ['OPERARIO', 'ADMINISTRADOR'] },
