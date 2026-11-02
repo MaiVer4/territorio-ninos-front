@@ -935,7 +935,7 @@ export class TaquillaPosComponent implements OnInit {
       ? this.cajaService.registrarArqueo(resultado.idTurno, resultado).pipe(
           switchMap(() => ejecutarCierre()),
           catchError((err) => {
-            if (err?.status === 404) {
+            if (err?.status === 404 || err?.status === 403 || err?.status === 405) {
               return ejecutarCierre();
             }
             return throwError(() => err);
