@@ -10,7 +10,7 @@ import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente, Menor } from '../../../../core/models/cliente.model';
-import { Atraccion, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { Atraccion, OrdenEmisionFisica, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { Ticket } from '../../../../core/models/ticket.model';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { PosAudioService } from '../../../../core/services/pos-audio.service';
@@ -22,6 +22,7 @@ import { ConfirmarPagoModalComponent } from '../../components/confirmar-pago-mod
 import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
 import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
 import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
+import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-viewer.component';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -35,7 +36,8 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
     ConfirmarPagoModalComponent,
     MenoresChipsComponent,
     CatalogoAtraccionesComponent,
-    PosCartComponent
+    PosCartComponent,
+    QrViewerComponent
   ],
   template: `
     <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
@@ -376,7 +378,9 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
                           @for (boleta of orden.boletas; track boleta.codigoBoleta; let bIndex = $index) {
                             <div
                               [attr.data-testid]="'ticket-generado-' + bIndex"
-                              class="flex items-center justify-between text-slate-700 py-0.5">
+                              (click)="seleccionarBoletaCarrusel(orden.idOrden, bIndex)"
+                              class="flex items-center justify-between text-slate-700 py-0.5 cursor-pointer hover:bg-amber-100/60 rounded px-1 transition"
+                              title="Ver en carrusel de boletas">
                               <div class="truncate max-w-[160px]">
                                 <span class="truncate font-medium block">
                                   {{ boleta.atraccionNombre }} ({{ boleta.modalidadEtiqueta }})
@@ -396,6 +400,85 @@ import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
                             </div>
                           }
                         </div>
+
+                        <!-- Carrusel de Boletas y Códigos QR Pre-Impresión (HU-20.07) -->
+                        @if (orden.boletas.length > 0) {
+                          <div
+                            [attr.data-testid]="'carrusel-qr-orden-' + orden.idOrden"
+                            class="bg-white rounded-xl border border-amber-200/90 p-2.5 shadow-2xs space-y-2">
+                            <!-- Cabecera del Carrusel con Controles Anterior/Siguiente -->
+                            <div class="flex items-center justify-between text-[11px] pb-1.5 border-b border-slate-100">
+                              <span class="font-bold text-slate-700" data-testid="carrusel-contador-boletas">
+                                Boleta {{ obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length) + 1 }} de {{ orden.boletas.length }}
+                              </span>
+                              <div class="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  data-testid="btn-carrusel-prev"
+                                  (click)="boletaAnteriorCarrusel(orden)"
+                                  [disabled]="orden.boletas.length <= 1"
+                                  title="Boleta anterior"
+                                  class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition">
+                                  ‹
+                                </button>
+                                <button
+                                  type="button"
+                                  data-testid="btn-carrusel-next"
+                                  (click)="boletaSiguienteCarrusel(orden)"
+                                  [disabled]="orden.boletas.length <= 1"
+                                  title="Boleta siguiente"
+                                  class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition">
+                                  ›
+                                </button>
+                              </div>
+                            </div>
+
+                            <!-- Tarjeta de Boleta Activa con QR Vectorial -->
+                            @if (obtenerBoletaActivaCarrusel(orden); as boletaActiva) {
+                              <div data-testid="carrusel-boleta-activa" class="flex flex-col items-center gap-1.5">
+                                <app-qr-viewer
+                                  [value]="boletaActiva.codigoQr || boletaActiva.uuid || boletaActiva.codigoBoleta"
+                                  [uuid]="boletaActiva.uuid || ''"
+                                  [codigoVisible]="boletaActiva.codigoBoleta"
+                                  [size]="136"
+                                  [margin]="4"
+                                  errorCorrectionLevel="M"
+                                  [mostrarInsigniaOptica]="true">
+                                </app-qr-viewer>
+
+                                <div class="text-center w-full px-1 space-y-0.5">
+                                  <p class="font-bold text-slate-800 text-xs truncate">
+                                    {{ boletaActiva.atraccionNombre }} ({{ boletaActiva.modalidadEtiqueta }})
+                                  </p>
+                                  <p class="text-[10px] text-slate-600">
+                                    Menor: <span class="font-semibold text-slate-800">{{ boletaActiva.menorNombre }}</span>
+                                  </p>
+                                  @if (boletaActiva.uuid) {
+                                    <p class="text-[8px] font-mono text-slate-400 truncate max-w-full" [title]="boletaActiva.uuid">
+                                      UUID: {{ boletaActiva.uuid }}
+                                    </p>
+                                  }
+                                </div>
+
+                                <!-- Indicadores / Dots si hay más de 1 boleta -->
+                                @if (orden.boletas.length > 1) {
+                                  <div class="flex items-center justify-center gap-1 pt-1">
+                                    @for (b of orden.boletas; track b.codigoBoleta; let dIndex = $index) {
+                                      <button
+                                        type="button"
+                                        [attr.data-testid]="'btn-carrusel-dot-' + dIndex"
+                                        (click)="seleccionarBoletaCarrusel(orden.idOrden, dIndex)"
+                                        [class]="dIndex === obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length) ? 'w-4 bg-amber-500' : 'w-1.5 bg-slate-300 hover:bg-slate-400'"
+                                        class="h-1.5 rounded-full transition-all cursor-pointer"
+                                        [attr.aria-label]="'Ir a boleta ' + (dIndex + 1)">
+                                      </button>
+                                    }
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
 
                         <div class="flex items-center justify-between pt-1">
                           <span class="font-mono font-bold text-slate-700 text-xs">
@@ -673,6 +756,41 @@ export class TaquillaPosComponent implements OnInit {
 
   toggleColaEmision(): void {
     this.mostrarColaEmision.update(v => !v);
+  }
+
+  /**
+   * Estado reactivo para la navegación en el carrusel de boletas de taquilla (HU-20.07).
+   */
+  readonly indiceCarruselPorOrden = signal<Record<string, number>>({});
+
+  obtenerIndiceCarrusel(idOrden: string, totalBoletas: number): number {
+    const raw = this.indiceCarruselPorOrden()[idOrden] ?? 0;
+    if (totalBoletas <= 0) return 0;
+    return Math.max(0, Math.min(raw, totalBoletas - 1));
+  }
+
+  obtenerBoletaActivaCarrusel(orden: OrdenEmisionFisica): Ticket | null {
+    if (!orden || !orden.boletas || orden.boletas.length === 0) return null;
+    const idx = this.obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length);
+    return orden.boletas[idx] ?? null;
+  }
+
+  boletaAnteriorCarrusel(orden: OrdenEmisionFisica): void {
+    if (!orden || !orden.boletas || orden.boletas.length <= 1) return;
+    const actual = this.obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length);
+    const nuevo = actual > 0 ? actual - 1 : orden.boletas.length - 1;
+    this.seleccionarBoletaCarrusel(orden.idOrden, nuevo);
+  }
+
+  boletaSiguienteCarrusel(orden: OrdenEmisionFisica): void {
+    if (!orden || !orden.boletas || orden.boletas.length <= 1) return;
+    const actual = this.obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length);
+    const nuevo = actual < orden.boletas.length - 1 ? actual + 1 : 0;
+    this.seleccionarBoletaCarrusel(orden.idOrden, nuevo);
+  }
+
+  seleccionarBoletaCarrusel(idOrden: string, index: number): void {
+    this.indiceCarruselPorOrden.update(m => ({ ...m, [idOrden]: index }));
   }
 
   iniciarBusquedaCliente(): void {

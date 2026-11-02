@@ -46,8 +46,30 @@ export class ColaEmisionService {
   });
 
   /**
+   * Genera un identificador universal único (UUID v4) para cada ticket.
+   * Utiliza la API nativa crypto.randomUUID() cuando está disponible,
+   * con algoritmo pseudoaleatorio RFC 4122 v4 como respaldo.
+   */
+  generarUuidTicket(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      try {
+        return crypto.randomUUID();
+      } catch {
+        // Fallback en caso de entorno sin contexto seguro
+      }
+    }
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  /**
    * Mapea en el estado de la aplicación la lista de boletas generadas tras recibir la respuesta de venta (HU-19.09 / SCRUM-368).
    * Acepta tanto DTOs del backend (`VentaResponseDTO`) como el resumen de cálculo POS (`ResumenLiquidacionPOS`).
+   * Vincula el código UUID del ticket como carga útil del QR (HU-20.06 / Notion: CA-04).
    */
   mapearBoletasDesdeRespuestaVenta(
     origen: ResumenLiquidacionPOS | VentaResponseDTO,
@@ -65,11 +87,13 @@ export class ColaEmisionService {
         const codigoBoleta =
           item.codigoBoleta?.trim() ||
           `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(index + 1).padStart(3, '0')}`;
-        const codigoQr = item.codigoQr?.trim() || `TDN-QR:${codigoBoleta}`;
+        const uuid = item.uuid?.trim() || this.generarUuidTicket();
+        const codigoQr = item.codigoQr?.trim() || uuid;
 
         const ticket: Ticket = {
           id: item.id ?? item.idTicket,
           idTicket: item.idTicket ?? item.id,
+          uuid,
           idVenta: origenDTO.idVenta ?? contexto?.idVenta,
           idOrden: item.idOrden ?? origenDTO.idOrden ?? contexto?.idOrden,
           codigoBoleta,
@@ -113,11 +137,14 @@ export class ColaEmisionService {
 
         for (let i = 0; i < cantidad; i++) {
           const codigoBoleta = `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(contadorBoleta).padStart(3, '0')}`;
-          const codigoQr = `TDN-QR:${codigoBoleta}`;
+          const uuid = this.generarUuidTicket();
+          // Carga útil óptica con UUID v4 (HU-20.06 / Notion: CA-04)
+          const codigoQr = uuid;
           contadorBoleta++;
 
           const ticket: Ticket = {
             idTicket: undefined,
+            uuid,
             idOrden: contexto?.idOrden,
             idVenta: contexto?.idVenta,
             codigoBoleta,

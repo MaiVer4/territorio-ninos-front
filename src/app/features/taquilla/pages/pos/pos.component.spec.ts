@@ -786,7 +786,8 @@ describe('TaquillaPosComponent', () => {
       expect(boletas[0].menorNombre).toBe('Sofía');
       expect(boletas[0].atraccionNombre).toBe('Inflable Gigante');
       expect(boletas[0].codigoBoleta).toContain('TDN-1-');
-      expect(boletas[0].codigoQr).toContain('TDN-QR:');
+      expect(boletas[0].uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(boletas[0].codigoQr).toBe(boletas[0].uuid);
       expect(boletas[0].estado).toBe('PENDIENTE');
 
       // Verificar que se renderizan en el panel de emisión física
@@ -795,6 +796,73 @@ describe('TaquillaPosComponent', () => {
       expect(itemTicket0.nativeElement.textContent).toContain('Inflable Gigante');
       expect(itemTicket0.nativeElement.textContent).toContain('Sofía');
       expect(itemTicket0.nativeElement.textContent).toContain(boletas[0].codigoBoleta);
+    });
+
+    it('[SCRUM-373] HU-20.07: should render QR carousel for pending orders and navigate tickets prior to emission', async () => {
+      await setupComponent(mockTurno);
+      component.colaEmisionService.limpiarTodo();
+
+      const resumen: ResumenLiquidacionPOS = {
+        items: [
+          {
+            atraccion: mockAtraccion1,
+            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
+            cantidad: 2,
+            menorAsignado: { idMenor: 1, nombreCompleto: 'Lucas', edad: 5 }
+          }
+        ],
+        totalBoletas: 2,
+        subtotal: 15126,
+        porcentajeIva: 19,
+        impuestos: 2874,
+        granTotal: 18000,
+        metodoPago: 'EFECTIVO',
+        montoRecibido: 20000,
+        cambio: 2000
+      };
+
+      component.onPagoConfirmado(resumen);
+      fixture.detectChanges();
+
+      const orden = component.colaEmisionService.ordenReciente()!;
+      expect(orden).toBeTruthy();
+      expect(orden.boletas.length).toBe(2);
+
+      // Carousel element rendered
+      const carrusel = fixture.debugElement.query(By.css(`[data-testid="carrusel-qr-orden-${orden.idOrden}"]`));
+      expect(carrusel).toBeTruthy();
+
+      // Counter should show Boleta 1 de 2
+      const contador = fixture.debugElement.query(By.css('[data-testid="carrusel-contador-boletas"]'));
+      expect(contador.nativeElement.textContent).toContain('Boleta 1 de 2');
+
+      // QrViewer component rendered inside carousel
+      const qrViewer = fixture.debugElement.query(By.css('app-qr-viewer'));
+      expect(qrViewer).toBeTruthy();
+
+      // Navigation: Click next button
+      const btnNext = fixture.debugElement.query(By.css('[data-testid="btn-carrusel-next"]'));
+      btnNext.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.obtenerIndiceCarrusel(orden.idOrden, 2)).toBe(1);
+      expect(contador.nativeElement.textContent).toContain('Boleta 2 de 2');
+
+      // Navigation via dot
+      const dot0 = fixture.debugElement.query(By.css('[data-testid="btn-carrusel-dot-0"]'));
+      dot0.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.obtenerIndiceCarrusel(orden.idOrden, 2)).toBe(0);
+      expect(contador.nativeElement.textContent).toContain('Boleta 1 de 2');
+
+      // Navigation by clicking on second ticket row in summary list
+      const ticketRow1 = fixture.debugElement.query(By.css('[data-testid="ticket-generado-1"]'));
+      ticketRow1.nativeElement.click();
+      fixture.detectChanges();
+
+      expect(component.obtenerIndiceCarrusel(orden.idOrden, 2)).toBe(1);
+      expect(contador.nativeElement.textContent).toContain('Boleta 2 de 2');
     });
 
     it('should close modal and retain items in order when onCancelarConfirmacionPago is called', async () => {

@@ -95,7 +95,8 @@ describe('ColaEmisionService', () => {
     expect(orden.boletas[0].atraccionNombre).toBe('Inflable Gigante');
     expect(orden.boletas[0].menorNombre).toBe('Lucas Gómez');
     expect(orden.boletas[0].codigoBoleta).toContain('TDN-1-');
-    expect(orden.boletas[0].codigoQr).toContain('TDN-QR:');
+    expect(orden.boletas[0].uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(orden.boletas[0].codigoQr).toBe(orden.boletas[0].uuid);
     expect(orden.boletas[0].estado).toBe('PENDIENTE');
 
     expect(orden.boletas[1].atraccionNombre).toBe('Inflable Gigante');
@@ -221,7 +222,8 @@ describe('ColaEmisionService', () => {
       // Segundo ticket con QR autogenerado y modalidad caídas
       const ticket2 = boletas[1];
       expect(ticket2.codigoBoleta).toBe('TDN-SRV-002');
-      expect(ticket2.codigoQr).toBe('TDN-QR:TDN-SRV-002');
+      expect(ticket2.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(ticket2.codigoQr).toBe(ticket2.uuid);
       expect(ticket2.atraccionNombre).toBe('Muro de Escalar');
       expect(ticket2.caidasPermitidas).toBe(3);
     });
@@ -316,6 +318,22 @@ describe('ColaEmisionService', () => {
       expect(service.ordenReciente()).toBeNull();
       expect(service.boletasGeneradas().length).toBe(0);
       expect(service.historialTicketsTurno().length).toBe(0);
+    });
+
+    it('[SCRUM-372] HU-20.06: should generate unique UUID v4 and link it as QR payload for optical camera compatibility', () => {
+      const uuid1 = service.generarUuidTicket();
+      const uuid2 = service.generarUuidTicket();
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      expect(uuid1).toMatch(uuidRegex);
+      expect(uuid2).toMatch(uuidRegex);
+      expect(uuid1).not.toBe(uuid2);
+
+      const orden = service.encolarVenta(mockResumen, 'Cliente Óptico');
+      for (const boleta of orden.boletas) {
+        expect(boleta.uuid).toMatch(uuidRegex);
+        expect(boleta.codigoQr).toBe(boleta.uuid);
+      }
     });
   });
 });
