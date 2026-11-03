@@ -24,7 +24,7 @@ import {
   template: `
     <!-- Backdrop bloqueante -->
     <div
-      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reimpresion-modal-title"
@@ -32,7 +32,7 @@ import {
 
       <!-- Contenedor del Modal -->
       <div
-        class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-100 flex flex-col space-y-4 animate-in fade-in zoom-in-95 duration-150 my-auto"
+        class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-100 flex flex-col space-y-4 animate-in fade-in motion-safe:zoom-in-95 duration-150 my-auto"
         (click)="$event.stopPropagation()">
 
         <!-- Encabezado con Ícono y Botón Cerrar -->
@@ -172,7 +172,7 @@ import {
               </span>
             </div>
             <div class="w-full bg-amber-100 rounded-full h-1.5 overflow-hidden">
-              <div class="bg-amber-500 h-1.5 rounded-full animate-pulse w-full"></div>
+              <div class="bg-amber-500 h-1.5 rounded-full motion-safe:animate-pulse w-full"></div>
             </div>
           </div>
         }
@@ -193,7 +193,7 @@ import {
             data-testid="btn-confirmar-reimpresion"
             [disabled]="!puedeConfirmar()"
             (click)="onConfirmar()"
-            class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none">
+            class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white text-xs font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none">
             @if (estaProcesando()) {
               <svg class="animate-spin w-3.5 h-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

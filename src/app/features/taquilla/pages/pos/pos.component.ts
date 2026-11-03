@@ -90,11 +90,11 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
       <!-- Modal de Consulta de Boletas y Estado de Tickets (HU-23.04, HU-23.05, HU-23.06) -->
       @if (mostrarConsultaTickets()) {
         <div
-          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain"
           role="dialog"
           aria-modal="true"
           data-testid="modal-consulta-tickets">
-          <div class="w-full max-w-6xl my-auto animate-in fade-in zoom-in-95 duration-150" (click)="$event.stopPropagation()">
+          <div class="w-full max-w-6xl my-auto animate-in fade-in motion-safe:zoom-in-95 duration-150" (click)="$event.stopPropagation()">
             <app-consulta-tickets
               [modoModal]="true"
               (reimprimirTicket)="abrirModalReimpresionBoleta($event)"
@@ -443,7 +443,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                     <p class="text-[10px] text-slate-400 mt-0.5">Las ventas finalizadas aparecerán aquí para entrega física.</p>
                   </div>
                 } @else {
-                  <div class="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                  <div class="space-y-2.5 max-h-64 overflow-y-auto overscroll-contain pr-1">
                     @for (orden of colaEmisionService.ordenesPendientes(); track orden.idOrden) {
                       <div
                         [attr.data-testid]="'orden-emision-' + orden.idOrden"
@@ -583,7 +583,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                               type="button"
                               [attr.data-testid]="'btn-imprimir-orden-' + orden.idOrden"
                               (click)="reimprimirOrdenFisica(orden)"
-                              class="px-2 py-1 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-[11px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1"
+                              class="px-2 py-1 bg-slate-800 hover:bg-slate-900 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-bold text-[11px] rounded-lg shadow-xs cursor-pointer flex items-center gap-1"
                               title="Reimprimir tirilla térmica">
                               <span>🖨️</span>
                               <span>Imprimir</span>

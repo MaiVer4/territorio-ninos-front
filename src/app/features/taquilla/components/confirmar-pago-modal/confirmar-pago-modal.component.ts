@@ -11,7 +11,7 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
   template: `
     <!-- Backdrop bloqueante -->
     <div
-      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirmar-pago-title"
@@ -19,7 +19,7 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
 
       <!-- Contenedor del Modal -->
       <div
-        class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-100 flex flex-col space-y-5 animate-in fade-in zoom-in-95 duration-150 my-auto"
+        class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-100 flex flex-col space-y-5 animate-in fade-in motion-safe:zoom-in-95 duration-150 my-auto"
         (click)="$event.stopPropagation()">
 
         <!-- Encabezado -->
@@ -75,7 +75,7 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
 
           <div
             data-testid="resumen-items-pago"
-            class="max-h-40 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 text-xs">
+            class="max-h-40 overflow-y-auto overscroll-contain space-y-1.5 pr-1 divide-y divide-slate-100 bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100 text-xs">
             @for (item of _resumen()?.items || []; track $index) {
               @let cant = item.cantidad ?? 1;
               @let subtotalLinea = cant * item.modalidad.precio;
@@ -178,7 +178,7 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
             </div>
             <!-- Barra horizontal animada -->
             <div class="w-full bg-blue-100 rounded-full h-2 overflow-hidden" data-testid="barra-progreso-pago">
-              <div class="bg-blue-600 h-2 rounded-full w-full animate-pulse transition-all"></div>
+              <div class="bg-blue-600 h-2 rounded-full w-full motion-safe:animate-pulse transition-opacity duration-150"></div>
             </div>
           </div>
         }

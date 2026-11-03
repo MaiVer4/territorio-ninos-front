@@ -56,7 +56,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
               </mat-form-field>
             </div>
 
-            <button mat-flat-button color="primary" type="submit" [disabled]="forgotForm.invalid || isLoading" class="!py-6 !text-lg !rounded-xl !bg-blue-600 w-full mt-2 transition-transform hover:scale-[1.02] active:scale-95">
+            <button mat-flat-button color="primary" type="submit" [disabled]="forgotForm.invalid || isLoading" class="!py-6 !text-lg !rounded-xl !bg-blue-600 w-full mt-2 transition-transform duration-150 ease-out motion-safe:hover:scale-[1.02] enabled:active:scale-[0.96]">
               @if (!isLoading) {
                 <span>Enviar enlace</span>
               } @else {

@@ -40,14 +40,14 @@ export interface InfoCronometroTick {
         <!-- Modo Tiempo Agotado: Rojo con contador progresivo de exceso (HU-31.05) -->
         <span
           data-testid="cronometro-display"
-          class="text-red-700 bg-red-100 px-2 py-0.5 rounded-md animate-pulse">
+          class="text-red-700 bg-red-100 px-2 py-0.5 rounded-md motion-safe:animate-pulse">
           +{{ displayTexto() }}
         </span>
       } @else if (estaPreExpiracion()) {
         <!-- Modo Pre-Expiración: Amarillo advertencia con parpadeo suave (HU-30.03, HU-30.04) -->
         <span
           data-testid="cronometro-display"
-          class="text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md animate-pulse">
+          class="text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md motion-safe:animate-pulse">
           {{ displayTexto() }}
         </span>
       } @else {

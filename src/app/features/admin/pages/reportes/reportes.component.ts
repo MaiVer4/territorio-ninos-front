@@ -50,9 +50,9 @@ Chart.register(...registerables);
             data-testid="btn-descargar-csv"
             (click)="descargarCsvBlob()"
             [disabled]="reporteService.descargandoArchivo()"
-            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition shadow-xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 border border-slate-200 ps-3 pe-3.5 py-2 rounded-xl hover:bg-slate-50 transition shadow-xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             @if (reporteService.descargandoArchivo() && reporteService.formatoDescargaActivo() === 'csv') {
-              <svg class="animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+              <svg class="motion-safe:animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
               </svg>
@@ -71,9 +71,9 @@ Chart.register(...registerables);
             data-testid="btn-descargar-pdf"
             (click)="descargarPdfBlob()"
             [disabled]="reporteService.descargandoArchivo()"
-            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition shadow-xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 border border-slate-200 ps-3 pe-3.5 py-2 rounded-xl hover:bg-slate-50 transition shadow-xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             @if (reporteService.descargandoArchivo() && reporteService.formatoDescargaActivo() === 'pdf') {
-              <svg class="animate-spin w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24">
+              <svg class="motion-safe:animate-spin w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
               </svg>

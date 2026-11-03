@@ -33,8 +33,8 @@ import { NotificationService } from '../../../../core/services/notification.serv
 <div class="min-h-screen w-full flex flex-col lg:flex-row bg-slate-50 relative overflow-hidden font-sans">
   
   <!-- Elementos decorativos de fondo (Blobs con Tailwind) -->
-  <div class="absolute -top-[10%] -left-[10%] w-[25rem] h-[25rem] md:w-[40rem] md:h-[40rem] bg-blue-300 rounded-full mix-blend-multiply filter blur-[80px] md:blur-[128px] opacity-40 animate-pulse"></div>
-  <div class="absolute -bottom-[10%] -right-[10%] w-[25rem] h-[25rem] md:w-[40rem] md:h-[40rem] bg-indigo-300 rounded-full mix-blend-multiply filter blur-[80px] md:blur-[128px] opacity-40 animate-pulse" style="animation-delay: 2s;"></div>
+  <div class="absolute -top-[10%] -left-[10%] w-[25rem] h-[25rem] md:w-[40rem] md:h-[40rem] bg-blue-300 rounded-full mix-blend-multiply filter blur-[80px] md:blur-[128px] opacity-40 motion-safe:animate-pulse"></div>
+  <div class="absolute -bottom-[10%] -right-[10%] w-[25rem] h-[25rem] md:w-[40rem] md:h-[40rem] bg-indigo-300 rounded-full mix-blend-multiply filter blur-[80px] md:blur-[128px] opacity-40 motion-safe:animate-pulse" style="animation-delay: 2s;"></div>
 
   <!-- Lado Izquierdo: Branding (Cabecera en móvil, Panel izquierdo en PC) -->
   <div class="w-full lg:w-5/12 xl:w-1/2 flex flex-col justify-center items-center p-6 sm:p-8 lg:p-16 relative z-10 text-center lg:text-left mt-8 lg:mt-0">
@@ -125,7 +125,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
             </div>
 
             <button mat-flat-button color="primary" type="submit" [disabled]="loginForm.invalid || isLoading" 
-                    class="!py-6 !text-lg !font-extrabold !text-white !rounded-2xl !bg-gradient-to-r !from-blue-600 !to-indigo-600 !shadow-lg !shadow-blue-500/30 w-full transition-all hover:scale-[1.02] hover:shadow-blue-500/40 active:scale-[0.98] disabled:opacity-70 disabled:hover:scale-100 disabled:cursor-not-allowed">
+                    class="!py-6 !text-lg !font-extrabold !text-white !rounded-2xl !bg-gradient-to-r !from-blue-600 !to-indigo-600 !shadow-lg !shadow-blue-500/30 w-full transition-transform duration-150 ease-out motion-safe:hover:scale-[1.02] hover:shadow-blue-500/40 enabled:active:scale-[0.96] disabled:opacity-70 disabled:hover:scale-100 disabled:cursor-not-allowed">
               @if (!isLoading) {
                 <span class="flex items-center justify-center gap-2 tracking-wide">
                   Iniciar sesión <span class="material-symbols-outlined text-base">arrow_forward</span>

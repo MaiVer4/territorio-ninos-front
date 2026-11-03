@@ -15,7 +15,7 @@ import { forkJoin } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col font-sans">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col font-sans motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95">
       <!-- Header -->
       <div class="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
         <div>
@@ -36,7 +36,7 @@ import { forkJoin } from 'rxjs';
       </div>
 
       <!-- Contenido / Formularios -->
-      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+      <div class="flex-1 overflow-y-auto overscroll-contain p-5 space-y-5">
         <!-- Banner Explicativo -->
         <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex items-start gap-2.5">
           <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -110,11 +110,11 @@ import { forkJoin } from 'rxjs';
             <!-- Footer / Botones -->
             <div class="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
               <button type="button" (click)="close()"
-                class="py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
+                class="py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-transform duration-150 ease-out enabled:active:scale-[0.96] cursor-pointer">
                 Cancelar
               </button>
               <button type="submit" [disabled]="timeForm.invalid || saving()"
-                class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
+                class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
@@ -189,11 +189,11 @@ import { forkJoin } from 'rxjs';
             <!-- Footer / Botones -->
             <div class="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
               <button type="button" (click)="close()"
-                class="py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer">
+                class="py-2.5 border border-slate-200 rounded-xl text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-transform duration-150 ease-out enabled:active:scale-[0.96] cursor-pointer">
                 Cancelar
               </button>
               <button type="submit" [disabled]="eventForm.invalid || saving()"
-                class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
+                class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>

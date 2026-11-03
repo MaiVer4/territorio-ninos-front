@@ -12,10 +12,10 @@ import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models
     @if (operacionService.resultadoValidacionActual(); as res) {
       <div
         data-testid="modal-resultado-validacion"
-        class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
         
         <div
-          class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full overflow-hidden shadow-2xl border-2 transition-all animate-in fade-in zoom-in-95 duration-200"
+          class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full overflow-hidden shadow-2xl border-2 animate-in fade-in motion-safe:zoom-in-95 duration-150"
           [ngClass]="res.aprobado ? 'border-emerald-500 shadow-emerald-500/20' : 'border-red-600 shadow-red-600/25'">
           
           <!-- Franja Superior de Estado de Alto Contraste (HU-26.07 / RNF3) -->

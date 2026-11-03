@@ -89,7 +89,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
 
             <div
               [attr.data-testid]="'card-atraccion-' + a.id"
-              class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col transition-all duration-200 hover:shadow-md relative"
+              class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col transition-[box-shadow,border-color] duration-150 ease-out hover:shadow-md relative"
               [class.opacity-60]="bloqueada"
               [class.bg-slate-50]="bloqueada">
 
@@ -99,7 +99,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                   <img
                     [src]="a.imagenUrl"
                     [alt]="a.nombre"
-                    class="w-full h-full object-cover" />
+                    class="w-full h-full object-cover outline outline-1 -outline-offset-1 outline-black/10" />
                 } @else {
                   <!-- Ilustración Temática según Tipo de Atracción -->
                   <div
@@ -232,7 +232,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                     class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
                     [ngClass]="bloqueada
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'">
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white transition-transform duration-150 ease-out enabled:active:scale-[0.96]'">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>

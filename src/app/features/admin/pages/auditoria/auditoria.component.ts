@@ -114,9 +114,9 @@ export interface AuditLog {
                 data-testid="btn-buscar-expediente"
                 (click)="buscarExpediente()"
                 [disabled]="buscandoExpediente() || !terminoBusquedaTicket().trim()"
-                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 @if (buscandoExpediente()) {
-                  <svg class="animate-spin w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                  <svg class="motion-safe:animate-spin w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                   </svg>

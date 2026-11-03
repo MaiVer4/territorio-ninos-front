@@ -45,7 +45,7 @@ import {
             <!-- Tarjeta Independiente de Menor en Juego (HU-28.04) -->
             <div
               [attr.data-testid]="'tarjeta-menor-' + sesion.idSesion"
-              class="relative bg-white border-2 rounded-2xl p-4 shadow-sm transition-all duration-300 flex flex-col justify-between"
+              class="relative bg-white border-2 rounded-2xl p-4 shadow-sm transition-[border-color,box-shadow,opacity,transform] duration-200 ease-out flex flex-col justify-between"
               [class.opacity-0]="sesion.saliendo"
               [class.scale-95]="sesion.saliendo"
               [ngClass]="obtenerClasesTarjeta(sesion)">
@@ -118,7 +118,7 @@ import {
                     type="button"
                     [attr.data-testid]="'btn-pausa-menor-' + sesion.idSesion"
                     (click)="abrirModalPausa(sesion)"
-                    class="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer">
+                    class="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] flex items-center justify-center gap-1 cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -132,7 +132,7 @@ import {
                     type="button"
                     [attr.data-testid]="'btn-silenciar-alarma-' + sesion.idSesion"
                     (click)="silenciarAlarma(sesion)"
-                    class="py-2 px-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 animate-pulse shadow-xs cursor-pointer">
+                    class="py-2 px-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] flex items-center justify-center gap-1 motion-safe:animate-pulse shadow-xs cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
@@ -144,7 +144,7 @@ import {
                     type="button"
                     [attr.data-testid]="'btn-confirmar-salida-' + sesion.idSesion"
                     (click)="confirmarSalida(sesion)"
-                    class="py-2 px-2.5 bg-slate-900 hover:bg-red-700 text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer">
+                    class="py-2 px-2.5 bg-slate-900 hover:bg-red-700 text-white font-bold text-[11px] rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] flex items-center justify-center gap-1 cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
@@ -159,8 +159,8 @@ import {
 
       <!-- Modal de Pausa con Selector de Incidente (HU-29.07 / Notion: CA-01) -->
       @if (sesionParaPausar()) {
-        <div class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+        <div class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain">
+          <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95">
             <h3 class="text-base font-extrabold text-slate-800 mb-1">Pausar Tiempo de Juego</h3>
             <p class="text-xs text-slate-500 mb-4">
               Selecciona el motivo de incidente para {{ sesionParaPausar()?.menorNombre }}:
@@ -174,7 +174,7 @@ import {
                   [class.ring-2]="motivoPausaSeleccionado() === opcion.etiqueta"
                   [class.ring-blue-600]="motivoPausaSeleccionado() === opcion.etiqueta"
                   [class.bg-blue-50]="motivoPausaSeleccionado() === opcion.etiqueta"
-                  class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-blue-400 transition cursor-pointer">
+                  class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-blue-400 transition-colors duration-150 ease-out cursor-pointer">
                   <p class="text-xs font-bold text-slate-800">{{ opcion.etiqueta }}</p>
                   <p class="text-[10px] text-slate-400 mt-0.5">{{ opcion.descripcion }}</p>
                 </button>
@@ -185,13 +185,13 @@ import {
               <button
                 type="button"
                 (click)="cerrarModalPausa()"
-                class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer">
+                class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] cursor-pointer">
                 Cancelar
               </button>
               <button
                 type="button"
                 (click)="confirmarPausa()"
-                class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer">
+                class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] shadow-xs cursor-pointer">
                 Confirmar Pausa
               </button>
             </div>
@@ -214,7 +214,7 @@ export class ColaUsuariosComponent {
       return 'border-blue-400 bg-blue-50/20';
     }
     if (sesion.segundosRestantes <= 0) {
-      return 'border-red-500 bg-red-50/30 ring-2 ring-red-400 animate-pulse';
+      return 'border-red-500 bg-red-50/30 ring-2 ring-red-400 motion-safe:animate-pulse';
     }
     if (sesion.segundosRestantes <= 120) {
       return 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300';
@@ -227,10 +227,10 @@ export class ColaUsuariosComponent {
       return 'bg-blue-100 text-blue-800 border border-blue-300';
     }
     if (sesion.segundosRestantes <= 0) {
-      return 'bg-red-600 text-white animate-pulse';
+      return 'bg-red-600 text-white motion-safe:animate-pulse';
     }
     if (sesion.segundosRestantes <= 120) {
-      return 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse';
+      return 'bg-amber-100 text-amber-800 border border-amber-300 motion-safe:animate-pulse';
     }
     return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
   }

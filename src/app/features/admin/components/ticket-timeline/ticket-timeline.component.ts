@@ -10,7 +10,7 @@ import { AuditoriaTicket, TimelineEventoTicket } from '../../../../core/models/a
   template: `
     <div data-testid="contenedor-ticket-timeline" class="space-y-6">
       <!-- Tarjeta Resumen del Expediente de la Boleta (HU-38.08) -->
-      <div class="bg-white border border-slate-200/90 rounded-3xl p-5 shadow-sm">
+      <div class="bg-white border border-slate-200/90 rounded-[33px] p-5 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
           <div>
             <div class="flex items-center gap-2 flex-wrap">
@@ -76,7 +76,7 @@ import { AuditoriaTicket, TimelineEventoTicket } from '../../../../core/models/a
               </div>
 
               <!-- Contenido del Evento -->
-              <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 transition-all hover:bg-slate-50">
+              <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 transition-colors duration-150 ease-out hover:bg-slate-50">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-1.5">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h4 class="text-sm font-extrabold text-slate-900">{{ evento.titulo || evento.tituloHito }}</h4>
@@ -96,10 +96,10 @@ import { AuditoriaTicket, TimelineEventoTicket } from '../../../../core/models/a
                   type="button"
                   [attr.data-testid]="'btn-toggle-metadatos-' + evento.idEvento"
                   (click)="toggleMetadatos(evento.idEvento)"
-                  class="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition">
+                  class="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors duration-150 ease-out">
                   <span>{{ esMetadatosVisible(evento.idEvento) ? 'Ocultar metadatos técnicos' : 'Ver metadatos forenses (IP, Cajero, Operario, Estación)' }}</span>
                   <svg
-                    class="w-3.5 h-3.5 transition-transform"
+                    class="w-3.5 h-3.5 transition-transform duration-150 ease-out"
                     [class.rotate-180]="esMetadatosVisible(evento.idEvento)"
                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -110,7 +110,7 @@ import { AuditoriaTicket, TimelineEventoTicket } from '../../../../core/models/a
                 @if (esMetadatosVisible(evento.idEvento)) {
                   <div
                     [attr.data-testid]="'panel-metadatos-' + evento.idEvento"
-                    class="mt-3 bg-white border border-slate-200 rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs animate-in fade-in duration-200">
+                    class="mt-3 bg-white border border-slate-200 rounded-lg p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs animate-in fade-in duration-150">
                     
                     @if (evento.metadatos.cajeroEmisor) {
                       <div>

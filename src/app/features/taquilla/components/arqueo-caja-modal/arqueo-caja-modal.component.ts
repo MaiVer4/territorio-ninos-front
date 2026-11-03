@@ -21,14 +21,14 @@ interface DenominacionDef {
   template: `
     <!-- Backdrop bloqueante -->
     <div
-      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
       role="dialog"
       aria-modal="true"
       aria-labelledby="arqueo-title">
       
       <!-- Contenedor del Modal -->
       <div
-        class="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-slate-100 flex flex-col space-y-5 animate-in fade-in zoom-in-95 duration-150 my-auto"
+        class="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-slate-100 flex flex-col space-y-5 animate-in fade-in motion-safe:zoom-in-95 duration-150 my-auto"
         (click)="$event.stopPropagation()">
         
         <!-- Encabezado -->
@@ -125,7 +125,7 @@ interface DenominacionDef {
         </div>
 
         <!-- Tablas de Conteo Asistido (Billetes y Monedas) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[360px] overflow-y-auto pr-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[360px] overflow-y-auto overscroll-contain pr-1">
           <!-- Columna: Billetes -->
           <div class="border border-slate-200 rounded-2xl p-3.5 space-y-2.5 bg-slate-50/30">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">

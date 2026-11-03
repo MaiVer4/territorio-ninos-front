@@ -93,7 +93,7 @@ import { SesionJuegoMenor } from '../../../../core/models/operador.model';
                       [ngClass]="(sesion.intentosRealizados || 0) >= intento
                         ? 'bg-purple-900 border-purple-900 text-white shadow-xs'
                         : ((sesion.intentosRealizados || 0) + 1 === intento
-                          ? 'bg-purple-50 border-purple-400 text-purple-900 ring-2 ring-purple-400 animate-pulse'
+                          ? 'bg-purple-50 border-purple-400 text-purple-900 ring-2 ring-purple-400 motion-safe:animate-pulse'
                           : 'bg-slate-50 border-slate-200 text-slate-400')">
                       <span class="text-[9px] uppercase tracking-tighter">Caída</span>
                       <span class="text-sm font-mono leading-none">{{ intento }} de 3</span>
@@ -132,7 +132,7 @@ import { SesionJuegoMenor } from '../../../../core/models/operador.model';
                     type="button"
                     [attr.data-testid]="'btn-registrar-caida-' + sesion.idSesion"
                     (click)="registrarCaida(sesion)"
-                    class="py-3 px-3 bg-purple-600 hover:bg-purple-700 active:scale-[0.98] text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+                    class="py-3 px-3 bg-purple-600 hover:bg-purple-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
@@ -145,7 +145,7 @@ import { SesionJuegoMenor } from '../../../../core/models/operador.model';
                   type="button"
                   [attr.data-testid]="'btn-salida-toro-' + sesion.idSesion"
                   (click)="confirmarSalida(sesion)"
-                  class="py-3 px-3 bg-slate-900 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  class="py-3 px-3 bg-slate-900 hover:bg-red-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                   [class.col-span-2]="(sesion.intentosRealizados || 0) >= (sesion.intentosMaximos || 3)">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -38,8 +38,8 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
                   <span
                     class="w-1.5 h-1.5 rounded-full"
                     [ngClass]="{
-                      'bg-emerald-400 animate-pulse': wsService.estadoConexion() === 'CONECTADO',
-                      'bg-amber-400 animate-ping': wsService.estadoConexion() === 'RECONECTANDO',
+                      'bg-emerald-400 motion-safe:animate-pulse': wsService.estadoConexion() === 'CONECTADO',
+                      'bg-amber-400 motion-safe:animate-ping': wsService.estadoConexion() === 'RECONECTANDO',
                       'bg-red-500': wsService.estadoConexion() === 'SIN_CONEXION'
                     }"></span>
                   <span class="font-medium text-[10px]">
@@ -60,7 +60,7 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
               [ngClass]="{
                 'bg-emerald-950/80 border-emerald-600 text-emerald-300': operacionService.nivelSaturacionAforo() === 'BAJO',
                 'bg-amber-950/80 border-amber-600 text-amber-300': operacionService.nivelSaturacionAforo() === 'MEDIO',
-                'bg-red-950/90 border-red-500 text-red-200 animate-pulse': operacionService.nivelSaturacionAforo() === 'LLENO'
+                'bg-red-950/90 border-red-500 text-red-200 motion-safe:animate-pulse': operacionService.nivelSaturacionAforo() === 'LLENO'
               }">
               <span class="text-[9px] font-semibold uppercase tracking-wider">Aforo</span>
               <span class="text-xs font-black font-mono leading-none">
@@ -74,10 +74,10 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
                 type="button"
                 data-testid="btn-parada-emergencia"
                 (click)="toggleParadaEmergencia()"
-                class="px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 transition shadow-sm cursor-pointer"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-sm cursor-pointer transition-transform duration-150 ease-out enabled:active:scale-[0.96]"
                 [ngClass]="operacionService.paradaEmergenciaActiva()
                   ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 ring-2 ring-amber-300'
-                  : 'bg-red-600 text-white hover:bg-red-700 active:scale-95'">
+                  : 'bg-red-600 text-white hover:bg-red-700'">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -149,7 +149,7 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
               type="button"
               data-testid="btn-confirmar-estacion"
               (click)="confirmarEstacion(activa)"
-              class="w-full min-h-[50px] bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer">
+              class="w-full min-h-[50px] bg-emerald-600 hover:bg-emerald-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-extrabold text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>

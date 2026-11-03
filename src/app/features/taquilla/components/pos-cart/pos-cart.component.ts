@@ -60,7 +60,7 @@ import { VentaCalculoService } from '../../../../core/services/venta-calculo.ser
       }
 
       <!-- Lista de Ítems del Carrito -->
-      <div class="py-1 flex-1 space-y-2.5 max-h-[300px] overflow-y-auto pr-0.5">
+      <div class="py-1 flex-1 space-y-2.5 max-h-[300px] overflow-y-auto overscroll-contain pr-0.5">
         @if (_items().length === 0) {
           <div class="py-8 text-center text-slate-400 text-xs" data-testid="orden-vacia">
             <div class="w-10 h-10 rounded-2xl bg-slate-100 text-slate-300 mx-auto flex items-center justify-center mb-2">
@@ -120,7 +120,7 @@ import { VentaCalculoService } from '../../../../core/services/venta-calculo.ser
                     [attr.data-testid]="'btn-decrementar-' + $index"
                     (click)="decrementarCantidad($index)"
                     title="Disminuir cantidad"
-                    class="w-6 h-6 rounded-md text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer font-bold text-xs active:scale-95">
+                    class="w-6 h-6 rounded-md text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-transform duration-150 ease-out cursor-pointer font-bold text-xs enabled:active:scale-[0.96]">
                     −
                   </button>
 
@@ -138,7 +138,7 @@ import { VentaCalculoService } from '../../../../core/services/venta-calculo.ser
                     [disabled]="limiteAlcanzado"
                     (click)="incrementarCantidad($index)"
                     title="Aumentar cantidad"
-                    class="w-6 h-6 rounded-md text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer font-bold text-xs disabled:opacity-30 disabled:cursor-not-allowed active:scale-95">
+                    class="w-6 h-6 rounded-md text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-transform duration-150 ease-out cursor-pointer font-bold text-xs disabled:opacity-30 disabled:cursor-not-allowed enabled:active:scale-[0.96]">
                     +
                   </button>
                 </div>
@@ -364,9 +364,9 @@ import { VentaCalculoService } from '../../../../core/services/venta-calculo.ser
           data-testid="btn-liquidar-orden"
           [disabled]="!pagoValido()"
           (click)="confirmarLiquidacion()"
-          class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+          class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
           </svg>
           <span>Cobrar y Liquidar Orden</span>
         </button>

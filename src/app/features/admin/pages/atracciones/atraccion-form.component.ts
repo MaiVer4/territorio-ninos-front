@@ -14,7 +14,7 @@ import { TipoAtraccion } from '../../../../core/models/enums';
   imports: [CommonModule, ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col font-sans">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col font-sans motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95">
       <!-- Header -->
       <div class="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
         <div>
@@ -31,7 +31,7 @@ import { TipoAtraccion } from '../../../../core/models/enums';
       </div>
 
       <!-- Formulario -->
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex-1 overflow-y-auto p-5 space-y-4">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
         <!-- Nombre -->
         <div>
           <label class="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -137,12 +137,12 @@ import { TipoAtraccion } from '../../../../core/models/enums';
         <!-- Botones de Acción -->
         <div class="pt-2 grid grid-cols-2 gap-3">
           <button type="button" (click)="close()"
-            class="py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm font-semibold hover:bg-slate-50 transition cursor-pointer">
+            class="py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-transform duration-150 ease-out enabled:active:scale-[0.96] cursor-pointer">
             Cancelar
           </button>
           <button type="submit"
             [disabled]="form.invalid || loading()"
-            class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer">
+            class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>

@@ -109,7 +109,7 @@ export { strictPasswordValidator };
             </div>
 
             <button mat-flat-button color="primary" type="submit" [disabled]="resetForm.invalid || isLoading || !token" 
-                    class="!py-6 !text-base !font-extrabold !rounded-2xl !bg-blue-600 w-full mt-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60">
+                    class="!py-6 !text-base !font-extrabold !rounded-2xl !bg-blue-600 w-full mt-2 transition-transform duration-150 ease-out motion-safe:hover:scale-[1.01] enabled:active:scale-[0.96] disabled:opacity-60">
               @if (!isLoading) {
                 <span>Restablecer Contraseña</span>
               } @else {

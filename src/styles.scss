@@ -41,6 +41,15 @@ body {
   margin: 0;
   height: 100%;
 }
+
+// Reset tap highlight color on mobile touch screens
+button,
+a,
+input,
+select,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
 /* Estilos para Toasts de Notificación (MatSnackBar) */
 .mat-mdc-snack-bar-container.toast-success:not(.toast-custom-pane) .mdc-snackbar__surface {
   background-color: #059669 !important;

@@ -51,7 +51,7 @@ import { ModoEventoComponent } from '../../components/modo-evento/modo-evento.co
           @if (operacionService.paradaEmergenciaActiva()) {
             <div
               data-testid="alerta-parada-emergencia"
-              class="bg-red-600 text-white p-4 rounded-3xl shadow-lg flex items-center justify-between gap-3 animate-pulse">
+              class="bg-red-600 text-white p-4 rounded-3xl shadow-lg flex items-center justify-between gap-3 motion-safe:animate-pulse">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-2xl bg-white text-red-600 flex items-center justify-center font-black text-xl">
                   ⚠️
@@ -64,7 +64,7 @@ import { ModoEventoComponent } from '../../components/modo-evento/modo-evento.co
               <button
                 type="button"
                 (click)="operacionService.reanudarParadaEmergencia()"
-                class="px-4 py-2 bg-white hover:bg-slate-100 text-red-600 font-black text-xs rounded-xl shadow-xs cursor-pointer shrink-0">
+                class="px-4 py-2 bg-white hover:bg-slate-100 text-red-600 font-black text-xs rounded-xl shadow-xs transition-transform duration-150 ease-out enabled:active:scale-[0.96] cursor-pointer shrink-0">
                 Reanudar
               </button>
             </div>
@@ -108,7 +108,7 @@ import { ModoEventoComponent } from '../../components/modo-evento/modo-evento.co
         <div class="flex items-center gap-2 text-xs text-slate-500">
           <span
             class="w-2 h-2 rounded-full"
-            [ngClass]="wsService.estadoConexion() === 'CONECTADO' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'"></span>
+            [ngClass]="wsService.estadoConexion() === 'CONECTADO' ? 'bg-emerald-500 motion-safe:animate-pulse' : 'bg-amber-500'"></span>
           <span class="font-medium hidden sm:inline">Consola de Campo • Territorio de Niños</span>
           <span class="font-medium sm:hidden">Operador en Campo</span>
         </div>

@@ -27,7 +27,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
   template: `
     <div
       data-testid="consulta-tickets-root"
-      class="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden flex flex-col max-w-7xl mx-auto w-full transition-all">
+      class="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden flex flex-col max-w-7xl mx-auto w-full">
 
       <!-- Encabezado del Módulo / Diálogo -->
       <header class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
@@ -94,9 +94,9 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
             data-testid="btn-buscar-tickets"
             [disabled]="buscando()"
             (click)="ejecutarBusqueda()"
-            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50">
+            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50">
             @if (buscando()) {
-              <svg class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+              <svg class="motion-safe:animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -278,7 +278,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
                           [disabled]="estadoVis === 'CONSUMIDO'"
                           (click)="onSolicitarReimpresion(t)"
                           [title]="estadoVis === 'CONSUMIDO' ? 'No se puede reimprimir: boleta consumida' : 'Reimprimir boleta'"
-                          class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 rounded-lg text-[11px] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none shadow-2xs flex items-center gap-1 mx-auto">
+                          class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-amber-800 border border-amber-300 rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none shadow-2xs flex items-center gap-1 mx-auto">
                           <span>🖨️</span>
                           <span>Reimprimir</span>
                         </button>
@@ -313,7 +313,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
 
             <div
               data-testid="tarjeta-detalle-ticket"
-              class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-lg space-y-4 animate-in fade-in zoom-in-95 duration-150">
+              class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-lg space-y-4 animate-in fade-in motion-safe:zoom-in-95 duration-150">
 
               <!-- Cabecera de la Tarjeta con Pill de Estado -->
               <div class="flex items-start justify-between border-b border-slate-100 pb-3">
@@ -412,7 +412,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
                   [disabled]="estadoDetalle === 'CONSUMIDO'"
                   (click)="onSolicitarReimpresion(t)"
                   [title]="estadoDetalle === 'CONSUMIDO' ? 'No se puede reimprimir: boleta consumida' : 'Reimprimir boleta'"
-                  class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none">
+                  class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none">
                   <span>🖨️</span>
                   <span>Reimprimir Tirilla</span>
                 </button>
