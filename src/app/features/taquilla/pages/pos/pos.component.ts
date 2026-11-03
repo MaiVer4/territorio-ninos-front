@@ -90,11 +90,12 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
       <!-- Modal de Consulta de Boletas y Estado de Tickets (HU-23.04, HU-23.05, HU-23.06) -->
       @if (mostrarConsultaTickets()) {
         <div
-          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain"
+          (click)="mostrarConsultaTickets.set(false)"
+          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain cursor-pointer"
           role="dialog"
           aria-modal="true"
           data-testid="modal-consulta-tickets">
-          <div class="w-full max-w-6xl my-auto animate-in fade-in motion-safe:zoom-in-95 duration-150" (click)="$event.stopPropagation()">
+          <div class="w-full max-w-6xl my-auto animate-in fade-in motion-safe:zoom-in-95 duration-150 cursor-default" (click)="$event.stopPropagation()">
             <app-consulta-tickets
               [modoModal]="true"
               (reimprimirTicket)="abrirModalReimpresionBoleta($event)"
@@ -279,6 +280,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                   id="numeroDocumento"
                   data-testid="input-documento"
                   type="text"
+                  inputmode="numeric"
                   formControlName="numeroDocumento"
                   placeholder="Doc. (mín. 5 dígitos)"
                   class="w-full px-3 py-1.5 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
@@ -320,6 +322,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                 id="telefono"
                 data-testid="input-telefono"
                 type="tel"
+                inputmode="tel"
                 formControlName="telefono"
                 placeholder="Ej: 3001234567"
                 class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
@@ -635,10 +638,10 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
       </main>
 
       <!-- Barra de Estado / Dock Fijo Inferior -->
-      <footer class="no-print fixed bottom-0 inset-x-0 h-12 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-20 px-6 flex items-center justify-between shadow-xs">
-        <div class="flex items-center gap-2 text-xs text-slate-500">
-          <span class="w-2 h-2 rounded-full" [ngClass]="turnoActual() ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-          <span class="font-medium">
+      <footer class="no-print fixed bottom-0 inset-x-0 h-12 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-20 px-4 sm:px-6 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-2 text-xs text-slate-500 min-w-0">
+          <span class="w-2 h-2 rounded-full shrink-0" [ngClass]="turnoActual() ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+          <span class="font-medium truncate max-w-[150px] sm:max-w-none">
             @if (turnoActual(); as turno) {
               Turno #{{ turno.idTurno }} Activo • Territorio de Niños
             } @else {
@@ -647,13 +650,13 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
           </span>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           <div class="flex items-center gap-2">
             <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center ring-1 ring-blue-300">
               {{ authService.currentUserInitials() }}
             </div>
-            <span class="text-xs font-bold text-slate-800">{{ authService.currentUserName() }}</span>
-            <span class="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+            <span class="text-xs font-bold text-slate-800 hidden sm:inline">{{ authService.currentUserName() }}</span>
+            <span class="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full hidden md:inline">
               {{ authService.currentUser()?.rol === 'ADMINISTRADOR' ? 'Administrador' : 'Taquillero' }}
             </span>
           </div>
@@ -663,11 +666,12 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
           <button
             type="button"
             (click)="logout()"
-            class="hover:bg-red-50 hover:text-red-600 text-xs text-slate-500 font-medium px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5">
+            class="hover:bg-red-50 hover:text-red-600 text-xs text-slate-500 font-medium px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5"
+            title="Cerrar sesión">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span>Cerrar sesión</span>
+            <span class="hidden sm:inline">Cerrar sesión</span>
           </button>
         </div>
       </footer>
@@ -1074,7 +1078,15 @@ export class TaquillaPosComponent implements OnInit {
       return;
     }
 
-    if (event.key === 'F2') {
+    if (event.key === 'Escape') {
+      if (this.mostrarConsultaTickets()) {
+        this.mostrarConsultaTickets.set(false);
+      } else if (this.mostrarModalReimpresion()) {
+        this.onCancelarReimpresion();
+      } else if (this.mostrarColaEmision()) {
+        this.mostrarColaEmision.set(false);
+      }
+    } else if (event.key === 'F2') {
       event.preventDefault();
       this.enfocarBuscarCliente();
     } else if (event.key === 'F4') {

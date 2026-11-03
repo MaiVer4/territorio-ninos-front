@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models/operador.model';
@@ -12,10 +12,12 @@ import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models
     @if (operacionService.resultadoValidacionActual(); as res) {
       <div
         data-testid="modal-resultado-validacion"
-        class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
+        (click)="onBackdropClick($event)"
+        class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain cursor-pointer">
         
         <div
-          class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full overflow-hidden shadow-2xl border-2 animate-in fade-in motion-safe:zoom-in-95 duration-150"
+          class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full overflow-hidden shadow-2xl border-2 animate-in fade-in motion-safe:zoom-in-95 duration-150 cursor-default"
+          (click)="$event.stopPropagation()"
           [ngClass]="res.aprobado ? 'border-emerald-500 shadow-emerald-500/20' : 'border-red-600 shadow-red-600/25'">
           
           <!-- Franja Superior de Estado de Alto Contraste (HU-26.07 / RNF3) -->
@@ -134,6 +136,17 @@ export class ResultadoValidacionComponent {
 
   ingresoConfirmado = output<SesionJuegoMenor>();
   cerrado = output<void>();
+
+  @HostListener('window:keydown.escape')
+  onEscapeKey(): void {
+    this.cerrar();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.cerrar();
+    }
+  }
 
   permitirIngreso(res: ResultadoValidacionQr): void {
     const sesion = this.operacionService.permitirIngresoMenor(res);

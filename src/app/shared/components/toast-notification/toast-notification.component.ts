@@ -8,7 +8,7 @@ import { ToastData, ToastType } from '../../../core/models/toast.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
-      class="relative flex items-start gap-3.5 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl shadow-slate-900/10 min-w-[320px] max-w-sm sm:max-w-md overflow-hidden text-slate-800"
+      class="relative flex items-start gap-3.5 p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl shadow-slate-900/10 w-full min-w-[280px] max-w-sm sm:max-w-md overflow-hidden text-slate-800"
     >
       <!-- Ícono Temático en Cápsula Redondeada con Acentos de Color -->
       <div

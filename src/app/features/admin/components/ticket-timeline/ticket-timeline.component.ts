@@ -86,7 +86,7 @@ import { AuditoriaTicket, TimelineEventoTicket } from '../../../../core/models/a
                       {{ evento.tipoHito }}
                     </span>
                   </div>
-                  <time class="text-xs font-mono font-medium text-slate-400">{{ evento.fechaHora || evento.timestamp }}</time>
+                  <time class="text-xs font-mono font-medium text-slate-500">{{ formatearFechaHora(evento.fechaHora || evento.timestamp) }}</time>
                 </div>
 
                 <p class="text-xs text-slate-600 mb-3">{{ evento.descripcion }}</p>
@@ -114,32 +114,32 @@ import { AuditoriaTicket, TimelineEventoTicket } from '../../../../core/models/a
                     
                     @if (evento.metadatos.cajeroEmisor) {
                       <div>
-                        <span class="text-slate-400 text-[10px] block font-semibold">Cajero Emisor:</span>
+                        <span class="text-slate-500 text-[10px] block font-semibold">Cajero Emisor:</span>
                         <span class="font-bold text-slate-800">{{ evento.metadatos.cajeroEmisor }}</span>
                       </div>
                     }
 
                     @if (evento.metadatos.operarioValidador) {
                       <div>
-                        <span class="text-slate-400 text-[10px] block font-semibold">Operario Validador:</span>
+                        <span class="text-slate-500 text-[10px] block font-semibold">Operario Validador:</span>
                         <span class="font-bold text-slate-800">{{ evento.metadatos.operarioValidador }}</span>
                       </div>
                     }
 
                     <div>
-                      <span class="text-slate-400 text-[10px] block font-semibold">Estación Física:</span>
+                      <span class="text-slate-500 text-[10px] block font-semibold">Estación Física:</span>
                       <span class="font-medium text-slate-800">{{ evento.metadatos.estacionFisica }}</span>
                     </div>
 
                     @if (evento.metadatos.duracionMinutosJuego !== undefined) {
                       <div>
-                        <span class="text-slate-400 text-[10px] block font-semibold">Duración en Juego:</span>
+                        <span class="text-slate-500 text-[10px] block font-semibold">Duración en Juego:</span>
                         <span class="font-extrabold text-emerald-700">{{ evento.metadatos.duracionMinutosJuego }} minutos</span>
                       </div>
                     }
 
                     <div>
-                      <span class="text-slate-400 text-[10px] block font-semibold">Dirección IP Terminal:</span>
+                      <span class="text-slate-500 text-[10px] block font-semibold">Dirección IP Terminal:</span>
                       <span class="font-mono font-bold text-slate-700">{{ evento.metadatos.direccionIpTerminal }}</span>
                     </div>
 
@@ -175,6 +175,11 @@ export class TicketTimelineComponent {
       ...map,
       [idEvento]: !map[idEvento]
     }));
+  }
+
+  formatearFechaHora(valor?: string): string {
+    if (!valor) return '—';
+    return valor.replace('T', ' ').split('.')[0];
   }
 
   obtenerColorHito(evento: TimelineEventoTicket): string {

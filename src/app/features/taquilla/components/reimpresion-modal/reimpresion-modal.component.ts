@@ -5,7 +5,8 @@ import {
   EventEmitter,
   Input,
   Output,
-  signal
+  signal,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -24,6 +25,7 @@ import {
   template: `
     <!-- Backdrop bloqueante -->
     <div
+      (click)="onBackdropClick($event)"
       class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
       role="dialog"
       aria-modal="true"
@@ -258,6 +260,17 @@ export class ReimpresionModalComponent {
   seleccionarMotivo(codigo: CodigoMotivoReimpresion): void {
     if (this.estaProcesando() || this.esTicketInvalido()) return;
     this.motivoSeleccionado.set(codigo);
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscapeKey(): void {
+    this.onCancelar();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.onCancelar();
+    }
   }
 
   onCancelar(): void {

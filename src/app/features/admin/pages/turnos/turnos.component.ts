@@ -1,4 +1,4 @@
-import { Component, signal, ChangeDetectionStrategy, OnInit, inject, DestroyRef, computed } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, OnInit, inject, DestroyRef, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -244,8 +244,11 @@ export interface TurnoItem {
       @if (turnoSeleccionadoParaAuditoria()) {
         <div
           data-testid="modal-detalle-conciliacion-turno"
-          class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
-          <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] animate-in fade-in motion-safe:zoom-in-95 duration-150">
+          (click)="onBackdropClick($event)"
+          class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto overscroll-contain cursor-pointer">
+          <div
+            (click)="$event.stopPropagation()"
+            class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] animate-in fade-in motion-safe:zoom-in-95 duration-150 cursor-default">
             
             <div class="flex items-start justify-between pb-4 border-b border-slate-100">
               <div>
@@ -456,6 +459,19 @@ export class TurnosComponent implements OnInit {
   cerrarModalDetalleTurno(): void {
     this.turnoSeleccionadoParaAuditoria.set(null);
     this.boletasTurno.set([]);
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscapeKey(): void {
+    if (this.turnoSeleccionadoParaAuditoria()) {
+      this.cerrarModalDetalleTurno();
+    }
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.cerrarModalDetalleTurno();
+    }
   }
 
   getInitials(name: string): string {

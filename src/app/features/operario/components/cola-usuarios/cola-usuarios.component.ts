@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OperacionService } from '../../../../core/services/operacion.service';
@@ -159,8 +159,12 @@ import {
 
       <!-- Modal de Pausa con Selector de Incidente (HU-29.07 / Notion: CA-01) -->
       @if (sesionParaPausar()) {
-        <div class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain">
-          <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95">
+        <div
+          (click)="onBackdropClick($event)"
+          class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain cursor-pointer">
+          <div
+            (click)="$event.stopPropagation()"
+            class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 cursor-default">
             <h3 class="text-base font-extrabold text-slate-800 mb-1">Pausar Tiempo de Juego</h3>
             <p class="text-xs text-slate-500 mb-4">
               Selecciona el motivo de incidente para {{ sesionParaPausar()?.menorNombre }}:
@@ -204,6 +208,19 @@ import {
 export class ColaUsuariosComponent {
   operacionService = inject(OperacionService);
   soundService = inject(SoundNotificationService);
+
+  @HostListener('window:keydown.escape')
+  onEscapeKey(): void {
+    if (this.sesionParaPausar()) {
+      this.cerrarModalPausa();
+    }
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.cerrarModalPausa();
+    }
+  }
 
   readonly opcionesPausa = OPCIONES_MOTIVO_PAUSA;
   readonly sesionParaPausar = signal<SesionJuegoMenor | null>(null);

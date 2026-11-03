@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, DestroyRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -65,10 +65,12 @@ interface NavItem {
     <nav class="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
       @for (item of navItems; track item.path) {
         <a [routerLink]="item.path"
+           [title]="item.label"
            (click)="closeMobileSidebar()"
            routerLinkActive="bg-blue-600 !text-white shadow-sm"
            [routerLinkActiveOptions]="{ exact: item.path === '/admin/dashboard' }"
-           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition cursor-pointer text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition cursor-pointer text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+           [ngClass]="{ 'md:justify-center md:px-0': !sidebarOpenDesktop() }">
           
           <!-- Iconos -->
           @if (item.icon === 'dashboard') {
@@ -118,9 +120,11 @@ interface NavItem {
     <!-- Footer del Sidebar: SIEMPRE visible en la parte inferior de la pantalla -->
     <div class="p-2 border-t border-slate-700/50 space-y-0.5 shrink-0 bg-slate-900">
       <a routerLink="/admin/configuracion"
+         title="Configuración"
          (click)="closeMobileSidebar()"
          routerLinkActive="bg-blue-600 !text-white"
-         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition cursor-pointer">
+         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition cursor-pointer"
+         [ngClass]="{ 'md:justify-center md:px-0': !sidebarOpenDesktop() }">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -131,7 +135,9 @@ interface NavItem {
       </a>
 
       <button (click)="logout()"
-        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-950/40 hover:text-red-400 transition cursor-pointer">
+        title="Cerrar sesión"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-950/40 hover:text-red-400 transition cursor-pointer"
+        [ngClass]="{ 'md:justify-center md:px-0': !sidebarOpenDesktop() }">
         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
         </svg>
@@ -156,12 +162,37 @@ interface NavItem {
       <h1 class="text-sm sm:text-base font-bold text-slate-800 flex-1 truncate">{{ currentTitle() }}</h1>
       
       <!-- Campana de Notificaciones -->
-      <button class="relative text-slate-400 hover:text-slate-600 transition p-1.5 cursor-pointer">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-        </svg>
-        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-      </button>
+      <div class="relative">
+        <button (click)="toggleNotificaciones()"
+                title="Notificaciones"
+                class="relative text-slate-400 hover:text-slate-600 transition p-1.5 cursor-pointer rounded-lg hover:bg-slate-100">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          @if (hasUnreadNotifications()) {
+            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          }
+        </button>
+
+        @if (mostrarNotificaciones()) {
+          <div class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+              <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Notificaciones</span>
+              @if (hasUnreadNotifications()) {
+                <button (click)="marcarLeidas()" class="text-[11px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                  Marcar leídas
+                </button>
+              }
+            </div>
+            <div class="px-4 py-6 text-center text-xs text-slate-500">
+              <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              No hay notificaciones pendientes en el sistema
+            </div>
+          </div>
+        }
+      </div>
 
       <!-- Badge de Perfil Admin -->
       <div class="flex items-center gap-2 pl-2 border-l border-slate-100">
@@ -196,6 +227,8 @@ export class AdminLayoutComponent {
   // En escritorio controla colapso (w-60 vs w-16). En móvil el drawer flotante
   sidebarOpenDesktop = signal(true);
   sidebarOpenMobile = signal(false);
+  mostrarNotificaciones = signal(false);
+  hasUnreadNotifications = signal(true);
 
   currentUrl = signal(this.router.url);
 
@@ -242,6 +275,21 @@ export class AdminLayoutComponent {
 
   closeMobileSidebar() {
     this.sidebarOpenMobile.set(false);
+  }
+
+  toggleNotificaciones() {
+    this.mostrarNotificaciones.update(v => !v);
+  }
+
+  marcarLeidas() {
+    this.hasUnreadNotifications.set(false);
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscape() {
+    if (this.mostrarNotificaciones()) {
+      this.mostrarNotificaciones.set(false);
+    }
   }
 
   logout() {

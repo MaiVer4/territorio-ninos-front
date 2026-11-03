@@ -1,4 +1,4 @@
-import { Component, computed, Input, signal, ChangeDetectionStrategy, EventEmitter, Output } from '@angular/core';
+import { Component, computed, Input, signal, ChangeDetectionStrategy, EventEmitter, Output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { MetodoPagoPOS } from '../../../../core/models/enums';
@@ -11,6 +11,7 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
   template: `
     <!-- Backdrop bloqueante -->
     <div
+      (click)="onBackdropClick($event)"
       class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
       role="dialog"
       aria-modal="true"
@@ -311,6 +312,19 @@ export class ConfirmarPagoModalComponent {
         return '📱';
       default:
         return '💰';
+    }
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscapeKey(): void {
+    if (!this.estaProcesando()) {
+      this.onCancelar();
+    }
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget && !this.estaProcesando()) {
+      this.onCancelar();
     }
   }
 
