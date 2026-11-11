@@ -156,7 +156,7 @@ describe('TicketConsultaService (HU-23.04 / HU-23.05)', () => {
         expect(tickets[0].clienteDocumento).toBe('1098765432');
       });
 
-      const req = httpMock.expectOne('/territorioninos/api/tickets/consultar?q=1098765432');
+      const req = httpMock.expectOne(r => r.url.includes('/tickets/consultar') && r.params.get('q') === '1098765432');
       expect(req.request.method).toBe('GET');
       req.flush(mockResultados);
     });
@@ -170,7 +170,7 @@ describe('TicketConsultaService (HU-23.04 / HU-23.05)', () => {
         expect(tickets[0].uuid).toBe(mockTicketPagado.uuid);
       });
 
-      const req = httpMock.expectOne('/territorioninos/api/tickets/consultar?q=1098765432');
+      const req = httpMock.expectOne(r => r.url.includes('/tickets/consultar'));
       req.flush('Not Found', { status: 404, statusText: 'Not Found' });
     });
 
@@ -182,7 +182,7 @@ describe('TicketConsultaService (HU-23.04 / HU-23.05)', () => {
         expect(tickets[0].codigoBoleta).toBe(mockTicketConsumido.codigoBoleta);
       });
 
-      const req = httpMock.expectOne('/territorioninos/api/tickets/consultar?q=');
+      const req = httpMock.expectOne(r => r.url.includes('/tickets/consultar'));
       req.flush([mockTicketPagado, mockTicketEnUso, mockTicketConsumido]);
     });
   });

@@ -312,10 +312,54 @@ export class CatalogoAtraccionesComponent {
   }
 
   calcularPrecioBase(a: Atraccion): number {
-    return a.precio || a.tarifaMinuto || (a.tipo === 'EVENTOS_CAIDAS' ? 10000 : 500);
+    const ext = a as Atraccion & {
+      tarifasBloque?: Array<{ minutos: number; precio: number; vigente?: boolean }>;
+      tarifasEvento?: Array<{ intentos: number; precio: number; vigente?: boolean }>;
+    };
+
+    if (a.tipo === 'EVENTOS_CAIDAS') {
+      const evento = ext.tarifasEvento?.find(e => e.vigente !== false);
+      if (evento) return evento.precio;
+      return a.precio || a.tarifaMinuto || 10000;
+    }
+
+    const bloque = ext.tarifasBloque?.find(b => b.vigente !== false);
+    if (bloque) return bloque.precio;
+
+    if (a.precio) return a.precio;
+    const dur = a.duracionMinutosBase || a.duracion || 15;
+    const tarifa = a.tarifaMinuto || 600;
+    return dur * tarifa;
   }
 
   getModalidades(a: Atraccion): ModalidadSeleccionada[] {
+    const ext = a as Atraccion & {
+      tarifasBloque?: Array<{ minutos: number; precio: number; vigente?: boolean }>;
+      tarifasEvento?: Array<{ intentos: number; precio: number; vigente?: boolean }>;
+    };
+
+    if (a.tipo === 'EVENTOS_CAIDAS' && Array.isArray(ext.tarifasEvento) && ext.tarifasEvento.length > 0) {
+      return ext.tarifasEvento
+        .filter(e => e.vigente !== false)
+        .map(e => ({
+          tipo: 'EVENTOS_CAIDAS' as const,
+          etiqueta: `${e.intentos} caídas`,
+          valor: e.intentos,
+          precio: e.precio
+        }));
+    }
+
+    if (a.tipo === 'TEMPORIZADA' && Array.isArray(ext.tarifasBloque) && ext.tarifasBloque.length > 0) {
+      return ext.tarifasBloque
+        .filter(b => b.vigente !== false)
+        .map(b => ({
+          tipo: 'TEMPORIZADA' as const,
+          etiqueta: `${b.minutos} min`,
+          valor: b.minutos,
+          precio: b.precio
+        }));
+    }
+
     const base = this.calcularPrecioBase(a);
 
     if (a.tipo === 'EVENTOS_CAIDAS') {

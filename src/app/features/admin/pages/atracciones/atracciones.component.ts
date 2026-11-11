@@ -81,13 +81,16 @@ import { TarifasModalComponent } from './tarifas-modal.component';
 
                 <!-- Nombre y Resumen -->
                 <p class="font-bold text-slate-800 text-base mb-0.5 truncate">{{ a.nombre }}</p>
-                <p class="text-xs text-slate-400 mb-3 truncate">{{ a.tag || ((a.duracion || a.duracionMinutosBase || 20) + ' min · máx ' + (a.maxCapacity || a.capacidadMaxima || 10)) }}</p>
+                <p class="text-xs text-slate-400 mb-3 truncate">{{ a.tag || (a.tipo === 'EVENTOS_CAIDAS' ? ((a.caidasLimite || 3) + ' caídas · máx ' + (a.maxCapacity || a.capacidadMaxima || 10)) : ((a.duracion || a.duracionMinutosBase || 20) + ' min · máx ' + (a.maxCapacity || a.capacidadMaxima || 10))) }}</p>
 
                 <!-- Grid de Métricas -->
                 <div class="grid grid-cols-2 gap-2 text-xs mb-3">
                   <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
                     <p class="text-slate-400 text-[10px]">Precio</p>
-                    <p class="font-bold text-slate-700">\${{ (a.precio || a.tarifaMinuto || 0).toLocaleString('es-CO') }}</p>
+                    <p class="font-bold text-slate-700">
+                      \${{ (a.precio || a.tarifaMinuto || 0).toLocaleString('es-CO') }}
+                      <span class="text-[10px] font-normal text-slate-400">{{ a.tipo === 'EVENTOS_CAIDAS' ? ' / base' : ' / min' }}</span>
+                    </p>
                   </div>
                   <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
                     <p class="text-slate-400 text-[10px]">Capacidad</p>
@@ -250,6 +253,10 @@ export class AtraccionesComponent implements OnInit {
               const tarifaMinuto = a.tarifaMinuto || a.precio || 10000;
               const duracionMinutosBase = a.duracionMinutosBase || a.duracion || 15;
               const capacidadMaxima = a.capacidadMaxima || a.maxCapacity || 10;
+              const caidasLimite = a.caidasLimite || 3;
+              const tag = a.tipo === 'EVENTOS_CAIDAS'
+                ? `${caidasLimite} caídas · máx ${capacidadMaxima}`
+                : `${duracionMinutosBase} min · máx ${capacidadMaxima}`;
               return {
                 ...a,
                 tarifaMinuto,
@@ -258,9 +265,10 @@ export class AtraccionesComponent implements OnInit {
                 duracion: duracionMinutosBase,
                 capacidadMaxima,
                 maxCapacity: capacidadMaxima,
+                caidasLimite,
                 color: a.color || colors[i % colors.length],
                 lightBg: a.lightBg || lightBgs[i % lightBgs.length],
-                tag: `${duracionMinutosBase} min · máx ${capacidadMaxima}`
+                tag
               };
             });
             this.atracciones.set(mapped);
@@ -326,10 +334,16 @@ export class AtraccionesComponent implements OnInit {
   }
 
   openTarifasDialog(atraccion: Atraccion) {
-    this.dialog.open(TarifasModalComponent, {
+    const dialogRef = this.dialog.open(TarifasModalComponent, {
       width: '500px',
       panelClass: '!rounded-2xl',
       data: atraccion
     });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.loadAtracciones();
+      });
   }
 }

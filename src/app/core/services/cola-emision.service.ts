@@ -1,4 +1,7 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { BoletaEmisionFisica, OrdenEmisionFisica, ResumenLiquidacionPOS } from '../models/atraccion.model';
 import { ContextoVentaTicket, EstadoTicket, Ticket, VentaResponseDTO } from '../models/ticket.model';
 
@@ -6,6 +9,9 @@ import { ContextoVentaTicket, EstadoTicket, Ticket, VentaResponseDTO } from '../
   providedIn: 'root'
 })
 export class ColaEmisionService {
+  private readonly http = inject(HttpClient, { optional: true });
+  private readonly apiUrl = `${environment.apiUrl}/ventas`;
+
   readonly ordenes = signal<OrdenEmisionFisica[]>([]);
   readonly ordenReciente = signal<OrdenEmisionFisica | null>(null);
 
@@ -223,6 +229,26 @@ export class ColaEmisionService {
     this.ordenReciente.set(nuevaOrden);
 
     return nuevaOrden;
+  }
+
+  /**
+   * Sincroniza la orden de venta y sus boletas emitidas con el backend para persistencia financiera y validación QR en atracciones.
+   */
+  sincronizarVentaBackend(orden: OrdenEmisionFisica, clienteId?: number, clienteDocumento?: string): void {
+    if (!this.http) return;
+
+    this.http
+      .post<VentaResponseDTO>(this.apiUrl, {
+        idOrden: orden.idOrden,
+        clienteId,
+        clienteDocumento,
+        clienteNombre: orden.clienteNombre,
+        metodoPago: orden.metodoPago,
+        granTotal: orden.granTotal,
+        boletas: orden.boletas
+      })
+      .pipe(catchError(() => of(null)))
+      .subscribe();
   }
 
   /**

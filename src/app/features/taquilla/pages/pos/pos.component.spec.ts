@@ -13,6 +13,7 @@ import { of, throwError } from 'rxjs';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente } from '../../../../core/models/cliente.model';
 import { Atraccion, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { Ticket } from '../../../../core/models/ticket.model';
 import { By } from '@angular/platform-browser';
 
 describe('TaquillaPosComponent', () => {

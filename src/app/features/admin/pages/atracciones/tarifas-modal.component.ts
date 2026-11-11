@@ -234,6 +234,34 @@ export class TarifasModalComponent implements OnInit {
   }
 
   ngOnInit() {
+    const req$ = this.data?.id ? this.tarifaService.getTarifasByAtraccion?.(this.data.id) : undefined;
+    if (req$) {
+      req$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (tarifario) => {
+          if (this.data.tipo === 'TEMPORIZADA') {
+            if (tarifario?.bloques && tarifario.bloques.length > 0) {
+              tarifario.bloques.forEach(b => this.addTimeBlock(b.minutos, b.precio, b.id, b.vigente ?? true));
+            } else {
+              this.initTimeBlocks();
+            }
+          } else {
+            if (tarifario?.eventos && tarifario.eventos.length > 0) {
+              tarifario.eventos.forEach(e => this.addEventRate(e.intentos, e.precio, e.descripcion || '', e.id, e.vigente ?? true));
+            } else {
+              this.initEventRates();
+            }
+          }
+        },
+        error: () => {
+          this.fallbackInitRates();
+        }
+      });
+    } else {
+      this.fallbackInitRates();
+    }
+  }
+
+  private fallbackInitRates() {
     if (this.data.tipo === 'TEMPORIZADA') {
       this.initTimeBlocks();
     } else {
@@ -256,13 +284,14 @@ export class TarifasModalComponent implements OnInit {
     this.addEventRate(caidas, basePrecio, `Paquete estándar ${caidas} caídas`);
   }
 
-  addTimeBlock(minutos: number, precio: number) {
+  addTimeBlock(minutos: number, precio: number, id?: number | string, vigente = true) {
     this.bloquesArray.push(
       this.fb.group({
+        id: [id],
         atraccionId: [this.data.id || 0],
         minutos: [minutos, [Validators.required, Validators.min(5)]],
         precio: [precio, [Validators.required, Validators.min(100)]],
-        vigente: [true]
+        vigente: [vigente]
       })
     );
   }
@@ -273,14 +302,15 @@ export class TarifasModalComponent implements OnInit {
     }
   }
 
-  addEventRate(intentos: number, precio: number, descripcion: string) {
+  addEventRate(intentos: number, precio: number, descripcion: string, id?: number | string, vigente = true) {
     this.eventosArray.push(
       this.fb.group({
+        id: [id],
         atraccionId: [this.data.id || 0],
         intentos: [intentos, [Validators.required, Validators.min(1)]],
         precio: [precio, [Validators.required, Validators.min(100)]],
         descripcion: [descripcion],
-        vigente: [true]
+        vigente: [vigente]
       })
     );
   }

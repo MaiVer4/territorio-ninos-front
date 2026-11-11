@@ -28,6 +28,7 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
 import { TicketPrintTemplateComponent } from '../../../../shared/components/ticket-print-template/ticket-print-template.component';
 import { PrintService } from '../../../../core/services/print.service';
 import { TicketReimpresionService } from '../../../../core/services/ticket-reimpresion.service';
+import { ConfiguracionService } from '../../../../core/services/configuracion.service';
 import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
 
 @Component({
@@ -681,7 +682,8 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
         <app-ticket-print-template
           [orden]="printService.ordenEnImpresion() || colaEmisionService.ordenReciente()"
           [boletas]="printService.boletasEnImpresion().length > 0 ? printService.boletasEnImpresion() : boletasGeneradas()"
-          [paperWidthMm]="printService.anchoPapelMm()">
+          [paperWidthMm]="printService.anchoPapelMm()"
+          [config]="printService.configParque()">
         </app-ticket-print-template>
       </div>
     </div>
@@ -692,6 +694,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly cajaService = inject(CajaService);
   readonly clienteService = inject(ClienteService);
   readonly atraccionService = inject(AtraccionService, { optional: true });
+  readonly configuracionService = inject(ConfiguracionService, { optional: true });
   readonly posAudioService = inject(PosAudioService);
   readonly colaEmisionService = inject(ColaEmisionService);
   readonly ventaCalculoService = inject(VentaCalculoService);
@@ -754,6 +757,24 @@ export class TaquillaPosComponent implements OnInit {
     this.verificarTurnoCaja();
     this.iniciarBusquedaCliente();
     this.cargarCatalogoAtracciones();
+    this.cargarConfiguracionImpresion();
+  }
+
+  private cargarConfiguracionImpresion(): void {
+    const req$ = this.configuracionService?.getConfiguracion?.();
+    if (!req$) return;
+
+    req$.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(() => of(null))
+    ).subscribe(config => {
+      if (config) {
+        this.printService.configurarDatosParque(config);
+        if (config.anchoPapelMm) {
+          this.printService.configurarAnchoPapel(config.anchoPapelMm === 58 ? 58 : 80);
+        }
+      }
+    });
   }
 
   cargarCatalogoAtracciones(): void {
@@ -841,13 +862,36 @@ export class TaquillaPosComponent implements OnInit {
     // 1. Emitir sonido sutil de confirmación
     this.posAudioService.reproducirConfirmacionPago();
 
-    // 2. Pasar a la cola de emisión física y mapear boletas en el estado (HU-19.09)
+    // 2. Si es un cliente nuevo con datos completos, persistir en el backend
+    const docCliente = this.clienteForm.get('numeroDocumento')?.value?.trim();
+    const nomCliente = this.clienteForm.get('nombreCompleto')?.value?.trim();
+    const telCliente = this.clienteForm.get('telefono')?.value?.trim();
+    if (this.esClienteNuevo() && docCliente && nomCliente) {
+      this.clienteService?.registrarCliente?.({
+        tipoDocumento: 'CC',
+        numeroDocumento: docCliente,
+        nombreCompleto: nomCliente,
+        telefono: telCliente || '',
+        correo: this.clienteForm.get('correo')?.value?.trim() || undefined,
+        menores: this.menoresOrden()
+      })?.pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError(() => of(null))
+      ).subscribe();
+    }
+
+    // 3. Pasar a la cola de emisión física y mapear boletas en el estado (HU-19.09)
     const clienteContexto = {
       clienteNombre: this.nombreClienteTitular(),
-      clienteDocumento: this.clienteForm.get('numeroDocumento')?.value?.trim() || undefined,
+      clienteDocumento: docCliente || undefined,
       clienteId: this.clienteSeleccionado()?.idCliente
     };
     const ordenFisica = this.colaEmisionService.encolarVenta(resumen, clienteContexto);
+    this.colaEmisionService.sincronizarVentaBackend(
+      ordenFisica,
+      clienteContexto.clienteId,
+      clienteContexto.clienteDocumento
+    );
 
     // 3. Disparar impresión automática inmediatamente tras confirmar la venta (SCRUM-377 / HU-21.06)
     this.printService.imprimirOrden(ordenFisica);

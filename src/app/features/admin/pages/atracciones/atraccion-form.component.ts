@@ -206,10 +206,14 @@ export class AtraccionFormComponent {
     const toleranciaMinutos = Number(val.toleranciaMinutos || 0);
     const caidasLimite = Number(val.caidasLimite || 3);
 
+    const tagDesc = tipoVal === 'EVENTOS_CAIDAS'
+      ? `${caidasLimite} caídas · máx ${capacidadMaxima}`
+      : `${duracionMinutosBase} min · máx ${capacidadMaxima}`;
+
     const payload: Atraccion = {
       ...this.data,
       nombre: val.nombre,
-      descripcion: `${duracionMinutosBase} min · máx ${capacidadMaxima}`,
+      descripcion: tagDesc,
       tarifaMinuto,
       capacidadMaxima,
       duracionMinutosBase,
@@ -221,7 +225,7 @@ export class AtraccionFormComponent {
       precio: tarifaMinuto,
       maxCapacity: capacidadMaxima,
       duracion: duracionMinutosBase,
-      tag: `${duracionMinutosBase} min · máx ${capacidadMaxima}`
+      tag: tagDesc
     };
 
     if (this.isEdit() && this.data?.id && typeof this.data.id === 'number') {
