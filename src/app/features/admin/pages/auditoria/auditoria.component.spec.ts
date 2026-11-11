@@ -33,18 +33,20 @@ describe('AuditoriaComponent (HU-38.07..10, HU-41.05..08)', () => {
         timestamp: '2026-11-02 09:15:00',
         metadatos: {
           cajeroEmisor: 'Carlos Gómez',
+          estacionFisica: 'Caja Principal 01',
           direccionIpTerminal: '192.168.10.15'
         }
       },
       {
         idEvento: 'EVT-2',
-        tipoHito: 'ACCESO_ATRACCION',
+        tipoHito: 'ESCANEO_ACCESO',
         tituloHito: 'Ingreso al Juego',
         descripcion: 'Validación QR exitosa',
         timestamp: '2026-11-02 09:25:00',
         metadatos: {
           operarioValidador: 'Juan Reyes',
-          estacionFisica: 'Estación Molinete 01'
+          estacionFisica: 'Estación Molinete 01',
+          direccionIpTerminal: '192.168.10.22'
         }
       }
     ]
@@ -52,23 +54,33 @@ describe('AuditoriaComponent (HU-38.07..10, HU-41.05..08)', () => {
 
   const mockIncidentes: IncidenteOperativo[] = [
     {
+      idIncidente: 'INC-1',
       id: 'INC-1',
+      atraccionNombre: 'Laberinto Mágico',
       atraccion: 'Laberinto Mágico',
       estacionFisica: 'Estación Molinete 01',
+      operarioNombre: 'Juan Reyes',
       operario: 'Juan Reyes',
+      fechaHoraInicio: '2026-11-02 10:15:00',
       timestamp: '2026-11-02 10:15:00',
-      severidad: 'LEVE',
+      severidad: 'BAJA',
+      motivoJustificado: 'Limpieza rutinaria',
       motivo: 'Limpieza rutinaria',
       duracionMinutos: 3,
       superaUmbralCincoMinutos: false
     },
     {
+      idIncidente: 'INC-2',
       id: 'INC-2',
+      atraccionNombre: 'Castillo Inflable',
       atraccion: 'Castillo Inflable',
       estacionFisica: 'Zona 2 Entrada',
+      operarioNombre: 'María Pérez',
       operario: 'María Pérez',
+      fechaHoraInicio: '2026-11-02 11:30:00',
       timestamp: '2026-11-02 11:30:00',
       severidad: 'MEDIA',
+      motivoJustificado: 'Ajuste de presión de aire turbina',
       motivo: 'Ajuste de presión de aire turbina',
       duracionMinutos: 9,
       superaUmbralCincoMinutos: true

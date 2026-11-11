@@ -1,11 +1,13 @@
 import {
   Component,
   OnInit,
+  DestroyRef,
   computed,
   signal,
   inject,
   ChangeDetectionStrategy
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { exportToCsv } from '../../../../core/utils/csv-exporter';
@@ -453,6 +455,7 @@ export interface AuditLog {
 })
 export class AuditoriaComponent implements OnInit {
   readonly auditoriaService = inject(AuditoriaService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<'expediente' | 'incidentes' | 'logs'>('expediente');
 
@@ -507,9 +510,12 @@ export class AuditoriaComponent implements OnInit {
   }
 
   cargarIncidentesYPausas(): void {
-    this.auditoriaService.obtenerIncidentesYPausas().subscribe(data => {
-      this.incidentes.set(data || []);
-    });
+    this.auditoriaService
+      .obtenerIncidentesYPausas()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(data => {
+        this.incidentes.set(data || []);
+      });
   }
 
   buscarExpediente(): void {
@@ -517,16 +523,19 @@ export class AuditoriaComponent implements OnInit {
     if (!valid.esValido) return;
 
     this.buscandoExpediente.set(true);
-    this.auditoriaService.buscarExpedienteTicket(valid.terminoSanitizado || this.terminoBusquedaTicket().trim()).subscribe({
-      next: (exp) => {
-        this.expedienteSeleccionado.set(exp);
-        this.buscandoExpediente.set(false);
-      },
-      error: () => {
-        this.expedienteSeleccionado.set(null);
-        this.buscandoExpediente.set(false);
-      }
-    });
+    this.auditoriaService
+      .buscarExpedienteTicket(valid.terminoSanitizado || this.terminoBusquedaTicket().trim())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (exp) => {
+          this.expedienteSeleccionado.set(exp);
+          this.buscandoExpediente.set(false);
+        },
+        error: () => {
+          this.expedienteSeleccionado.set(null);
+          this.buscandoExpediente.set(false);
+        }
+      });
   }
 
   setFilter(sev: AuditSeverity) {

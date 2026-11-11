@@ -7,6 +7,7 @@ import { UsuarioService } from '../../../../core/services/usuario.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Usuario } from '../../../../core/models/usuario.model';
 import { EstadoUsuario } from '../../../../core/models/enums';
+import { extractInitials } from '../../../../core/utils/initials.util';
 import { ColaboradorFormComponent } from './colaborador-form.component';
 
 export interface UserRow extends Usuario {

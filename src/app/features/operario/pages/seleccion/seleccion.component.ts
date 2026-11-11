@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../../core/services/auth.service';
 import { OperacionService } from '../../../../core/services/operacion.service';
@@ -145,10 +146,14 @@ export class OperarioSeleccionComponent implements OnInit {
   operacionService = inject(OperacionService);
   wsService = inject(WebSocketService);
   offlineQueue = inject(OfflineQueueService);
+  private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
     if (!this.operacionService.estacionActiva()) {
-      this.operacionService.consultarEstacionAsignada().subscribe();
+      this.operacionService
+        .consultarEstacionAsignada()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe();
     }
   }
 

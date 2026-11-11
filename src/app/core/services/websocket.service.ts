@@ -1,6 +1,8 @@
 import { Injectable, inject, signal, OnDestroy } from '@angular/core';
 import { EstadoEnlaceOperario } from '../models/operador.model';
 import { NotificationService } from './notification.service';
+import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
 import { Observable, Subject } from 'rxjs';
 import { Client, StompSubscription } from '@stomp/stompjs';
 
@@ -23,6 +25,7 @@ export interface MensajeEstacionWs {
 })
 export class WebSocketService implements OnDestroy {
   private notificationService = inject(NotificationService);
+  private authService = inject(AuthService, { optional: true });
 
   // Telemetría de Ocupación para Admin Dashboard (HU-11)
   private occupancySubject = new Subject<OccupancyEvent>();
@@ -77,13 +80,15 @@ export class WebSocketService implements OnDestroy {
 
     try {
       if (!this.stompClient) {
-        const loc = window.location;
-        const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = loc.host || 'localhost:8080';
-        const brokerURL = `${proto}//${host}/territorioninos/ws/websocket`;
+        const brokerURL = this.construirBrokerUrl();
+        const token = this.authService?.getToken?.();
+        const connectHeaders: Record<string, string> = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
 
         this.stompClient = new Client({
           brokerURL,
+          connectHeaders,
           reconnectDelay: 0,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
@@ -104,9 +109,7 @@ export class WebSocketService implements OnDestroy {
             this.iniciarReconexionConBackoff();
           },
           onWebSocketClose: () => {
-            if (this.estadoConexion() === 'CONECTADO') {
-              this.iniciarReconexionConBackoff();
-            }
+            this.iniciarReconexionConBackoff();
           }
         });
 
@@ -177,24 +180,42 @@ export class WebSocketService implements OnDestroy {
     this.mensajesSubject.next(mensaje);
   }
 
+  private construirBrokerUrl(): string {
+    const api = environment.apiUrl || '';
+    if (api.startsWith('http://') || api.startsWith('https://')) {
+      const wsBase = api.replace(/^http/, 'ws').replace(/\/api\/?$/, '');
+      return `${wsBase}/ws/websocket`;
+    }
+    const loc = window.location;
+    const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = loc.host || 'localhost:8080';
+    return `${proto}//${host}/territorioninos/ws/websocket`;
+  }
+
   /**
    * Algoritmo de reconexión con backoff exponencial: 2s, 4s, 8s (HU-35.03).
    */
   iniciarReconexionConBackoff(): void {
-    if (this.estadoConexion() === 'RECONECTANDO') {
+    if (this.reconexionTimer !== null) {
+      return;
+    }
+
+    const intento = this.reintentosReconexion() + 1;
+    if (intento > 5) {
+      this.estadoConexion.set('SIN_CONEXION');
+      this.connected.set(false);
       return;
     }
 
     this.estadoConexion.set('RECONECTANDO');
     this.connected.set(false);
-    const intento = this.reintentosReconexion() + 1;
     this.reintentosReconexion.set(intento);
 
     const exponente = Math.min(intento - 1, 2);
     const delayMs = 2000 * Math.pow(2, exponente); // 2000, 4000, 8000
 
-    this.limpiarReconexionTimer();
     this.reconexionTimer = setTimeout(() => {
+      this.reconexionTimer = null;
       if (this.atraccionIdActiva && typeof navigator !== 'undefined' && navigator.onLine) {
         this.reintentarConexion();
       } else {

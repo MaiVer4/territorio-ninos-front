@@ -67,8 +67,8 @@ export type PeriodoReporte = 'HOY' | 'ULTIMOS_7_DIAS' | 'ESTE_MES' | 'PERSONALIZ
 
 export interface FiltroPeriodoReporte {
   periodo: PeriodoReporte;
-  fechaInicio: string;
-  fechaFin: string;
+  fechaInicio?: string;
+  fechaFin?: string;
   cajeroId?: number | string;
 }
 

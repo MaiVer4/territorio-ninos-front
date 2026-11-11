@@ -2,6 +2,7 @@ import {
   Component,
   OnInit,
   OnDestroy,
+  DestroyRef,
   ElementRef,
   ViewChild,
   ChangeDetectionStrategy,
@@ -10,6 +11,7 @@ import {
   inject,
   AfterViewInit
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
@@ -183,29 +185,32 @@ Chart.register(...registerables);
             @for (top of top3Atracciones(); track top.atraccionId; let idx = $index) {
               <div
                 [attr.data-testid]="'card-top-' + (idx + 1)"
-                class="bg-white rounded-2xl border p-4.5 shadow-xs relative overflow-hidden transition hover:shadow-md"
+                class="bg-white rounded-2xl border p-4.5 sm:p-5 shadow-xs relative overflow-hidden transition hover:shadow-md flex flex-col justify-between h-full"
                 [ngClass]="idx === 0 ? 'border-amber-200 ring-1 ring-amber-300/40 bg-gradient-to-br from-amber-50/30 to-white' : 'border-slate-100'">
                 
-                <div class="flex items-start justify-between">
-                  <span
-                    class="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shadow-xs"
-                    [ngClass]="idx === 0 ? 'bg-amber-400 text-amber-950' : idx === 1 ? 'bg-slate-300 text-slate-800' : 'bg-amber-700/20 text-amber-900'">
-                    #{{ idx + 1 }}
-                  </span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    {{ top.tipo }}
-                  </span>
-                </div>
+                <div>
+                  <div class="flex items-start justify-between">
+                    <span
+                      class="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shadow-xs"
+                      [ngClass]="idx === 0 ? 'bg-amber-400 text-amber-950' : idx === 1 ? 'bg-slate-300 text-slate-800' : 'bg-amber-700/20 text-amber-900'">
+                      #{{ idx + 1 }}
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      [ngClass]="top.tipo === 'EVENTOS_CAIDAS' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">
+                      {{ top.tipo === 'EVENTOS_CAIDAS' ? 'Por Caídas' : 'Por Tiempo' }}
+                    </span>
+                  </div>
 
-                <div class="mt-3">
-                  <h4 class="font-bold text-slate-800 text-sm truncate">{{ top.nombre }}</h4>
-                  <div class="flex items-baseline gap-2 mt-1">
-                    <span class="text-2xl font-black text-slate-900 font-mono">{{ top.volumenVisitas.toLocaleString('es-CO') }}</span>
-                    <span class="text-xs text-slate-500 font-medium">visitas</span>
+                  <div class="mt-3">
+                    <h4 class="font-bold text-slate-800 text-sm truncate" [title]="top.nombre">{{ top.nombre }}</h4>
+                    <div class="flex items-baseline gap-2 mt-1">
+                      <span class="text-2xl font-black text-slate-900 font-mono">{{ top.volumenVisitas.toLocaleString('es-CO') }}</span>
+                      <span class="text-xs text-slate-500 font-medium">visitas</span>
+                    </div>
                   </div>
                 </div>
 
-                <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                   <div>
                     <span class="text-[10px] text-slate-500 block font-medium">Ocupación</span>
                     <span class="font-bold font-mono text-emerald-600">{{ top.ocupacionPromedioPorcentaje }}%</span>
@@ -452,6 +457,7 @@ export class ReportesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly reporteService = inject(ReporteService);
   readonly notificationService = inject(NotificationService, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
 
   private chartInstance: Chart | null = null;
   private weeklyChartInstance: Chart | null = null;
@@ -534,7 +540,7 @@ export class ReportesComponent implements OnInit, AfterViewInit, OnDestroy {
       periodo: this.periodoSeleccionado(),
       fechaInicio: this.fechaInicio,
       fechaFin: this.fechaFin
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: data => {
         this.atraccionesRotacion.set(data || []);
         this.cargandoReporte.set(false);
@@ -583,7 +589,7 @@ export class ReportesComponent implements OnInit, AfterViewInit, OnDestroy {
       periodo: this.periodoSeleccionado(),
       fechaInicio: this.fechaInicio,
       fechaFin: this.fechaFin
-    }).subscribe(datos => {
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(datos => {
       if (!datos) return;
       if (this.chartInstance) {
         this.chartInstance.data.labels = datos.ventasPorHora.map(v => v.hora);
@@ -755,11 +761,11 @@ export class ReportesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   descargarCsvBlob(): void {
-    this.reporteService.descargarReporteFinancieroBlob('csv').subscribe();
+    this.reporteService.descargarReporteFinancieroBlob('csv').pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 
   descargarPdfBlob(): void {
-    this.reporteService.descargarReporteFinancieroBlob('pdf').subscribe();
+    this.reporteService.descargarReporteFinancieroBlob('pdf').pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 
   exportarCsv(): void {

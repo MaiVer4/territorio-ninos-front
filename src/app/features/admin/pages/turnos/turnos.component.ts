@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CajaService } from '../../../../core/services/caja.service';
 import { ReporteService } from '../../../../core/services/reporte.service';
 import { exportToCsv } from '../../../../core/utils/csv-exporter';
+import { extractInitials } from '../../../../core/utils/initials.util';
 import { DetalleConciliacionTurno } from '../../../../core/models/reporte.model';
 
 export interface TurnoItem {
@@ -444,16 +445,19 @@ export class TurnosComponent implements OnInit {
   abrirModalDetalleTurno(turno: TurnoItem): void {
     this.turnoSeleccionadoParaAuditoria.set(turno);
     this.cargandoBoletasTurno.set(true);
-    this.reporteService.obtenerDetalleConciliacionTurno(turno.id).subscribe({
-      next: (detalle) => {
-        this.boletasTurno.set(detalle?.boletasVendidas || []);
-        this.cargandoBoletasTurno.set(false);
-      },
-      error: () => {
-        this.boletasTurno.set([]);
-        this.cargandoBoletasTurno.set(false);
-      }
-    });
+    this.reporteService
+      .obtenerDetalleConciliacionTurno(turno.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detalle) => {
+          this.boletasTurno.set(detalle?.boletasVendidas || []);
+          this.cargandoBoletasTurno.set(false);
+        },
+        error: () => {
+          this.boletasTurno.set([]);
+          this.cargandoBoletasTurno.set(false);
+        }
+      });
   }
 
   cerrarModalDetalleTurno(): void {
@@ -475,16 +479,22 @@ export class TurnosComponent implements OnInit {
   }
 
   getInitials(name: string): string {
-    return name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2);
+    return extractInitials(name);
   }
 
   exportarCsv(): void {
     if (this.turnos().length === 0) return;
-    this.reporteService.descargarReporteFinancieroBlob('csv', this.fechaSeleccionada).subscribe();
+    this.reporteService
+      .descargarReporteFinancieroBlob('csv', this.fechaSeleccionada)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 
   exportarPdf(): void {
     if (this.turnos().length === 0) return;
-    this.reporteService.descargarReporteFinancieroBlob('pdf', this.fechaSeleccionada).subscribe();
+    this.reporteService
+      .descargarReporteFinancieroBlob('pdf', this.fechaSeleccionada)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 }

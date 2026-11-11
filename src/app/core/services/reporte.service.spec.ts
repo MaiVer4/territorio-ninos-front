@@ -119,6 +119,9 @@ describe('ReporteService (HU-36.08, HU-37.06, HU-39.07, HU-40.06)', () => {
       datos = res;
     });
 
+    const req = httpMock.expectOne(r => r.url.includes('/reportes/graficos'));
+    req.error(new ProgressEvent('error'));
+
     expect(datos).toBeDefined();
     expect(datos.ventasPorHora.length).toBe(9);
     expect(datos.evolucionSemanal.length).toBe(7);

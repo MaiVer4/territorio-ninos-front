@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, output } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { WebSocketService } from '../../../../core/services/websocket.service';
@@ -176,6 +177,7 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
 export class SeleccionAtraccionComponent {
   operacionService = inject(OperacionService);
   wsService = inject(WebSocketService);
+  private readonly destroyRef = inject(DestroyRef);
 
   estacionConfirmada = output<EstacionTrabajo>();
 
@@ -189,7 +191,10 @@ export class SeleccionAtraccionComponent {
   }
 
   desvincularEstacion(): void {
-    this.operacionService.desvincularEstacionActiva().subscribe();
+    this.operacionService
+      .desvincularEstacionActiva()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 
   toggleParadaEmergencia(): void {
