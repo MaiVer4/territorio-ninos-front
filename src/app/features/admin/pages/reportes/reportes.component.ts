@@ -207,85 +207,26 @@ Chart.register(...registerables);
         }
       </div>
 
-      <!-- Tarjetas KPI Top 3 Demanda y Alertas de Baja Rotación (HU-37.08 / Notion: CA-01, CA-03) -->
-      <div data-testid="ranking-top3-atracciones" class="space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-            Ranking de Mayor Demanda — Top 3
-          </h3>
-          <span class="text-xs text-slate-500 font-medium">Basado en volumen de visitas</span>
-        </div>
-
-        @if (top3Atracciones().length > 0) {
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            @for (top of top3Atracciones(); track top.atraccionId; let idx = $index) {
-              <div
-                [attr.data-testid]="'card-top-' + (idx + 1)"
-                class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 transition hover:shadow-md"
-                [ngClass]="idx === 0 ? 'ring-1 ring-amber-300/40' : ''">
-                
-                <div
-                  class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-base font-black shadow-xs"
-                  [ngClass]="idx === 0 ? 'bg-amber-100 text-amber-900' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-900'">
-                  #{{ idx + 1 }}
-                </div>
-
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center justify-between gap-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      {{ top.tipo === 'EVENTOS_CAIDAS' ? 'POR CAÍDAS' : 'POR TIEMPO' }}
-                    </span>
-                    <span class="text-[10px] font-bold font-mono text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      {{ top.ocupacionPromedioPorcentaje }}% aforo
-                    </span>
-                  </div>
-
-                  <h4 class="font-extrabold text-slate-800 text-sm truncate mt-0.5" [title]="top.nombre">{{ top.nombre }}</h4>
-
-                  <div class="flex items-baseline gap-2 mt-0.5">
-                    <span class="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono">{{ top.volumenVisitas.toLocaleString('es-CO') }}</span>
-                    <span class="text-xs text-slate-400 font-medium">visitas</span>
-                  </div>
-
-                  <p class="text-[11px] text-slate-400 font-medium mt-0.5 truncate">
-                    Facturación: <span class="font-bold text-slate-700 font-mono">{{ formatearFacturacion(top.ingresosBrutos) }}</span>
-                  </p>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="bg-white border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-500 shadow-2xs">
-            <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      <!-- Banner de Alerta para Juegos con Baja Utilización (< 60%) (HU-37.08 / Notion: CA-03) -->
+      @if (atraccionesBajaUtilizacion().length > 0) {
+        <div data-testid="alerta-baja-utilizacion" class="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 flex items-start gap-3.5 shadow-2xs">
+          <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
-            <p class="text-xs font-bold text-slate-700">Sin datos de demanda en el período</p>
-            <p class="text-[11px] text-slate-400 mt-0.5">No se registraron visitas ni ventas para calcular el ranking.</p>
           </div>
-        }
-
-        <!-- Banner de Alerta para Juegos con Baja Utilización (< 60%) (HU-37.08 / Notion: CA-03) -->
-        @if (atraccionesBajaUtilizacion().length > 0) {
-          <div data-testid="alerta-baja-utilizacion" class="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 flex items-start gap-3.5 shadow-2xs">
-            <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              </svg>
-            </div>
-            <div class="text-xs flex-1">
-              <p class="font-bold text-amber-900">Alerta de Ocupación Reducida (&lt; 60%)</p>
-              <p class="text-amber-800/90 mt-1">
-                Se detectó baja afluencia en:
-                @for (baja of atraccionesBajaUtilizacion(); track baja.atraccionId; let last = $last) {
-                  <strong>{{ baja.nombre }} ({{ baja.ocupacionPromedioPorcentaje }}%)</strong>{{ last ? '.' : ', ' }}
-                }
-                Considera promociones dinámicas o reasignación de personal.
-              </p>
-            </div>
+          <div class="text-xs flex-1">
+            <p class="font-bold text-amber-900">Alerta de Ocupación Reducida (&lt; 60%)</p>
+            <p class="text-amber-800/90 mt-1">
+              Se detectó baja afluencia en:
+              @for (baja of atraccionesBajaUtilizacion(); track baja.atraccionId; let last = $last) {
+                <strong>{{ baja.nombre }} ({{ baja.ocupacionPromedioPorcentaje }}%)</strong>{{ last ? '.' : ', ' }}
+              }
+              Considera promociones dinámicas o reasignación de personal.
+            </p>
           </div>
-        }
-      </div>
+        </div>
+      }
 
       <!-- Sección de Gráficos Interactivos Chart.js (HU-40.06..08) -->
       <div #graficosContainer class="grid grid-cols-1 lg:grid-cols-3 gap-5">

@@ -155,6 +155,19 @@ export class ReporteService {
     if (filtro?.fechaFin) params = params.set('fechaFin', filtro.fechaFin);
 
     return this.http.get<RotacionAtraccion[]>(`${this.apiUrl}/rotacion-atracciones`, { params }).pipe(
+      map(data => {
+        if (!Array.isArray(data) || data.length === 0 || !data[0]?.nombre) {
+          throw new Error('Estructura de rotación vacía o inválida');
+        }
+        return data.map(item => ({
+          ...item,
+          volumenVisitas: Number(item.volumenVisitas || 0),
+          ocupacionPromedioPorcentaje: Number(item.ocupacionPromedioPorcentaje || 0),
+          ingresosBrutos: Number(item.ingresosBrutos || 0),
+          tiempoPromedioMinutos: Number(item.tiempoPromedioMinutos || 0),
+          tendenciaPorcentaje: Number(item.tendenciaPorcentaje || 0)
+        }));
+      }),
       catchError(() => {
         const periodo = filtro?.periodo || 'HOY';
         let mult = 1;

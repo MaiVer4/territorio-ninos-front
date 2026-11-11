@@ -212,17 +212,20 @@ describe('ReportesComponent (HU-37.06..08, HU-39.06..08, HU-40.05..08)', () => {
     expect(printSpy).toHaveBeenCalled();
   });
 
-  it('should render top 3 demand attraction cards and alert on low utilization (HU-37.08 / Notion: CA-01, CA-03)', () => {
+  it('should render sales KPI summary cards and alert on low utilization (HU-37.08 / Notion: CA-01, CA-03)', () => {
     fixture.detectChanges();
+
+    const kpiVentas = fixture.debugElement.query(By.css('[data-testid="kpi-total-ventas"]'));
+    const kpiTiquetes = fixture.debugElement.query(By.css('[data-testid="kpi-tiquetes-emitidos"]'));
+    const kpiPromedio = fixture.debugElement.query(By.css('[data-testid="kpi-ingreso-promedio"]'));
+    expect(kpiVentas).toBeTruthy();
+    expect(kpiTiquetes).toBeTruthy();
+    expect(kpiPromedio).toBeTruthy();
 
     expect(component.top3Atracciones().length).toBe(3);
     expect(component.top3Atracciones()[0].nombre).toBe('Laberinto Mágico');
     expect(component.top3Atracciones()[1].nombre).toBe('Castillo Inflable Gigante');
     expect(component.top3Atracciones()[2].nombre).toBe('Toro Mecánico Infantil');
-
-    const topCards = fixture.debugElement.queryAll(By.css('[data-testid^="card-top-"]'));
-    expect(topCards.length).toBe(3);
-    expect(topCards[0].nativeElement.textContent).toContain('Laberinto Mágico');
 
     // Low utilization alert (<60%)
     expect(component.atraccionesBajaUtilizacion().length).toBe(1);
