@@ -164,7 +164,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       resultado = val;
     });
 
-    const req = httpMock.expectOne('/territorioninos/api/operacion/validar-qr');
+    const req = httpMock.expectOne(r => r.url.includes('/operacion/validar-qr'));
     expect(req.request.method).toBe('POST');
     req.flush({
       aprobado: true,
@@ -268,8 +268,43 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(service.autorizarIngresoForzadoSupervisor('')).toBe(false);
     expect(service.autorizarIngresoForzadoSupervisor('wrong-pin')).toBe(false);
     const autorizado = service.autorizarIngresoForzadoSupervisor('1234');
+    const reqOverride = httpMock.expectOne(r => r.url.includes('/operacion/autorizar-sobreaforo'));
+    expect(reqOverride.request.method).toBe('POST');
+    reqOverride.flush(null);
+
     expect(autorizado).toBe(true);
     expect(service.escanerDesbloqueado()).toBe(true);
+  });
+
+  it('should reject QR ticket when backend responds with 404/422 instead of approving locally (Fail-Closed)', () => {
+    service.confirmarEstacionTrabajo({
+      idAsignacion: 1,
+      atraccionId: 1,
+      atraccionNombre: 'Laberinto',
+      tipoAtraccion: 'TEMPORIZADA',
+      capacidadMaxima: 5,
+      ocupacionActual: 0,
+      duracionMinutosBase: 15,
+      operarioId: 10,
+      operarioNombre: 'Op',
+      confirmada: true,
+      estadoEnlace: 'CONECTADO'
+    });
+
+    let resultado: ResultadoValidacionQr | undefined;
+    service.validarTicketQr('BOL-INEXISTENTE-999').subscribe(val => {
+      resultado = val;
+    });
+
+    const req = httpMock.expectOne(r => r.url.includes('/operacion/validar-qr'));
+    req.flush(
+      { causaRechazo: 'BOLETO_NO_ENCONTRADO', mensajeExplicativo: 'El boleto no existe en la base de datos.' },
+      { status: 404, statusText: 'Not Found' }
+    );
+
+    expect(resultado).toBeDefined();
+    expect(resultado!.aprobado).toBe(false);
+    expect(resultado!.causaRechazo).toBe('BOLETO_NO_ENCONTRADO');
   });
 
   it('should confirm child exit with animation flag and free capacity (HU-32.06..08)', async () => {

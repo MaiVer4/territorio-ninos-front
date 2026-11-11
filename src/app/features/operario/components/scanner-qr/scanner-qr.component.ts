@@ -152,7 +152,8 @@ import { ResultadoValidacionQr } from '../../../../core/models/operador.model';
               <input
                 type="password"
                 [(ngModel)]="pinSupervisor"
-                placeholder="Ingresa PIN (ej. 1234)"
+                autocomplete="off"
+                placeholder="Ingresa PIN de autorización"
                 class="w-full px-3 py-2 text-center text-sm font-mono tracking-widest border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
             </div>
 

@@ -71,4 +71,19 @@ describe('authGuard', () => {
     expect(result instanceof UrlTree).toBe(true);
     expect((result as UrlTree).toString()).toBe('/unauthorized');
   });
+
+  it('should inherit required roles from parent route when used with canActivateChild', () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(true);
+    authServiceSpy.getRole.mockReturnValue('TAQUILLERO');
+
+    const childRoute = {
+      data: {},
+      parent: { data: { roles: ['ADMINISTRADOR'] } }
+    } as unknown as ActivatedRouteSnapshot;
+    const state = { url: '/admin/dashboard' } as RouterStateSnapshot;
+
+    const result = TestBed.runInInjectionContext(() => authGuard(childRoute, state));
+    expect(result instanceof UrlTree).toBe(true);
+    expect((result as UrlTree).toString()).toBe('/unauthorized');
+  });
 });

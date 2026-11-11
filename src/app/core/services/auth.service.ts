@@ -10,6 +10,7 @@ import { jwtDecode } from 'jwt-decode';
 
 import { NotificationService } from './notification.service';
 import { CajaService } from './caja.service';
+import { extractInitials } from '../utils/initials.util';
 
 export interface JwtPayload {
   exp: number;
@@ -57,14 +58,7 @@ export class AuthService {
     if (!name || name === 'Usuario') {
       return 'U';
     }
-    const words = name.split(/\s+/).filter(Boolean);
-    if (words.length >= 2) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    if (words.length === 1 && words[0].length > 0) {
-      return words[0].slice(0, 2).toUpperCase();
-    }
-    return 'U';
+    return extractInitials(name, 'U');
   });
 
   constructor() {
@@ -175,25 +169,32 @@ export class AuthService {
 
   getRole(): RolUsuario | null {
     const token = this.getToken();
-    if (token) {
+    if (!token) {
+      return null;
+    }
+
+    // Si el token tiene estructura JWT estándar (header.payload.signature), confiar exclusivamente en el payload firmado
+    if (token.split('.').length === 3) {
       try {
         const decoded = jwtDecode<JwtPayload>(token);
-        if (decoded?.rol) {
-          return decoded.rol;
-        }
+        const claimRole = (decoded?.rol || (decoded as Record<string, unknown>)?.['role']) as RolUsuario | undefined;
+        return claimRole || null;
       } catch {
-        // En caso de tokens mock en pruebas unitarias, recurrir al objeto persistido
+        return null;
       }
     }
 
-    try {
-      const authData = localStorage.getItem(this.TOKEN_KEY);
-      if (authData) {
-        const response: AuthResponse = JSON.parse(authData);
-        return (response.rol as RolUsuario) || null;
+    // Fallback exclusivo para tokens opacos/mock en entornos de pruebas unitarias
+    if (!environment.production) {
+      try {
+        const authData = localStorage.getItem(this.TOKEN_KEY);
+        if (authData) {
+          const response: AuthResponse = JSON.parse(authData);
+          return (response.rol as RolUsuario) || null;
+        }
+      } catch (e) {
+        console.error('Error leyendo rol de localStorage', e);
       }
-    } catch (e) {
-      console.error('Error leyendo rol de localStorage', e);
     }
     return null;
   }

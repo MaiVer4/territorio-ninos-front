@@ -1,5 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -318,7 +318,7 @@ export class OperacionService {
       return of(resp);
     }
 
-    // 3. Consulta al backend (POST /api/operacion/validar-qr) con fallback simulado
+    // 3. Consulta al backend (POST /api/operacion/validar-qr) con distinción estricta entre rechazo HTTP y modo offline
     return this.http.post<ResultadoValidacionQr>(`${this.apiUrl}/validar-qr`, {
       codigoQr: codigoLimpio,
       atraccionId: estacion?.atraccionId
@@ -329,8 +329,24 @@ export class OperacionService {
           this.soundService.reproducirBeepEscaneo();
         }
       }),
-      catchError(() => {
-        // Fallback local: parseo de tickets estándar emitidos por POS
+      catchError((error: HttpErrorResponse) => {
+        // Si el backend responde con error de cliente (400, 404, 409, 422), rechazar de forma segura (Fail-Closed)
+        if (error.status >= 400 && error.status < 500) {
+          const rechazoServidor: ResultadoValidacionQr = {
+            aprobado: false,
+            uuid: codigoLimpio,
+            causaRechazo: error.error?.causaRechazo || 'BOLETO_NO_ENCONTRADO',
+            mensajeExplicativo:
+              error.error?.mensajeExplicativo ||
+              error.error?.mensaje ||
+              error.error?.message ||
+              'El boleto fue rechazado o no existe en el servidor.'
+          };
+          this.resultadoValidacionActual.set(rechazoServidor);
+          return of(rechazoServidor);
+        }
+
+        // Fallback local exclusivo para contingencia sin red (status === 0)
         return of(this.simularValidacionLocal(codigoLimpio));
       })
     );
@@ -338,9 +354,21 @@ export class OperacionService {
 
   private simularValidacionLocal(codigoLimpio: string): ResultadoValidacionQr {
     const estacion = this.estacionActiva();
+    const lower = codigoLimpio.toLowerCase();
+
+    if (codigoLimpio.length < 6 || lower.includes('invalido') || lower.includes('falso') || lower.includes('expirado')) {
+      const rechazoInvalido: ResultadoValidacionQr = {
+        aprobado: false,
+        uuid: codigoLimpio,
+        causaRechazo: 'BOLETO_NO_ENCONTRADO',
+        mensajeExplicativo: 'Boleto inválido, expirado o con formato no reconocido en contingencia.'
+      };
+      this.resultadoValidacionActual.set(rechazoInvalido);
+      return rechazoInvalido;
+    }
 
     // Verificación de atracción incorrecta en mock
-    if (codigoLimpio.toLowerCase().includes('otra-atraccion')) {
+    if (lower.includes('otra-atraccion')) {
       const rechazo: ResultadoValidacionQr = {
         aprobado: false,
         uuid: codigoLimpio,
@@ -620,6 +648,10 @@ export class OperacionService {
       this.ingresoForzadoSupervisor.set(true);
       this.modalAforoCompletoAbierto.set(false);
       this.notificationService.warn('Ingreso forzado autorizado por supervisor/administrador');
+      this.http.post<void>(`${this.apiUrl}/autorizar-sobreaforo`, {
+        atraccionId: this.estacionActiva()?.atraccionId,
+        motivo: 'Override de capacidad máxima autorizado por supervisor'
+      }).pipe(catchError(() => of(null))).subscribe();
       return true;
     }
     this.notificationService.error('PIN de supervisor incorrecto');
