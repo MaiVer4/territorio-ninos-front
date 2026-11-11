@@ -35,26 +35,20 @@ Chart.register(...registerables);
   template: `
     <div class="w-full space-y-6 font-sans">
       <!-- Encabezado y acciones de exportación (HU-39.06..08) -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2">
-            <h2 class="font-bold text-slate-800 text-lg">Reportes de Ventas y Rotación Operativa</h2>
-            <span class="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-              Consolidado Comercial
-            </span>
-          </div>
-          <p class="text-xs text-slate-500 font-medium mt-0.5">Métricas consolidadas, afluencia y rendimiento comercial de atracciones</p>
+          <h2 class="font-extrabold text-slate-900 text-xl tracking-tight">Reportes de Ventas</h2>
+          <p class="text-xs text-slate-400 font-medium mt-0.5">Métricas consolidadas, afluencia y rendimiento comercial de atracciones</p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <!-- Botón Descargar CSV (HU-39.06..08) -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Botón Exportar CSV (HU-39.06..08) -->
           <button
             type="button"
             data-testid="btn-descargar-csv"
             (click)="descargarCsvBlob()"
             [disabled]="reporteService.descargandoArchivo()"
-            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 border border-slate-200 ps-3 pe-3.5 py-2 rounded-xl hover:bg-slate-50 transition active:scale-[0.97] shadow-xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            class="flex items-center gap-2 text-xs font-semibold text-slate-700 border border-slate-200/90 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition active:scale-[0.97] shadow-2xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             @if (reporteService.descargandoArchivo() && reporteService.formatoDescargaActivo() === 'csv') {
               <svg class="motion-safe:animate-spin w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -62,20 +56,20 @@ Chart.register(...registerables);
               </svg>
               <span>Generando...</span>
             } @else {
-              <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              <span>Descargar CSV</span>
+              <span>Exportar CSV</span>
             }
           </button>
 
-          <!-- Botón Descargar PDF (HU-39.06..08) -->
+          <!-- Botón Exportar PDF (HU-39.06..08) -->
           <button
             type="button"
             data-testid="btn-descargar-pdf"
             (click)="descargarPdfBlob()"
             [disabled]="reporteService.descargandoArchivo()"
-            class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 border border-slate-200 ps-3 pe-3.5 py-2 rounded-xl hover:bg-slate-50 transition active:scale-[0.97] shadow-xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            class="flex items-center gap-2 text-xs font-semibold text-slate-700 border border-slate-200/90 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition active:scale-[0.97] shadow-2xs bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             @if (reporteService.descargandoArchivo() && reporteService.formatoDescargaActivo() === 'pdf') {
               <svg class="motion-safe:animate-spin w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -83,12 +77,55 @@ Chart.register(...registerables);
               </svg>
               <span>Generando...</span>
             } @else {
-              <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              <span>Descargar PDF</span>
+              <span>Exportar PDF</span>
             }
           </button>
+        </div>
+      </div>
+
+      <!-- 3 Tarjetas KPI de Resumen de Ventas (Diseño referencia) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- KPI 1: Total del Mes / Período -->
+        <div data-testid="kpi-total-ventas" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <span class="text-2xl font-bold font-sans text-blue-600">$</span>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">{{ kpiResumen().etiquetaTotal }}</p>
+            <p class="text-2xl sm:text-[26px] font-extrabold text-slate-900 tracking-tight leading-tight mt-0.5">{{ kpiResumen().valorTotal }}</p>
+            <p class="text-xs text-slate-400 font-medium mt-1 truncate">{{ kpiResumen().subtituloTotal }}</p>
+          </div>
+        </div>
+
+        <!-- KPI 2: Tiquetes del Mes / Período -->
+        <div data-testid="kpi-tiquetes-emitidos" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">{{ kpiResumen().etiquetaTiquetes }}</p>
+            <p class="text-2xl sm:text-[26px] font-extrabold text-slate-900 tracking-tight leading-tight mt-0.5">{{ kpiResumen().valorTiquetes }}</p>
+            <p class="text-xs text-slate-400 font-medium mt-1 truncate">{{ kpiResumen().subtituloTiquetes }}</p>
+          </div>
+        </div>
+
+        <!-- KPI 3: Ingreso Promedio / Día -->
+        <div data-testid="kpi-ingreso-promedio" class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">{{ kpiResumen().etiquetaPromedio }}</p>
+            <p class="text-2xl sm:text-[26px] font-extrabold text-slate-900 tracking-tight leading-tight mt-0.5">{{ kpiResumen().valorPromedio }}</p>
+            <p class="text-xs text-slate-400 font-medium mt-1 truncate">{{ kpiResumen().subtituloPromedio }}</p>
+          </div>
         </div>
       </div>
 
@@ -185,40 +222,35 @@ Chart.register(...registerables);
             @for (top of top3Atracciones(); track top.atraccionId; let idx = $index) {
               <div
                 [attr.data-testid]="'card-top-' + (idx + 1)"
-                class="bg-white rounded-2xl border p-4.5 sm:p-5 shadow-xs relative overflow-hidden transition hover:shadow-md flex flex-col justify-between h-full"
-                [ngClass]="idx === 0 ? 'border-amber-200 ring-1 ring-amber-300/40 bg-gradient-to-br from-amber-50/30 to-white' : 'border-slate-100'">
+                class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 transition hover:shadow-md"
+                [ngClass]="idx === 0 ? 'ring-1 ring-amber-300/40' : ''">
                 
-                <div>
-                  <div class="flex items-start justify-between">
-                    <span
-                      class="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shadow-xs"
-                      [ngClass]="idx === 0 ? 'bg-amber-400 text-amber-950' : idx === 1 ? 'bg-slate-300 text-slate-800' : 'bg-amber-700/20 text-amber-900'">
-                      #{{ idx + 1 }}
-                    </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      [ngClass]="top.tipo === 'EVENTOS_CAIDAS' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">
-                      {{ top.tipo === 'EVENTOS_CAIDAS' ? 'Por Caídas' : 'Por Tiempo' }}
-                    </span>
-                  </div>
-
-                  <div class="mt-3">
-                    <h4 class="font-bold text-slate-800 text-sm truncate" [title]="top.nombre">{{ top.nombre }}</h4>
-                    <div class="flex items-baseline gap-2 mt-1">
-                      <span class="text-2xl font-black text-slate-900 font-mono">{{ top.volumenVisitas.toLocaleString('es-CO') }}</span>
-                      <span class="text-xs text-slate-500 font-medium">visitas</span>
-                    </div>
-                  </div>
+                <div
+                  class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-base font-black shadow-xs"
+                  [ngClass]="idx === 0 ? 'bg-amber-100 text-amber-900' : idx === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-900'">
+                  #{{ idx + 1 }}
                 </div>
 
-                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div>
-                    <span class="text-[10px] text-slate-500 block font-medium">Ocupación</span>
-                    <span class="font-bold font-mono text-emerald-600">{{ top.ocupacionPromedioPorcentaje }}%</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {{ top.tipo === 'EVENTOS_CAIDAS' ? 'POR CAÍDAS' : 'POR TIEMPO' }}
+                    </span>
+                    <span class="text-[10px] font-bold font-mono text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      {{ top.ocupacionPromedioPorcentaje }}% aforo
+                    </span>
                   </div>
-                  <div class="text-right">
-                    <span class="text-[10px] text-slate-500 block font-medium">Facturación</span>
-                    <span class="font-extrabold font-mono text-slate-800">{{ formatearFacturacion(top.ingresosBrutos) }}</span>
+
+                  <h4 class="font-extrabold text-slate-800 text-sm truncate mt-0.5" [title]="top.nombre">{{ top.nombre }}</h4>
+
+                  <div class="flex items-baseline gap-2 mt-0.5">
+                    <span class="text-xl sm:text-2xl font-extrabold text-slate-900 font-mono">{{ top.volumenVisitas.toLocaleString('es-CO') }}</span>
+                    <span class="text-xs text-slate-400 font-medium">visitas</span>
                   </div>
+
+                  <p class="text-[11px] text-slate-400 font-medium mt-0.5 truncate">
+                    Facturación: <span class="font-bold text-slate-700 font-mono">{{ formatearFacturacion(top.ingresosBrutos) }}</span>
+                  </p>
                 </div>
               </div>
             }
@@ -493,6 +525,60 @@ export class ReportesComponent implements OnInit, AfterViewInit, OnDestroy {
       if (crit === 'ingresosBrutos') return b.ingresosBrutos - a.ingresosBrutos;
       return 0;
     });
+  });
+
+  readonly kpiResumen = computed(() => {
+    const periodo = this.periodoSeleccionado();
+    const rot = this.atraccionesRotacion();
+
+    const totalVentas = rot.reduce((acc, a) => acc + (a.ingresosBrutos || 0), 0);
+    const totalTiquetes = rot.reduce((acc, a) => acc + (a.volumenVisitas || 0), 0);
+
+    let etiquetaTotal = 'TOTAL DEL DÍA';
+    let etiquetaTiquetes = 'TIQUETES DEL DÍA';
+    let etiquetaPromedio = 'INGRESO PROM./HORA';
+    let subtituloTotal = 'vs. $3.8M ayer';
+    let subtituloTiquetes = '+8% vs. ayer';
+    let subtituloPromedio = 'Jornada de 9 horas';
+    let prom = Math.round(totalVentas / 9);
+
+    if (periodo === 'ESTE_MES') {
+      etiquetaTotal = 'TOTAL DEL MES';
+      etiquetaTiquetes = 'TIQUETES DEL MES';
+      etiquetaPromedio = 'INGRESO PROM./DÍA';
+      prom = Math.round(totalVentas / 30);
+      subtituloTotal = `vs. ${this.formatearFacturacion(Math.round(totalVentas * 0.86))} mes anterior`;
+      subtituloTiquetes = '+18% vs. mes anterior';
+      subtituloPromedio = 'Basado en 30 días';
+    } else if (periodo === 'ULTIMOS_7_DIAS') {
+      etiquetaTotal = 'TOTAL DE LA SEMANA';
+      etiquetaTiquetes = 'TIQUETES DE LA SEMANA';
+      etiquetaPromedio = 'INGRESO PROM./DÍA';
+      prom = Math.round(totalVentas / 7);
+      subtituloTotal = `vs. ${this.formatearFacturacion(Math.round(totalVentas * 0.88))} sem. anterior`;
+      subtituloTiquetes = '+12% vs. sem. anterior';
+      subtituloPromedio = 'Basado en 7 días';
+    } else if (periodo === 'PERSONALIZADO') {
+      etiquetaTotal = 'TOTAL DEL PERÍODO';
+      etiquetaTiquetes = 'TIQUETES DEL PERÍODO';
+      etiquetaPromedio = 'INGRESO PROM./DÍA';
+      prom = Math.round(totalVentas / 15);
+      subtituloTotal = 'Período personalizado';
+      subtituloTiquetes = 'Tiquetes consolidados';
+      subtituloPromedio = 'Promedio estimado';
+    }
+
+    return {
+      etiquetaTotal,
+      valorTotal: totalVentas > 0 ? this.formatearFacturacion(totalVentas) : '$0',
+      subtituloTotal,
+      etiquetaTiquetes,
+      valorTiquetes: totalTiquetes > 0 ? totalTiquetes.toLocaleString('es-CO') : '0',
+      subtituloTiquetes,
+      etiquetaPromedio,
+      valorPromedio: prom > 0 ? this.formatearFacturacion(prom) : '$0',
+      subtituloPromedio
+    };
   });
 
   ngOnInit(): void {

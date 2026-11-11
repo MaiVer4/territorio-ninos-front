@@ -179,73 +179,73 @@ export interface AuditLog {
             <!-- KPI 1: Tiempo Total de Suspensión -->
             <div
               data-testid="kpi-tiempo-total-suspension"
-              class="bg-white rounded-2xl border border-slate-100 p-4.5 shadow-xs flex items-start gap-3.5">
-              <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <div>
-                <p class="text-[11px] text-slate-400 font-medium">Suspensión Total</p>
-                <p class="text-xl font-black text-slate-900 font-mono mt-0.5">
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Suspensión Total</p>
+                <p class="text-2xl font-extrabold text-slate-900 font-mono tracking-tight leading-tight mt-0.5">
                   {{ resumenInactividad().tiempoTotalSuspensionMinutos }} min
                 </p>
-                <p class="text-[10px] text-slate-400 mt-0.5">En el turno actual</p>
+                <p class="text-xs text-slate-400 font-medium mt-1 truncate">En el turno actual</p>
               </div>
             </div>
 
             <!-- KPI 2: Pausas que Superan 5 Minutos (Umbral) -->
             <div
               data-testid="kpi-pausas-mayores-5min"
-              class="bg-white rounded-2xl border border-slate-100 p-4.5 shadow-xs flex items-start gap-3.5"
+              class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4"
               [ngClass]="resumenInactividad().pausasMayoresACincoMinutos > 0 ? 'border-amber-200 ring-1 ring-amber-300/40 bg-amber-50/20' : ''">
-              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
               </div>
-              <div>
-                <p class="text-[11px] text-slate-400 font-medium">Pausas &gt; 5 Minutos</p>
-                <p class="text-xl font-black text-amber-700 font-mono mt-0.5">
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Pausas &gt; 5 Minutos</p>
+                <p class="text-2xl font-extrabold text-amber-700 font-mono tracking-tight leading-tight mt-0.5">
                   {{ resumenInactividad().pausasMayoresACincoMinutos }}
                 </p>
-                <p class="text-[10px] text-amber-600 font-medium mt-0.5">Superan umbral operativo</p>
+                <p class="text-xs text-amber-600 font-medium mt-1 truncate">Superan umbral operativo</p>
               </div>
             </div>
 
             <!-- KPI 3: Promedio de Minutos por Juego -->
             <div
               data-testid="kpi-promedio-por-juego"
-              class="bg-white rounded-2xl border border-slate-100 p-4.5 shadow-xs flex items-start gap-3.5">
-              <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                 </svg>
               </div>
-              <div>
-                <p class="text-[11px] text-slate-400 font-medium">Promedio / Juego</p>
-                <p class="text-xl font-black text-slate-900 font-mono mt-0.5">
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Promedio / Juego</p>
+                <p class="text-2xl font-extrabold text-slate-900 font-mono tracking-tight leading-tight mt-0.5">
                   {{ resumenInactividad().promedioMinutosPausadosPorJuego }} min
                 </p>
-                <p class="text-[10px] text-slate-400 mt-0.5">Por atracción reportada</p>
+                <p class="text-xs text-slate-400 font-medium mt-1 truncate">Por atracción reportada</p>
               </div>
             </div>
 
             <!-- KPI 4: Promedio de Minutos por Operario -->
             <div
               data-testid="kpi-promedio-por-operario"
-              class="bg-white rounded-2xl border border-slate-100 p-4.5 shadow-xs flex items-start gap-3.5">
-              <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                 </svg>
               </div>
-              <div>
-                <p class="text-[11px] text-slate-400 font-medium">Promedio / Operario</p>
-                <p class="text-xl font-black text-slate-900 font-mono mt-0.5">
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Promedio / Operario</p>
+                <p class="text-2xl font-extrabold text-slate-900 font-mono tracking-tight leading-tight mt-0.5">
                   {{ resumenInactividad().promedioMinutosPausadosPorOperario }} min
                 </p>
-                <p class="text-[10px] text-slate-400 mt-0.5">Por colaborador</p>
+                <p class="text-xs text-slate-400 font-medium mt-1 truncate">Por colaborador</p>
               </div>
             </div>
           </div>
