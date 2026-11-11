@@ -102,7 +102,19 @@ describe('TicketReimpresionService', () => {
     req.flush(mockResponse);
   });
 
-  it('should generate fallback local event with stamp when backend responds with 404 in local dev', () => {
+  it('should reject reimpresion and propagate error when backend responds with 404 Not Found', () => {
+    service.solicitarReimpresion(mockTicket, { motivo: 'Falta de papel' }).subscribe({
+      next: () => expect.unreachable('Should have failed on 404'),
+      error: (err) => {
+        expect(err.status).toBe(404);
+      }
+    });
+
+    const req = httpMock.expectOne(r => r.url.includes(`/tickets/${mockTicket.uuid}/reimprimir`));
+    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+  });
+
+  it('should generate fallback local event with stamp when offline (status 0)', () => {
     service.solicitarReimpresion(mockTicket, { motivo: 'Falta de papel' }).subscribe(res => {
       expect(res.idLog).toContain('LOG-');
       expect(res.marcaImpresion).toBe('** REIMPRESIÓN **');
@@ -112,6 +124,6 @@ describe('TicketReimpresionService', () => {
     });
 
     const req = httpMock.expectOne(r => r.url.includes(`/tickets/${mockTicket.uuid}/reimprimir`));
-    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+    req.error(new ProgressEvent('error'));
   });
 });

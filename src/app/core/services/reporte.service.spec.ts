@@ -167,4 +167,21 @@ describe('ReporteService (HU-36.08, HU-37.06, HU-39.07, HU-40.06)', () => {
     createObjectUrlSpy.mockRestore();
     revokeObjectUrlSpy.mockRestore();
   });
+
+  it('should download valid PDF 1.4 blob on error fallback (HU-39.06..08)', async () => {
+    let blob: Blob | null = null;
+    service.descargarReporteFinancieroBlob('pdf', '2026-11-02').subscribe(b => {
+      blob = b;
+    });
+
+    const req = httpMock.expectOne(r => r.url.includes('/reportes/descargar'));
+    req.error(new ProgressEvent('error'));
+
+    expect(blob).toBeDefined();
+    expect(blob!.type).toBe('application/pdf');
+    const text = await blob!.text();
+    expect(text.startsWith('%PDF-1.4')).toBe(true);
+    expect(text.includes('%%EOF')).toBe(true);
+    expect(text.includes('startxref')).toBe(true);
+  });
 });

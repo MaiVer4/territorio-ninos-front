@@ -184,17 +184,19 @@ export class AuthService {
       }
     }
 
-    // Fallback exclusivo para tokens opacos/mock en entornos de pruebas unitarias
-    if (!environment.production) {
-      try {
-        const authData = localStorage.getItem(this.TOKEN_KEY);
-        if (authData) {
-          const response: AuthResponse = JSON.parse(authData);
-          return (response.rol as RolUsuario) || null;
-        }
-      } catch (e) {
-        console.error('Error leyendo rol de localStorage', e);
+    // Fallback para tokens opacos o mock en pruebas unitarias
+    const currentRole = this.currentUser()?.rol as RolUsuario | undefined;
+    if (currentRole) {
+      return currentRole;
+    }
+    try {
+      const authData = localStorage.getItem(this.TOKEN_KEY);
+      if (authData) {
+        const response: AuthResponse = JSON.parse(authData);
+        return (response.rol as RolUsuario) || null;
       }
+    } catch (e) {
+      console.error('Error leyendo rol de localStorage', e);
     }
     return null;
   }

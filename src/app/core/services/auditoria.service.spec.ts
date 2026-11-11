@@ -69,6 +69,18 @@ describe('AuditoriaService (HU-38.08, HU-41.05..08)', () => {
     expect(ultimoHito.metadatos.duracionMinutosJuego).toBe(18);
   });
 
+  it('should propagate error when backend responds with 404 Not Found instead of returning mock', () => {
+    service.buscarExpedienteTicket('1094857291').subscribe({
+      next: () => expect.unreachable('Should have failed on 404'),
+      error: (err) => {
+        expect(err.status).toBe(404);
+      }
+    });
+
+    const req = httpMock.expectOne(r => r.url.includes('/auditoria/tickets/1094857291'));
+    req.flush('No encontrado', { status: 404, statusText: 'Not Found' });
+  });
+
   it('should retrieve incidents and compute inactivity summary with >5min threshold (HU-41.07, HU-41.08)', () => {
     let incidentes: any[] = [];
     service.obtenerIncidentesYPausas().subscribe(res => {

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
@@ -68,8 +68,13 @@ export class AuditoriaService {
     }
 
     return this.http.get<AuditoriaTicket>(`${this.apiUrl}/tickets/${encodeURIComponent(termino.trim())}`).pipe(
-      catchError(() => {
-        // Fallback mock realista con los 4 hitos exigidos por HU-38.09 y metadatos técnicos de HU-38.10
+      catchError((error: unknown) => {
+        // Propagar errores de respuesta HTTP reales del servidor (404, 400, 403, 500)
+        if (error instanceof HttpErrorResponse && error.status !== 0) {
+          return throwError(() => error);
+        }
+
+        // Fallback mock realista exclusivo para contingencia offline (status === 0 / red caída)
         const mock: AuditoriaTicket = {
           ticketUuid: termino.includes('-') && termino.length > 20 ? termino : '4f923b7a-9a81-42e3-b5f7-642a8b9c1d0e',
           codigoBoleta: 'BOL-784920',
@@ -159,7 +164,10 @@ export class AuditoriaService {
    */
   obtenerIncidentesYPausas(): Observable<IncidenteOperativo[]> {
     return this.http.get<IncidenteOperativo[]>(`${this.apiUrl}/incidentes`).pipe(
-      catchError(() => {
+      catchError((error: unknown) => {
+        if (error instanceof HttpErrorResponse && error.status !== 0) {
+          return throwError(() => error);
+        }
         const mock: IncidenteOperativo[] = [
           {
             idIncidente: 'INC-201',

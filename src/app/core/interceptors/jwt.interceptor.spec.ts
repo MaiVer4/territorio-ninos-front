@@ -23,8 +23,9 @@ describe('jwtInterceptor', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify();
+    httpTesting?.verify();
     localStorage.clear();
+    TestBed.resetTestingModule();
   });
 
   it('should attach Authorization Bearer header when token is present in localStorage', () => {
@@ -52,6 +53,16 @@ describe('jwtInterceptor', () => {
     httpClient.get('https://external-api.com/data').subscribe();
 
     const req = httpTesting.expectOne('https://external-api.com/data');
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('should not attach Authorization header to non-API URLs that share prefix like /api-externa', () => {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: 'mock-jwt-token' }));
+
+    httpClient.get('/api-externa/datos').subscribe();
+
+    const req = httpTesting.expectOne('/api-externa/datos');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });

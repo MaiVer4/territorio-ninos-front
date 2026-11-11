@@ -103,6 +103,7 @@ export interface SesionJuegoMenor {
 }
 
 export type TipoAccionOffline =
+  | 'INICIAR_SESION'
   | 'CONFIRMAR_SALIDA'
   | 'PAUSAR_SESION'
   | 'REANUDAR_SESION'

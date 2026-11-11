@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
@@ -7,7 +7,8 @@ import {
   CausaRechazoTicket,
   EstacionTrabajo,
   ResultadoValidacionQr,
-  SesionJuegoMenor
+  SesionJuegoMenor,
+  TipoAccionOffline
 } from '../models/operador.model';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
@@ -31,6 +32,7 @@ export class OperacionService {
   private readonly apiUrl = `${environment.apiUrl}/operacion`;
   private readonly STORAGE_ESTACION_KEY = 'tdn_operario_estacion_activa_v1';
   private readonly salidasTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private sincronizandoOffline = false;
 
   // Signals Principales
   readonly estacionActiva = signal<EstacionTrabajo | null>(null);
@@ -112,6 +114,74 @@ export class OperacionService {
 
   constructor() {
     this.restaurarEstacionDesdeStorage();
+    this.iniciarSincronizadorOffline();
+  }
+
+  /**
+   * Sincronizador automático reactivo de cola offline al restablecer conexión WebSocket (HU-35.06).
+   */
+  private iniciarSincronizadorOffline(): void {
+    effect(() => {
+      if (this.wsService.estadoConexion() === 'CONECTADO' && this.offlineQueue.hayAccionesPendientes()) {
+        this.sincronizarColaOffline().subscribe();
+      }
+    });
+  }
+
+  /**
+   * Sincroniza secuencialmente las acciones operativas encoladas en modo offline con el backend.
+   */
+  sincronizarColaOffline(): Observable<{ procesadas: number; fallidas: number }> {
+    if (this.sincronizandoOffline) {
+      return of({ procesadas: 0, fallidas: 0 });
+    }
+    this.sincronizandoOffline = true;
+
+    return this.offlineQueue
+      .sincronizarColaPendiente(accion =>
+        this.http.post(`${this.apiUrl}/sincronizar-evento`, accion)
+      )
+      .pipe(
+        tap(({ procesadas }) => {
+          this.sincronizandoOffline = false;
+          if (procesadas > 0) {
+            this.notificationService.info(
+              `Se sincronizaron ${procesadas} evento(s) operativos con el servidor.`,
+              'Sincronización Exitosa'
+            );
+          }
+        }),
+        catchError(() => {
+          this.sincronizandoOffline = false;
+          return of({ procesadas: 0, fallidas: 0 });
+        })
+      );
+  }
+
+  /**
+   * Despacha un evento operativo al backend por HTTP o lo encola en modo contingencia (HU-26, HU-29, HU-32, HU-35).
+   */
+  private despacharEventoOperativo(
+    tipo: TipoAccionOffline,
+    endpoint: string,
+    payload: Record<string, unknown>,
+    idSesion?: string,
+    ticketUuid?: string
+  ): void {
+    const atraccionId = this.estacionActiva()?.atraccionId || 1;
+    if (this.wsService.estadoConexion() !== 'CONECTADO') {
+      this.offlineQueue.encolarAccion(tipo, atraccionId, payload, idSesion, ticketUuid);
+      return;
+    }
+
+    this.http.post(`${this.apiUrl}/${endpoint}`, { atraccionId, idSesion, ticketUuid, ...payload }).pipe(
+      catchError((err: unknown) => {
+        if (err instanceof HttpErrorResponse && err.status === 0) {
+          this.offlineQueue.encolarAccion(tipo, atraccionId, payload, idSesion, ticketUuid);
+        }
+        return of(null);
+      })
+    ).subscribe();
   }
 
   /**
@@ -462,6 +532,8 @@ export class OperacionService {
       this.notificationService.success(`Ingreso permitido para ${nuevaSesion.menorNombre}`);
     }
 
+    this.despacharEventoOperativo('INICIAR_SESION', 'sesiones/iniciar', { sesion: nuevaSesion }, nuevaSesion.idSesion, nuevaSesion.ticketUuid);
+
     return nuevaSesion;
   }
 
@@ -485,10 +557,7 @@ export class OperacionService {
       })
     );
 
-    // Encolar acción si estamos offline
-    if (this.wsService.estadoConexion() !== 'CONECTADO') {
-      this.offlineQueue.encolarAccion('PAUSAR_SESION', this.estacionActiva()?.atraccionId || 1, { idSesion, motivo }, idSesion);
-    }
+    this.despacharEventoOperativo('PAUSAR_SESION', 'sesiones/pausar', { idSesion, motivo }, idSesion);
   }
 
   /**
@@ -516,9 +585,7 @@ export class OperacionService {
       })
     );
 
-    if (this.wsService.estadoConexion() !== 'CONECTADO') {
-      this.offlineQueue.encolarAccion('REANUDAR_SESION', this.estacionActiva()?.atraccionId || 1, { idSesion }, idSesion);
-    }
+    this.despacharEventoOperativo('REANUDAR_SESION', 'sesiones/reanudar', { idSesion }, idSesion);
   }
 
   /**
@@ -538,9 +605,7 @@ export class OperacionService {
 
     this.notificationService.error(`PARADA DE EMERGENCIA ACTIVA: ${motivo}`, 'Atracción Detenida', 6000);
 
-    if (this.wsService.estadoConexion() !== 'CONECTADO') {
-      this.offlineQueue.encolarAccion('PARADA_EMERGENCIA', this.estacionActiva()?.atraccionId || 1, { motivo });
-    }
+    this.despacharEventoOperativo('PARADA_EMERGENCIA', 'parada-emergencia', { motivo });
   }
 
   /**
@@ -584,15 +649,13 @@ export class OperacionService {
     this.salidasTimers.set(idSesion, timer);
 
     // 4. Notificar o encolar offline
-    if (this.wsService.estadoConexion() !== 'CONECTADO') {
-      this.offlineQueue.encolarAccion(
-        'CONFIRMAR_SALIDA',
-        this.estacionActiva()?.atraccionId || 1,
-        { idSesion, ticketUuid: sesion.ticketUuid },
-        idSesion,
-        sesion.ticketUuid
-      );
-    }
+    this.despacharEventoOperativo(
+      'CONFIRMAR_SALIDA',
+      'sesiones/finalizar',
+      { idSesion, ticketUuid: sesion.ticketUuid },
+      idSesion,
+      sesion.ticketUuid
+    );
 
     return of(true);
   }
@@ -622,14 +685,12 @@ export class OperacionService {
       })
     );
 
-    if (this.wsService.estadoConexion() !== 'CONECTADO') {
-      this.offlineQueue.encolarAccion(
-        'REGISTRAR_CAIDA',
-        this.estacionActiva()?.atraccionId || 1,
-        { idSesion, segundosRonda },
-        idSesion
-      );
-    }
+    this.despacharEventoOperativo(
+      'REGISTRAR_CAIDA',
+      'sesiones/registrar-caida',
+      { idSesion, segundosRonda },
+      idSesion
+    );
   }
 
   autorizarIngresoForzadoSupervisor(clave?: string): boolean {
@@ -650,8 +711,17 @@ export class OperacionService {
       this.notificationService.warn('Ingreso forzado autorizado por supervisor/administrador');
       this.http.post<void>(`${this.apiUrl}/autorizar-sobreaforo`, {
         atraccionId: this.estacionActiva()?.atraccionId,
+        claveSupervisor: pin,
         motivo: 'Override de capacidad máxima autorizado por supervisor'
-      }).pipe(catchError(() => of(null))).subscribe();
+      }).pipe(
+        catchError((err: unknown) => {
+          if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
+            this.ingresoForzadoSupervisor.set(false);
+            this.notificationService.error('PIN de supervisor inválido o rechazado por el servidor.');
+          }
+          return of(null);
+        })
+      ).subscribe();
       return true;
     }
     this.notificationService.error('PIN de supervisor incorrecto');

@@ -3,13 +3,15 @@ import { environment } from '../../../environments/environment';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   // Evitar inyección en solicitudes hacia dominios externos o assets locales no confiables (OWASP A07)
-  const isApiUrl = req.url.startsWith(environment.apiUrl) || 
-                   req.url.startsWith('/api') ||
-                   req.url.startsWith('/territorioninos/api') ||
-                   (typeof window !== 'undefined' && (
-                     req.url.startsWith(`${window.location.origin}/api`) ||
-                     req.url.startsWith(`${window.location.origin}/territorioninos/api`)
-                   ));
+  const isInternalUrl = (url: string, prefix: string) => url === prefix || url.startsWith(`${prefix}/`);
+  const isApiUrl =
+    Boolean(environment.apiUrl && isInternalUrl(req.url, environment.apiUrl)) ||
+    isInternalUrl(req.url, '/api') ||
+    isInternalUrl(req.url, '/territorioninos/api') ||
+    (typeof window !== 'undefined' && (
+      isInternalUrl(req.url, `${window.location.origin}/api`) ||
+      isInternalUrl(req.url, `${window.location.origin}/territorioninos/api`)
+    ));
   if (!isApiUrl) {
     return next(req);
   }

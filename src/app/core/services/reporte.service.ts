@@ -301,7 +301,7 @@ export class ReporteService {
           const mimeType = formato === 'csv' ? 'text/csv;charset=utf-8;' : 'application/pdf';
           const contenidoFallback = formato === 'csv'
             ? '\uFEFF"Fecha","Tipo","Total COP"\n"' + fecha + '","Reporte Financiero","47070000"'
-            : '%PDF-1.4 mock financial report';
+            : this.generarPdfMinimoValido(fecha);
           const blobLocal = new Blob([contenidoFallback], { type: mimeType });
 
           this.dispararDescargaBlobEnNavegador(blobLocal, nombreArchivo);
@@ -313,6 +313,41 @@ export class ReporteService {
           this.formatoDescargaActivo.set(null);
         })
       );
+  }
+
+  /**
+   * Genera un documento PDF 1.4 estructuralmente válido en texto plano para contingencia offline.
+   */
+  private generarPdfMinimoValido(fecha: string): string {
+    const texto = `Reporte Financiero TDN - Contingencia (${fecha})`;
+    const streamContent = `BT\n/F1 14 Tf\n72 720 Td\n(${texto}) Tj\nET`;
+    const streamLength = streamContent.length;
+
+    const obj1 = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+    const obj2 = '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
+    const obj3 = '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n';
+    const obj4 = `4 0 obj\n<< /Length ${streamLength} >>\nstream\n${streamContent}\nendstream\nendobj\n`;
+    const obj5 = '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n';
+
+    const header = '%PDF-1.4\n';
+    const off1 = header.length;
+    const off2 = off1 + obj1.length;
+    const off3 = off2 + obj2.length;
+    const off4 = off3 + obj3.length;
+    const off5 = off4 + obj4.length;
+    const startXref = off5 + obj5.length;
+
+    const pad = (n: number) => n.toString().padStart(10, '0');
+    const xref =
+      `xref\n0 6\n0000000000 65535 f \n` +
+      `${pad(off1)} 00000 n \n` +
+      `${pad(off2)} 00000 n \n` +
+      `${pad(off3)} 00000 n \n` +
+      `${pad(off4)} 00000 n \n` +
+      `${pad(off5)} 00000 n \n`;
+    const trailer = `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${startXref}\n%%EOF`;
+
+    return `${header}${obj1}${obj2}${obj3}${obj4}${obj5}${xref}${trailer}`;
   }
 
   private dispararDescargaBlobEnNavegador(blob: Blob, nombreArchivo: string): void {

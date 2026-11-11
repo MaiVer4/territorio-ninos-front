@@ -35,7 +35,8 @@ describe('ConfiguracionService', () => {
   });
 
   afterEach(() => {
-    httpTesting.verify();
+    httpTesting?.verify();
+    TestBed.resetTestingModule();
   });
 
   it('should be created', () => {

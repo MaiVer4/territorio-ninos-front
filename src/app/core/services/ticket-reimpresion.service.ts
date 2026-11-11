@@ -88,13 +88,13 @@ export class TicketReimpresionService {
       catchError((error: HttpErrorResponse | Error) => {
         this.procesandoReimpresion.set(false);
 
-        // Si es un error de conflicto de negocio (409) o validación (400 / 403), propagar
-        if (error instanceof HttpErrorResponse && (error.status === 409 || error.status === 400 || error.status === 403)) {
+        // Si es un error de conflicto de negocio (409) o validación (400 / 403 / 404 / 500), propagar
+        if (error instanceof HttpErrorResponse && error.status !== 0) {
           return throwError(() => error);
         }
 
-        // Respaldo de contingencia local si el endpoint no responde en entorno de desarrollo/offline (status 0 ó 404)
-        if (error instanceof HttpErrorResponse && (error.status === 0 || error.status === 404)) {
+        // Respaldo de contingencia local exclusivamente cuando no hay red (status === 0) (HU-23.07)
+        if (error instanceof HttpErrorResponse && error.status === 0) {
           const timestamp = Date.now();
           const eventoFallback: EventoReimpresionDTO = {
             idLog: `LOG-${timestamp}-${Math.floor(Math.random() * 900 + 100)}`,
@@ -137,6 +137,25 @@ export class TicketReimpresionService {
         return throwError(() => error);
       })
     );
+  }
+
+  /**
+   * Sincroniza las reimpresiones encoladas durante contingencia offline con el backend.
+   */
+  sincronizarReimpresionesPendientes(): Observable<{ procesadas: number; fallidas: number }> {
+    if (!this.offlineQueue) {
+      return of({ procesadas: 0, fallidas: 0 });
+    }
+
+    return this.offlineQueue.sincronizarColaPendiente(accion => {
+      if (accion.tipo !== 'REIMPRIMIR_TICKET') {
+        return of(null);
+      }
+      const ticketUuid = accion.ticketUuid || (accion.payload?.['ticketUuid'] as string);
+      return this.http.post(`${this.apiUrl}/${ticketUuid}/reimprimir`, {
+        motivo: accion.payload?.['motivo'] || 'Reimpresión contingencia sincronizada'
+      });
+    });
   }
 
   /**

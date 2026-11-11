@@ -9,6 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { SesionJuegoMenor } from '../../../../core/models/operador.model';
+import { formatearMmSs } from '../../../../core/utils/time.utils';
 
 @Component({
   selector: 'app-modo-evento',
@@ -213,10 +214,6 @@ export class ModoEventoComponent implements OnInit, OnDestroy {
   }
 
   formatearMmSs(segundos: number): string {
-    const m = Math.floor(Math.max(0, segundos) / 60);
-    const s = Math.max(0, segundos) % 60;
-    const mm = m < 10 ? `0${m}` : `${m}`;
-    const ss = s < 10 ? `0${s}` : `${s}`;
-    return `${mm}:${ss}`;
+    return formatearMmSs(segundos);
   }
 }

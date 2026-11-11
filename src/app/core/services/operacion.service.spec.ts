@@ -109,6 +109,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
   afterEach(() => {
     httpMock.verify();
     sessionStorage.clear();
+    TestBed.resetTestingModule();
   });
 
   it('should initialize and fetch active station on demand (HU-24.06)', async () => {
@@ -181,6 +182,10 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(soundServiceSpy.reproducirBeepEscaneo).toHaveBeenCalled();
 
     const sesion = service.permitirIngresoMenor(resultado!);
+    const reqSesion = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    expect(reqSesion.request.method).toBe('POST');
+    reqSesion.flush({ status: 'OK' });
+
     expect(sesion).toBeTruthy();
     expect(service.ocupacionActual()).toBe(1);
     expect(service.colaActiva().length).toBe(1);
@@ -197,6 +202,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     };
 
     service.permitirIngresoMenor(resAprobado);
+    const reqSesion = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    reqSesion.flush({ status: 'OK' });
 
     let reintento: ResultadoValidacionQr | undefined;
     service.validarTicketQr('UUID-DUPLICADO').subscribe(val => {
@@ -217,26 +224,36 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       menorNombre: 'Niño Pausa',
       duracionMinutos: 15
     })!;
+    const reqIniciar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    reqIniciar.flush({ status: 'OK' });
 
     expect(service.colaActiva()[0].enPausa).toBe(false);
 
     // Pause individual
     service.pausarSesion(sesion.idSesion, 'BANO_MENOR');
+    const reqPausa = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/pausar'));
+    reqPausa.flush({ status: 'OK' });
     expect(service.colaActiva()[0].enPausa).toBe(true);
     expect(service.colaActiva()[0].estadoSemaforo).toBe('PAUSADO');
 
     // Resume individual
     service.reanudarSesion(sesion.idSesion);
+    const reqReanudar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/reanudar'));
+    reqReanudar.flush({ status: 'OK' });
     expect(service.colaActiva()[0].enPausa).toBe(false);
 
     // Emergency stop
     service.paradaEmergencia('Revisión técnica urgente');
+    const reqEmergencia = httpMock.expectOne(r => r.url.includes('/operacion/parada-emergencia'));
+    reqEmergencia.flush({ status: 'OK' });
     expect(service.paradaEmergenciaActiva()).toBe(true);
     expect(service.escanerDesbloqueado()).toBe(false);
     expect(service.colaActiva()[0].enPausa).toBe(true);
 
     // Resume emergency stop
     service.reanudarParadaEmergencia();
+    const reqReanudarGen = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/reanudar'));
+    reqReanudarGen.flush({ status: 'OK' });
     expect(service.paradaEmergenciaActiva()).toBe(false);
     expect(service.colaActiva()[0].enPausa).toBe(false);
   });
@@ -257,7 +274,12 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     });
 
     service.permitirIngresoMenor({ aprobado: true, uuid: '1', mensajeExplicativo: 'ok', duracionMinutos: 15 });
+    const reqSesion1 = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    reqSesion1.flush({ status: 'OK' });
+
     service.permitirIngresoMenor({ aprobado: true, uuid: '2', mensajeExplicativo: 'ok', duracionMinutos: 15 });
+    const reqSesion2 = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    reqSesion2.flush({ status: 'OK' });
 
     expect(service.ocupacionActual()).toBe(2);
     expect(service.aforoCompleto()).toBe(true);
@@ -317,10 +339,15 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       menorNombre: 'Niño Saliente',
       duracionMinutos: 15
     })!;
+    const reqIniciar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    reqIniciar.flush({ status: 'OK' });
 
     expect(service.ocupacionActual()).toBe(1);
 
     service.confirmarSalidaMenor(sesion.idSesion);
+    const reqFinalizar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/finalizar'));
+    reqFinalizar.flush({ status: 'OK' });
+
     // Initially marked as saliendo
     expect(service.colaActiva()[0].saliendo).toBe(true);
     expect(service.ocupacionActual()).toBe(0);
@@ -332,5 +359,32 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(soundServiceSpy.silenciarAlarma).toHaveBeenCalledWith(sesion.idSesion);
 
     vi.useRealTimers();
+  });
+
+  it('should enqueue action in offlineQueue when WS is disconnected (HU-35.06)', () => {
+    wsServiceSpy.estadoConexion.set('SIN_CONEXION');
+    const queue = TestBed.inject(OfflineQueueService);
+    queue.limpiarCola();
+
+    service.paradaEmergencia('Parada por corte de luz');
+    expect(queue.hayAccionesPendientes()).toBe(true);
+    expect(queue.totalPendientes()).toBe(1);
+    expect(queue.accionesPendientes()[0].tipo).toBe('PARADA_EMERGENCIA');
+  });
+
+  it('should synchronize offline queue when sincronizarColaOffline is executed', () => {
+    const queue = TestBed.inject(OfflineQueueService);
+    queue.limpiarCola();
+    queue.encolarAccion('PAUSAR_SESION', 1, { idSesion: 'ses-1', motivo: 'BANO_MENOR' });
+    expect(queue.totalPendientes()).toBe(1);
+
+    service.sincronizarColaOffline().subscribe(res => {
+      expect(res.procesadas).toBe(1);
+      expect(queue.totalPendientes()).toBe(0);
+    });
+
+    const reqSync = httpMock.expectOne(r => r.url.includes('/operacion/sincronizar-evento'));
+    expect(reqSync.request.method).toBe('POST');
+    reqSync.flush({ status: 'OK' });
   });
 });

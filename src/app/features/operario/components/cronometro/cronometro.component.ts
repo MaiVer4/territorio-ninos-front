@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WebSocketService } from '../../../../core/services/websocket.service';
+import { formatearMmSs } from '../../../../core/utils/time.utils';
 
 export interface InfoCronometroTick {
   segundosRestantes: number;
@@ -177,10 +178,6 @@ export class CronometroComponent implements OnInit, OnDestroy {
   }
 
   private formatearMmSs(totalSegundos: number): string {
-    const minutos = Math.floor(Math.max(0, totalSegundos) / 60);
-    const segundos = Math.max(0, totalSegundos) % 60;
-    const mm = minutos < 10 ? `0${minutos}` : `${minutos}`;
-    const ss = segundos < 10 ? `0${segundos}` : `${segundos}`;
-    return `${mm}:${ss}`;
+    return formatearMmSs(totalSegundos);
   }
 }
