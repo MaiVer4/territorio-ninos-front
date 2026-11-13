@@ -862,36 +862,56 @@ export class TaquillaPosComponent implements OnInit {
     // 1. Emitir sonido sutil de confirmación
     this.posAudioService.reproducirConfirmacionPago();
 
-    // 2. Si es un cliente nuevo con datos completos, persistir en el backend
+    // 2. Pasar a la cola de emisión física y mapear boletas en el estado (HU-19.09)
     const docCliente = this.clienteForm.get('numeroDocumento')?.value?.trim();
     const nomCliente = this.clienteForm.get('nombreCompleto')?.value?.trim();
     const telCliente = this.clienteForm.get('telefono')?.value?.trim();
-    if (this.esClienteNuevo() && docCliente && nomCliente) {
-      this.clienteService?.registrarCliente?.({
-        tipoDocumento: 'CC',
-        numeroDocumento: docCliente,
-        nombreCompleto: nomCliente,
-        telefono: telCliente || '',
-        correo: this.clienteForm.get('correo')?.value?.trim() || undefined,
-        menores: this.menoresOrden()
-      })?.pipe(
-        takeUntilDestroyed(this.destroyRef),
-        catchError(() => of(null))
-      ).subscribe();
-    }
-
-    // 3. Pasar a la cola de emisión física y mapear boletas en el estado (HU-19.09)
     const clienteContexto = {
       clienteNombre: this.nombreClienteTitular(),
       clienteDocumento: docCliente || undefined,
       clienteId: this.clienteSeleccionado()?.idCliente
     };
     const ordenFisica = this.colaEmisionService.encolarVenta(resumen, clienteContexto);
-    this.colaEmisionService.sincronizarVentaBackend(
-      ordenFisica,
-      clienteContexto.clienteId,
-      clienteContexto.clienteDocumento
-    );
+
+    // 3. Si es un cliente nuevo con datos completos, persistir primero y luego sincronizar venta con su clienteId
+    const registroCliente$ =
+      this.esClienteNuevo() && docCliente && nomCliente
+        ? this.clienteService?.registrarCliente?.({
+            tipoDocumento: 'CC',
+            numeroDocumento: docCliente,
+            nombreCompleto: nomCliente,
+            telefono: telCliente || '',
+            correo: this.clienteForm.get('correo')?.value?.trim() || undefined,
+            menores: this.menoresOrden()
+          })
+        : undefined;
+
+    if (registroCliente$) {
+      registroCliente$
+        .pipe(
+          takeUntilDestroyed(this.destroyRef),
+          catchError(() => of(null))
+        )
+        .subscribe(nuevoCliente => {
+          const idResuelto =
+            nuevoCliente?.idCliente ??
+            (nuevoCliente as { id?: number } | null)?.id ??
+            clienteContexto.clienteId;
+          this.colaEmisionService.sincronizarVentaBackend(
+            ordenFisica,
+            idResuelto,
+            clienteContexto.clienteDocumento,
+            resumen.montoRecibido
+          );
+        });
+    } else {
+      this.colaEmisionService.sincronizarVentaBackend(
+        ordenFisica,
+        clienteContexto.clienteId,
+        clienteContexto.clienteDocumento,
+        resumen.montoRecibido
+      );
+    }
 
     // 3. Disparar impresión automática inmediatamente tras confirmar la venta (SCRUM-377 / HU-21.06)
     this.printService.imprimirOrden(ordenFisica);

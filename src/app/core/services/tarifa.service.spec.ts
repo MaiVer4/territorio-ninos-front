@@ -36,7 +36,7 @@ describe('TarifaService', () => {
       expect(res.minutos).toBe(15);
     });
 
-    const req = httpTesting.expectOne(request => request.url.includes('/tarifas/bloques'));
+    const req = httpTesting.expectOne(request => request.url.includes('/tarifas-tiempo'));
     expect(req.request.method).toBe('POST');
     req.flush({ ...mockTarifa, id: 101 });
   });
@@ -49,7 +49,7 @@ describe('TarifaService', () => {
       expect(res.precio).toBe(10000);
     });
 
-    const req = httpTesting.expectOne(request => request.url.includes('/tarifas/eventos'));
+    const req = httpTesting.expectOne(request => request.url.includes('/tarifas-evento'));
     expect(req.request.method).toBe('POST');
     req.flush({ ...mockEvento, id: 202 });
   });

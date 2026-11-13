@@ -165,8 +165,9 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       resultado = val;
     });
 
-    const req = httpMock.expectOne(r => r.url.includes('/operacion/validar-qr'));
+    const req = httpMock.expectOne(r => r.url.includes('/operacion/escanear'));
     expect(req.request.method).toBe('POST');
+    expect(req.request.body.uuid).toBe('BOL-VALIDO-123');
     req.flush({
       aprobado: true,
       uuid: 'BOL-VALIDO-123',
@@ -182,7 +183,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(soundServiceSpy.reproducirBeepEscaneo).toHaveBeenCalled();
 
     const sesion = service.permitirIngresoMenor(resultado!);
-    const reqSesion = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    const reqSesion = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
     expect(reqSesion.request.method).toBe('POST');
     reqSesion.flush({ status: 'OK' });
 
@@ -202,7 +203,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     };
 
     service.permitirIngresoMenor(resAprobado);
-    const reqSesion = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    const reqSesion = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
     reqSesion.flush({ status: 'OK' });
 
     let reintento: ResultadoValidacionQr | undefined;
@@ -224,27 +225,27 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       menorNombre: 'Niño Pausa',
       duracionMinutos: 15
     })!;
-    const reqIniciar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    const reqIniciar = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
     reqIniciar.flush({ status: 'OK' });
 
     expect(service.colaActiva()[0].enPausa).toBe(false);
 
     // Pause individual
     service.pausarSesion(sesion.idSesion, 'BANO_MENOR');
-    const reqPausa = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/pausar'));
+    const reqPausa = httpMock.expectOne(r => r.url.includes(`/operacion/sesiones/${sesion.idSesion}/pausar`));
     reqPausa.flush({ status: 'OK' });
     expect(service.colaActiva()[0].enPausa).toBe(true);
     expect(service.colaActiva()[0].estadoSemaforo).toBe('PAUSADO');
 
     // Resume individual
     service.reanudarSesion(sesion.idSesion);
-    const reqReanudar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/reanudar'));
+    const reqReanudar = httpMock.expectOne(r => r.url.includes(`/operacion/sesiones/${sesion.idSesion}/reanudar`));
     reqReanudar.flush({ status: 'OK' });
     expect(service.colaActiva()[0].enPausa).toBe(false);
 
     // Emergency stop
     service.paradaEmergencia('Revisión técnica urgente');
-    const reqEmergencia = httpMock.expectOne(r => r.url.includes('/operacion/parada-emergencia'));
+    const reqEmergencia = httpMock.expectOne(r => r.url.includes('/operacion/atraccion/1/pausa-general'));
     reqEmergencia.flush({ status: 'OK' });
     expect(service.paradaEmergenciaActiva()).toBe(true);
     expect(service.escanerDesbloqueado()).toBe(false);
@@ -252,7 +253,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
 
     // Resume emergency stop
     service.reanudarParadaEmergencia();
-    const reqReanudarGen = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/reanudar'));
+    const reqReanudarGen = httpMock.expectOne(r => r.url.includes(`/operacion/sesiones/${sesion.idSesion}/reanudar`));
     reqReanudarGen.flush({ status: 'OK' });
     expect(service.paradaEmergenciaActiva()).toBe(false);
     expect(service.colaActiva()[0].enPausa).toBe(false);
@@ -274,11 +275,11 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     });
 
     service.permitirIngresoMenor({ aprobado: true, uuid: '1', mensajeExplicativo: 'ok', duracionMinutos: 15 });
-    const reqSesion1 = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    const reqSesion1 = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
     reqSesion1.flush({ status: 'OK' });
 
     service.permitirIngresoMenor({ aprobado: true, uuid: '2', mensajeExplicativo: 'ok', duracionMinutos: 15 });
-    const reqSesion2 = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    const reqSesion2 = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
     reqSesion2.flush({ status: 'OK' });
 
     expect(service.ocupacionActual()).toBe(2);
@@ -318,7 +319,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       resultado = val;
     });
 
-    const req = httpMock.expectOne(r => r.url.includes('/operacion/validar-qr'));
+    const req = httpMock.expectOne(r => r.url.includes('/operacion/escanear'));
     req.flush(
       { causaRechazo: 'BOLETO_NO_ENCONTRADO', mensajeExplicativo: 'El boleto no existe en la base de datos.' },
       { status: 404, statusText: 'Not Found' }
@@ -339,13 +340,13 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       menorNombre: 'Niño Saliente',
       duracionMinutos: 15
     })!;
-    const reqIniciar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/iniciar'));
+    const reqIniciar = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
     reqIniciar.flush({ status: 'OK' });
 
     expect(service.ocupacionActual()).toBe(1);
 
     service.confirmarSalidaMenor(sesion.idSesion);
-    const reqFinalizar = httpMock.expectOne(r => r.url.includes('/operacion/sesiones/finalizar'));
+    const reqFinalizar = httpMock.expectOne(r => r.url.includes(`/operacion/sesiones/${sesion.idSesion}/salida`));
     reqFinalizar.flush({ status: 'OK' });
 
     // Initially marked as saliendo

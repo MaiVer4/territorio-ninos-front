@@ -121,9 +121,9 @@ export class TicketConsultaService {
     filtroEstado: 'TODOS' | EstadoVisualTicket = 'TODOS'
   ): Observable<Ticket[]> {
     const termLimpio = (termino || '').trim().toLowerCase();
-    const params = new HttpParams().set('q', termLimpio);
+    const params = new HttpParams().set('criterio', termLimpio);
 
-    return this.http.get<Ticket[]>(`${this.apiUrl}/consultar`, { params }).pipe(
+    return this.http.get<Ticket[]>(`${this.apiUrl}/buscar`, { params }).pipe(
       map(remotos => this.combinarConLocales(remotos || [], termLimpio)),
       catchError(() => {
         // En caso de que el backend no tenga el endpoint activo, consultar sobre el historial local del turno

@@ -8,8 +8,10 @@ import { concatMap, catchError, map, toArray } from 'rxjs/operators';
 })
 export class OfflineQueueService {
   private readonly STORAGE_KEY = 'tdn_operario_offline_queue_v1';
+  readonly MAX_REINTENTOS = 5;
 
   readonly accionesPendientes = signal<AccionOfflinePendiente[]>([]);
+  readonly accionesDescartadas = signal<AccionOfflinePendiente[]>([]);
   readonly totalPendientes = computed<number>(() => this.accionesPendientes().length);
   readonly hayAccionesPendientes = computed<boolean>(() => this.accionesPendientes().length > 0);
 
@@ -82,12 +84,24 @@ export class OfflineQueueService {
             procesadas++;
             return true;
           }),
-          catchError(() => {
-            this.accionesPendientes.update(lista => {
-              const actualizada = lista.map(a => (a.id === accion.id ? { ...a, reintentos: a.reintentos + 1 } : a));
-              this.guardarEnStorage(actualizada);
-              return actualizada;
-            });
+          catchError((err: unknown) => {
+            const status = typeof err === 'object' && err !== null && 'status' in err
+              ? Number((err as { status?: number }).status)
+              : 0;
+            const esErrorPermanente4xx = status >= 400 && status < 500 && status !== 408 && status !== 429;
+            const nuevosReintentos = accion.reintentos + 1;
+
+            if (esErrorPermanente4xx || nuevosReintentos >= this.MAX_REINTENTOS) {
+              const descartada: AccionOfflinePendiente = { ...accion, reintentos: nuevosReintentos };
+              this.accionesDescartadas.update(prev => [...prev, descartada]);
+              this.removerAccion(accion.id);
+            } else {
+              this.accionesPendientes.update(lista => {
+                const actualizada = lista.map(a => (a.id === accion.id ? { ...a, reintentos: nuevosReintentos } : a));
+                this.guardarEnStorage(actualizada);
+                return actualizada;
+              });
+            }
             fallidas++;
             return of(false);
           })

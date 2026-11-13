@@ -88,4 +88,15 @@ describe('WebSocketService (HU-27.07, HU-27.09, HU-35.03..05)', () => {
 
     vi.useRealTimers();
   });
+
+  it('should build canonical /ws-operacion/websocket broker URL and emit admin dashboard occupancy events', () => {
+    expect(service.construirBrokerUrl()).toContain('/ws-operacion/websocket');
+
+    const events: unknown[] = [];
+    const sub = service.conectarDashboardAdmin().subscribe(ev => events.push(ev));
+    service.emitOccupancyEvent({ atraccionId: 2, ninosActivos: 12, capacidadMaxima: 20 });
+
+    expect(events.length).toBe(1);
+    sub.unsubscribe();
+  });
 });

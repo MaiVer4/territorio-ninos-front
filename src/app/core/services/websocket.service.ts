@@ -40,6 +40,8 @@ export class WebSocketService implements OnDestroy {
 
   private stompClient: Client | null = null;
   private canalSuscripcion: StompSubscription | null = null;
+  private canalDashboardSuscripcion: StompSubscription | null = null;
+  private dashboardAdminActivo = false;
   private readonly mensajesSubject = new Subject<MensajeEstacionWs>();
   private atraccionIdActiva: number | string | null = null;
   private reconexionTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,6 +100,9 @@ export class WebSocketService implements OnDestroy {
             this.connected.set(true);
             this.reintentosReconexion.set(0);
             this.suscribirTopico();
+            if (this.dashboardAdminActivo) {
+              this.suscribirTopicoDashboard();
+            }
             if (eraReconexion) {
               this.notificationService.success('Reconectado con éxito', 'Conexión Restablecida');
             }
@@ -124,11 +129,35 @@ export class WebSocketService implements OnDestroy {
     return this.mensajesSubject.asObservable();
   }
 
+  /**
+   * Conecta y suscribe reactivamente al canal de telemetría administrativa `/topic/admin/dashboard` (HU-11).
+   */
+  conectarDashboardAdmin(): Observable<OccupancyEvent> {
+    this.dashboardAdminActivo = true;
+    if (!this.deshabilitarConexionReal && typeof window !== 'undefined' && this.stompClient?.connected) {
+      this.suscribirTopicoDashboard();
+    }
+    return this.occupancy$;
+  }
+
+  private suscribirTopicoDashboard(): void {
+    if (!this.stompClient || !this.stompClient.connected) return;
+    this.canalDashboardSuscripcion?.unsubscribe();
+    this.canalDashboardSuscripcion = this.stompClient.subscribe('/topic/admin/dashboard', message => {
+      try {
+        const parsed = JSON.parse(message.body) as OccupancyEvent;
+        this.occupancySubject.next(parsed);
+      } catch {
+        // Error de parseo JSON
+      }
+    });
+  }
+
   private suscribirTopico(): void {
     if (!this.stompClient || !this.stompClient.connected || !this.atraccionIdActiva) return;
 
     this.canalSuscripcion?.unsubscribe();
-    const topico = `/topic/estacion/${this.atraccionIdActiva}`;
+    const topico = `/topic/atraccion/${this.atraccionIdActiva}`;
 
     this.canalSuscripcion = this.stompClient.subscribe(topico, message => {
       try {
@@ -180,16 +209,16 @@ export class WebSocketService implements OnDestroy {
     this.mensajesSubject.next(mensaje);
   }
 
-  private construirBrokerUrl(): string {
+  construirBrokerUrl(): string {
     const api = environment.apiUrl || '';
     if (api.startsWith('http://') || api.startsWith('https://')) {
       const wsBase = api.replace(/^http/, 'ws').replace(/\/api\/?$/, '');
-      return `${wsBase}/ws/websocket`;
+      return `${wsBase}/ws-operacion/websocket`;
     }
     const loc = window.location;
     const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = loc.host || 'localhost:8080';
-    return `${proto}//${host}/territorioninos/ws/websocket`;
+    return `${proto}//${host}/territorioninos/ws-operacion/websocket`;
   }
 
   /**
@@ -244,6 +273,9 @@ export class WebSocketService implements OnDestroy {
     this.limpiarReconexionTimer();
     this.canalSuscripcion?.unsubscribe();
     this.canalSuscripcion = null;
+    this.canalDashboardSuscripcion?.unsubscribe();
+    this.canalDashboardSuscripcion = null;
+    this.dashboardAdminActivo = false;
 
     if (this.stompClient) {
       try {

@@ -1,10 +1,13 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ColaEmisionService } from './cola-emision.service';
 import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../models/atraccion.model';
 import { VentaResponseDTO } from '../models/ticket.model';
 
 describe('ColaEmisionService', () => {
   let service: ColaEmisionService;
+  let httpMock: HttpTestingController;
 
   const mockItem1: SeleccionCatalogoPOS = {
     atraccion: {
@@ -61,9 +64,16 @@ describe('ColaEmisionService', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()]
+    });
     service = TestBed.inject(ColaEmisionService);
+    httpMock = TestBed.inject(HttpTestingController);
     service.limpiarTodo();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
   });
 
   it('should be created and start with empty queue and empty ticket state', () => {
@@ -366,6 +376,36 @@ describe('ColaEmisionService', () => {
       const enHistorial = service.historialTicketsTurno().find(b => b.uuid === uuid);
       expect(enHistorial?.esReimpresion).toBe(true);
       expect(enHistorial?.marcaImpresion).toBe('** REIMPRESIÓN **');
+    });
+
+    it('should send VentaProcesarRequestDTO with montoRecibido and items on sincronizarVentaBackend and reconcile server UUIDs', () => {
+      const orden = service.encolarVenta(mockResumen, {
+        clienteNombre: 'Carlos Gómez',
+        clienteId: 12,
+        clienteDocumento: '1094000111'
+      });
+
+      service.sincronizarVentaBackend(orden, 12, '1094000111', 30000);
+
+      const req = httpMock.expectOne(r => r.url.includes('/ventas'));
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body.clienteId).toBe(12);
+      expect(req.request.body.montoRecibido).toBe(30000);
+      expect(req.request.body.items.length).toBe(3);
+      expect(req.request.body.items[0].atraccionId).toBe(1);
+
+      req.flush({
+        idVenta: 500,
+        idOrden: orden.idOrden,
+        boletas: [
+          { uuid: '11111111-1111-4111-8111-111111111111', codigoBoleta: 'SRV-001' },
+          { uuid: '22222222-2222-4222-8222-222222222222', codigoBoleta: 'SRV-002' },
+          { uuid: '33333333-3333-4333-8333-333333333333', codigoBoleta: 'SRV-003' }
+        ]
+      });
+
+      expect(service.boletasGeneradas()[0].uuid).toBe('11111111-1111-4111-8111-111111111111');
+      expect(service.boletasGeneradas()[0].codigoBoleta).toBe('SRV-001');
     });
   });
 });

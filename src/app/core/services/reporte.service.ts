@@ -87,7 +87,7 @@ export class ReporteService {
    * Obtiene la conciliación y listado de boletas vendidas durante el turno (HU-36.11 / CA-04).
    */
   obtenerDetalleConciliacionTurno(turnoId: number): Observable<DetalleConciliacionTurno> {
-    return this.http.get<DetalleConciliacionTurno>(`${this.apiUrl}/turnos/${turnoId}/conciliacion`).pipe(
+    return this.http.get<DetalleConciliacionTurno>(`${this.apiUrl}/turnos/${turnoId}/detalle`).pipe(
       catchError(() => {
         // Fallback simulado para entorno de pruebas / offline
         const mockBoletas: BoletaVendidaTurno[] = [
@@ -300,8 +300,8 @@ export class ReporteService {
     this.formatoDescargaActivo.set(formato);
 
     return this.http
-      .get(`${this.apiUrl}/descargar`, {
-        params: { formato, fecha },
+      .get(`${this.apiUrl}/exportar/${formato}`, {
+        params: { fechaInicio: fecha, fechaFin: fecha },
         responseType: 'blob'
       })
       .pipe(

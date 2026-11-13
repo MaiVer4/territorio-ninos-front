@@ -388,11 +388,29 @@ export class OperacionService {
       return of(resp);
     }
 
-    // 3. Consulta al backend (POST /api/operacion/validar-qr) con distinción estricta entre rechazo HTTP y modo offline
-    return this.http.post<ResultadoValidacionQr>(`${this.apiUrl}/validar-qr`, {
-      codigoQr: codigoLimpio,
-      atraccionId: estacion?.atraccionId
+    // 3. Consulta al backend (POST /api/operacion/escanear) con distinción estricta entre rechazo HTTP y modo offline
+    return this.http.post<ResultadoValidacionQr & {
+      valido?: boolean;
+      uuidTicket?: string;
+      mensaje?: string;
+      minutosAutorizados?: number;
+      intentosAutorizados?: number;
+    }>(`${this.apiUrl}/escanear`, {
+      uuid: codigoLimpio,
+      atraccionId: estacion?.atraccionId ?? 1,
+      timestamp: new Date().toISOString()
     }).pipe(
+      map(raw => {
+        const res: ResultadoValidacionQr = {
+          ...raw,
+          aprobado: raw.aprobado ?? raw.valido ?? false,
+          uuid: raw.uuid || raw.uuidTicket || codigoLimpio,
+          mensajeExplicativo: raw.mensajeExplicativo || raw.mensaje || 'Boleto procesado.',
+          duracionMinutos: raw.duracionMinutos ?? raw.minutosAutorizados,
+          caidasPermitidas: raw.caidasPermitidas ?? raw.intentosAutorizados
+        };
+        return res;
+      }),
       tap(res => {
         this.resultadoValidacionActual.set(res);
         if (res.aprobado) {
@@ -532,7 +550,7 @@ export class OperacionService {
       this.notificationService.success(`Ingreso permitido para ${nuevaSesion.menorNombre}`);
     }
 
-    this.despacharEventoOperativo('INICIAR_SESION', 'sesiones/iniciar', { sesion: nuevaSesion }, nuevaSesion.idSesion, nuevaSesion.ticketUuid);
+    this.despacharEventoOperativo('INICIAR_SESION', 'iniciar-sesion', { sesion: nuevaSesion }, nuevaSesion.idSesion, nuevaSesion.ticketUuid);
 
     return nuevaSesion;
   }
@@ -557,7 +575,7 @@ export class OperacionService {
       })
     );
 
-    this.despacharEventoOperativo('PAUSAR_SESION', 'sesiones/pausar', { idSesion, motivo }, idSesion);
+    this.despacharEventoOperativo('PAUSAR_SESION', `sesiones/${idSesion}/pausar`, { idSesion, motivo }, idSesion);
   }
 
   /**
@@ -585,7 +603,7 @@ export class OperacionService {
       })
     );
 
-    this.despacharEventoOperativo('REANUDAR_SESION', 'sesiones/reanudar', { idSesion }, idSesion);
+    this.despacharEventoOperativo('REANUDAR_SESION', `sesiones/${idSesion}/reanudar`, { idSesion }, idSesion);
   }
 
   /**
@@ -605,7 +623,8 @@ export class OperacionService {
 
     this.notificationService.error(`PARADA DE EMERGENCIA ACTIVA: ${motivo}`, 'Atracción Detenida', 6000);
 
-    this.despacharEventoOperativo('PARADA_EMERGENCIA', 'parada-emergencia', { motivo });
+    const atraccionId = this.estacionActiva()?.atraccionId || 1;
+    this.despacharEventoOperativo('PARADA_EMERGENCIA', `atraccion/${atraccionId}/pausa-general`, { motivo });
   }
 
   /**
@@ -651,7 +670,7 @@ export class OperacionService {
     // 4. Notificar o encolar offline
     this.despacharEventoOperativo(
       'CONFIRMAR_SALIDA',
-      'sesiones/finalizar',
+      `sesiones/${idSesion}/salida`,
       { idSesion, ticketUuid: sesion.ticketUuid },
       idSesion,
       sesion.ticketUuid
@@ -687,7 +706,7 @@ export class OperacionService {
 
     this.despacharEventoOperativo(
       'REGISTRAR_CAIDA',
-      'sesiones/registrar-caida',
+      `sesiones/${idSesion}/descontar-intento`,
       { idSesion, segundosRonda },
       idSesion
     );

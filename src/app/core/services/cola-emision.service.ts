@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, of } from 'rxjs';
+import { Observable, catchError, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { BoletaEmisionFisica, OrdenEmisionFisica, ResumenLiquidacionPOS } from '../models/atraccion.model';
 import { ContextoVentaTicket, EstadoTicket, Ticket, VentaResponseDTO } from '../models/ticket.model';
@@ -219,6 +219,7 @@ export class ColaEmisionService {
       clienteNombre: contexto.clienteNombre?.trim() || 'Cliente de Mostrador',
       metodoPago: resumen.metodoPago,
       granTotal: resumen.granTotal,
+      montoRecibido: resumen.montoRecibido ?? resumen.granTotal,
       totalBoletas: boletas.length,
       fechaEmision: new Date(),
       boletas,
@@ -232,23 +233,79 @@ export class ColaEmisionService {
   }
 
   /**
-   * Sincroniza la orden de venta y sus boletas emitidas con el backend para persistencia financiera y validación QR en atracciones.
+   * Sincroniza la orden de venta y sus boletas emitidas con el backend (`VentaProcesarRequestDTO`)
+   * para persistencia financiera y validación QR en atracciones.
    */
-  sincronizarVentaBackend(orden: OrdenEmisionFisica, clienteId?: number, clienteDocumento?: string): void {
-    if (!this.http) return;
+  sincronizarVentaBackend(
+    orden: OrdenEmisionFisica,
+    clienteId?: number,
+    clienteDocumento?: string,
+    montoRecibido?: number
+  ): Observable<VentaResponseDTO | null> {
+    if (!this.http) return of(null);
 
-    this.http
+    const items = orden.boletas.map(b => ({
+      atraccionId: Number(b.atraccionId),
+      modalidad: b.modalidadEtiqueta || 'Estándar',
+      precioUnitario: b.precioUnitario ?? 0,
+      cantidad: 1,
+      subtotal: b.precioUnitario ?? 0,
+      menorId: b.menorId
+    }));
+
+    const req$ = this.http
       .post<VentaResponseDTO>(this.apiUrl, {
         idOrden: orden.idOrden,
-        clienteId,
+        clienteId: clienteId ?? orden.boletas[0]?.clienteId,
         clienteDocumento,
         clienteNombre: orden.clienteNombre,
         metodoPago: orden.metodoPago,
+        montoRecibido: montoRecibido ?? orden.montoRecibido ?? orden.granTotal,
+        descuento: 0,
         granTotal: orden.granTotal,
+        items,
         boletas: orden.boletas
       })
-      .pipe(catchError(() => of(null)))
-      .subscribe();
+      .pipe(
+        tap(res => {
+          const listaBackend = res?.boletas || res?.tickets;
+          if (Array.isArray(listaBackend) && listaBackend.length > 0) {
+            this.sincronizarUuidsDesdeBackend(orden.idOrden, listaBackend);
+          }
+        }),
+        catchError(() => of(null)),
+        shareReplay(1)
+      );
+
+    req$.subscribe();
+    return req$;
+  }
+
+  private sincronizarUuidsDesdeBackend(idOrden: string, boletasServidor: Partial<Ticket>[]): void {
+    const reconciliar = (lista: Ticket[]): Ticket[] =>
+      lista.map((b, idx) => {
+        if (b.idOrden !== idOrden) return b;
+        const srv = boletasServidor[idx];
+        if (!srv?.uuid) return b;
+        return {
+          ...b,
+          id: srv.id ?? srv.idTicket ?? b.id,
+          idTicket: srv.idTicket ?? srv.id ?? b.idTicket,
+          uuid: srv.uuid,
+          codigoQr: srv.codigoQr || srv.uuid,
+          codigoBoleta: srv.codigoBoleta || b.codigoBoleta
+        };
+      });
+
+    this.boletasGeneradas.update(reconciliar);
+    this.historialTicketsTurno.update(reconciliar);
+    this.ordenes.update(lista =>
+      lista.map(o => (o.idOrden === idOrden ? { ...o, boletas: reconciliar(o.boletas) } : o))
+    );
+    const reciente = this.ordenReciente();
+    if (reciente?.idOrden === idOrden) {
+      this.ordenReciente.set({ ...reciente, boletas: reconciliar(reciente.boletas) });
+    }
   }
 
   /**

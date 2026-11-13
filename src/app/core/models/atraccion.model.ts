@@ -69,6 +69,7 @@ export interface OrdenEmisionFisica {
   clienteNombre: string;
   metodoPago: MetodoPagoPOS;
   granTotal: number;
+  montoRecibido?: number;
   totalBoletas: number;
   fechaEmision: Date;
   boletas: BoletaEmisionFisica[];

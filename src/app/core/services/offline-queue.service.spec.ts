@@ -84,4 +84,18 @@ describe('OfflineQueueService (HU-35.06)', () => {
     expect(service.totalPendientes()).toBe(1);
     expect(service.accionesPendientes()[0].reintentos).toBe(1);
   });
+
+  it('should evict poison-pill actions on permanent 4xx errors or after MAX_REINTENTOS', async () => {
+    service.encolarAccion('CONFIRMAR_SALIDA', 1, { ticket: 'BAD' });
+
+    const ejecutor400 = vi.fn().mockImplementation(() => throwError(() => ({ status: 400 })));
+
+    const res400 = await new Promise<{ procesadas: number; fallidas: number }>(resolve => {
+      service.sincronizarColaPendiente(ejecutor400).subscribe(res => resolve(res));
+    });
+
+    expect(res400.fallidas).toBe(1);
+    expect(service.totalPendientes()).toBe(0);
+    expect(service.accionesDescartadas().length).toBe(1);
+  });
 });

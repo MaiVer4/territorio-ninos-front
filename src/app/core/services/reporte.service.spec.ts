@@ -90,7 +90,7 @@ describe('ReporteService (HU-36.08, HU-37.06, HU-39.07, HU-40.06)', () => {
       detalle = res;
     });
 
-    const req = httpMock.expectOne(r => r.url.includes('/reportes/turnos/1/conciliacion'));
+    const req = httpMock.expectOne(r => r.url.includes('/reportes/turnos/1/detalle'));
     req.error(new ProgressEvent('error'));
 
     expect(detalle).toBeDefined();
@@ -151,7 +151,7 @@ describe('ReporteService (HU-36.08, HU-37.06, HU-39.07, HU-40.06)', () => {
       blob = b;
     });
 
-    const req = httpMock.expectOne(r => r.url.includes('/reportes/descargar'));
+    const req = httpMock.expectOne(r => r.url.includes('/reportes/exportar/csv'));
     req.error(new ProgressEvent('error'));
 
     expect(blob).toBeDefined();
@@ -174,7 +174,7 @@ describe('ReporteService (HU-36.08, HU-37.06, HU-39.07, HU-40.06)', () => {
       blob = b;
     });
 
-    const req = httpMock.expectOne(r => r.url.includes('/reportes/descargar'));
+    const req = httpMock.expectOne(r => r.url.includes('/reportes/exportar/pdf'));
     req.error(new ProgressEvent('error'));
 
     expect(blob).toBeDefined();
