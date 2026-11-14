@@ -682,8 +682,9 @@ describe('TaquillaPosComponent', () => {
       expect(notificationServiceSpy.error).toHaveBeenCalledWith('Error al cargar el catálogo de atracciones.');
     });
 
-    it('should open ConfirmarPagoModal when liquidarOrden is triggered from PosCartComponent', async () => {
+    it('should directly process payment and print tickets in 1 click without opening modal when liquidarOrden is triggered', async () => {
       await setupComponent(mockTurno);
+      const printSpy = vi.spyOn(component.printService, 'imprimirOrden').mockReturnValue(true);
 
       component.itemsSeleccionados.set([
         {
@@ -709,11 +710,12 @@ describe('TaquillaPosComponent', () => {
       component.onLiquidarOrden(resumen);
       fixture.detectChanges();
 
-      expect(component.mostrarModalConfirmarPago()).toBe(true);
-      expect(component.resumenPendientePago()).toEqual(resumen);
+      expect(component.mostrarModalConfirmarPago()).toBe(false);
+      expect(component.itemsSeleccionados().length).toBe(0);
+      expect(printSpy).toHaveBeenCalled();
 
       const modalEl = fixture.debugElement.query(By.css('app-confirmar-pago-modal'));
-      expect(modalEl).toBeTruthy();
+      expect(modalEl).toBeNull();
     });
 
     it('should complete sale, notify success, and clear itemsSeleccionados when onPagoConfirmado is called', async () => {

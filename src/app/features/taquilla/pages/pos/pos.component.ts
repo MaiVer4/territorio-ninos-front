@@ -18,7 +18,6 @@ import { ColaEmisionService } from '../../../../core/services/cola-emision.servi
 import { VentaCalculoService } from '../../../../core/services/venta-calculo.service';
 import { AperturaCajaModalComponent } from '../../components/apertura-caja-modal/apertura-caja-modal.component';
 import { ArqueoCajaModalComponent } from '../../components/arqueo-caja-modal/arqueo-caja-modal.component';
-import { ConfirmarPagoModalComponent } from '../../components/confirmar-pago-modal/confirmar-pago-modal.component';
 import { MenoresChipsComponent } from '../../components/menores-chips/menores-chips.component';
 import { CatalogoAtraccionesComponent } from '../../components/catalogo-atracciones/catalogo-atracciones.component';
 import { PosCartComponent } from '../../components/pos-cart/pos-cart.component';
@@ -40,7 +39,6 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
     ReactiveFormsModule,
     AperturaCajaModalComponent,
     ArqueoCajaModalComponent,
-    ConfirmarPagoModalComponent,
     ReimpresionModalComponent,
     ConsultaTicketsComponent,
     MenoresChipsComponent,
@@ -66,17 +64,6 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
           (confirmarArqueo)="onArqueoConfirmado($event)"
           (cancelar)="mostrarModalArqueo.set(false)">
         </app-arqueo-caja-modal>
-      }
-
-      <!-- Modal de Confirmación de Pago (Notion: CA-05) -->
-      @if (mostrarModalConfirmarPago() && resumenPendientePago()) {
-        <app-confirmar-pago-modal
-          [resumen]="resumenPendientePago()"
-          [clienteNombre]="nombreClienteTitular()"
-          [procesandoExterno]="procesandoPago()"
-          (confirmarPago)="onPagoConfirmado($event)"
-          (cancelar)="onCancelarConfirmacionPago()">
-        </app-confirmar-pago-modal>
       }
 
       <!-- Modal de Reimpresión Auditada (HU-22.06 / SCRUM-382) -->
@@ -863,8 +850,7 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   onLiquidarOrden(resumen: ResumenLiquidacionPOS): void {
-    this.resumenPendientePago.set(resumen);
-    this.mostrarModalConfirmarPago.set(true);
+    this.onPagoConfirmado(resumen);
   }
 
   onCancelarConfirmacionPago(): void {
