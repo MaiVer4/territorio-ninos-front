@@ -190,11 +190,25 @@ export class OperacionService implements OnDestroy {
   consultarEstacionAsignada(): Observable<EstacionTrabajo[]> {
     return this.asignacionService.getActiveAssignments().pipe(
       map(asignaciones => {
-        const userId = this.authService.currentUser()?.id;
-        const miAsignacion = asignaciones.find(a => String(a.operarioId) === String(userId) || !userId);
+        const currentUser = this.authService.currentUser();
+        const userId = currentUser?.id;
+        const userRole = currentUser?.rol;
 
-        const mapeadas: EstacionTrabajo[] = asignaciones.map(a => {
-          const asignacionExt = a as { tipoAtraccion?: string; capacidadMaxima?: number };
+        const asignacionesFiltradas =
+          userRole === 'OPERARIO' && userId
+            ? asignaciones.filter(a => String(a.operarioId ?? (a as { usuarioId?: number | string }).usuarioId) === String(userId))
+            : asignaciones;
+
+        const mapeadas: EstacionTrabajo[] = asignacionesFiltradas.map(a => {
+          const asignacionExt = a as {
+            tipoAtraccion?: string;
+            capacidadMaxima?: number;
+            duracionMinutosBase?: number;
+            toleranciaMinutos?: number;
+            caidasLimite?: number;
+            edadMinima?: number;
+            edadMaxima?: number;
+          };
           const esEventoCaidas =
             asignacionExt.tipoAtraccion === 'EVENTOS_CAIDAS' ||
             (a.atraccionNombre?.toLowerCase().includes('toro') ?? false) ||
@@ -207,11 +221,11 @@ export class OperacionService implements OnDestroy {
             tipoAtraccion: esEventoCaidas ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA',
             capacidadMaxima: asignacionExt.capacidadMaxima ?? 12,
             ocupacionActual: 0,
-            duracionMinutosBase: 15,
-            toleranciaMinutos: 2,
-            caidasMaximas: 3,
-            edadMinima: 3,
-            edadMaxima: 12,
+            duracionMinutosBase: asignacionExt.duracionMinutosBase ?? 15,
+            toleranciaMinutos: asignacionExt.toleranciaMinutos ?? 2,
+            caidasMaximas: asignacionExt.caidasLimite ?? 3,
+            edadMinima: asignacionExt.edadMinima ?? 3,
+            edadMaxima: asignacionExt.edadMaxima ?? 12,
             operarioId: a.operarioId,
             operarioNombre: a.operarioNombre || this.authService.currentUserName(),
             confirmada: false,
@@ -221,66 +235,88 @@ export class OperacionService implements OnDestroy {
 
         this.estacionesDisponibles.set(mapeadas);
 
-        // Si ya hay una confirmada en storage, mantenerla
-        if (this.estacionActiva()) {
-          return mapeadas;
+        const estacionPrevia = this.estacionActiva();
+        if (mapeadas.length === 0) {
+          this.estacionActiva.set(null);
+          if (typeof sessionStorage !== 'undefined') {
+            try {
+              sessionStorage.removeItem(this.STORAGE_ESTACION_KEY);
+            } catch {
+              // Ignorar
+            }
+          }
+          return [];
         }
 
-        // Si existe asignación para este operario, preseleccionarla
-        if (miAsignacion) {
-          const seleccionada = mapeadas.find(m => String(m.idAsignacion) === String(miAsignacion.id)) || mapeadas[0];
-          if (seleccionada) {
-            this.estacionActiva.set(seleccionada);
-          }
-        } else if (mapeadas.length > 0) {
-          this.estacionActiva.set(mapeadas[0]);
-        } else {
-          // Crear fallback default de estación para entorno offline/demo
-          const defaultEstacion: EstacionTrabajo = {
-            idAsignacion: 1,
-            atraccionId: 1,
-            atraccionNombre: 'Laberinto Mágico',
-            tipoAtraccion: 'TEMPORIZADA',
-            capacidadMaxima: 12,
-            ocupacionActual: 0,
-            duracionMinutosBase: 15,
-            toleranciaMinutos: 2,
-            edadMinima: 3,
-            edadMaxima: 12,
-            operarioId: userId || 1,
-            operarioNombre: this.authService.currentUserName(),
-            confirmada: false,
-            estadoEnlace: 'CONECTADO'
+        const miAsignacion = asignacionesFiltradas.find(a => String(a.operarioId) === String(userId) || !userId);
+        const seleccionada = miAsignacion
+          ? mapeadas.find(m => String(m.idAsignacion) === String(miAsignacion.id)) || mapeadas[0]
+          : mapeadas[0];
+
+        if (seleccionada) {
+          const mantenerConfirmada =
+            !!estacionPrevia?.confirmada &&
+            String(estacionPrevia.atraccionId) === String(seleccionada.atraccionId) &&
+            estacionPrevia.atraccionNombre === seleccionada.atraccionNombre;
+
+          const actualizada: EstacionTrabajo = {
+            ...seleccionada,
+            confirmada: mantenerConfirmada,
+            fechaConfirmacion: mantenerConfirmada ? estacionPrevia?.fechaConfirmacion : undefined
           };
-          this.estacionesDisponibles.set([defaultEstacion]);
-          this.estacionActiva.set(defaultEstacion);
+          this.estacionActiva.set(actualizada);
+          if (mantenerConfirmada) {
+            this.guardarEstacionEnStorage(actualizada);
+          }
         }
 
         return this.estacionesDisponibles();
       }),
       catchError(() => {
-        // Fallback local ante fallo de red
-        const fallback: EstacionTrabajo = {
-          idAsignacion: 1,
-          atraccionId: 1,
-          atraccionNombre: 'Laberinto Mágico',
-          tipoAtraccion: 'TEMPORIZADA',
-          capacidadMaxima: 12,
-          ocupacionActual: 0,
-          duracionMinutosBase: 15,
-          toleranciaMinutos: 2,
-          edadMinima: 3,
-          edadMaxima: 12,
-          operarioId: 1,
-          operarioNombre: this.authService.currentUserName(),
-          confirmada: false,
-          estadoEnlace: 'CONECTADO'
-        };
-        this.estacionesDisponibles.set([fallback]);
-        if (!this.estacionActiva()) {
-          this.estacionActiva.set(fallback);
-        }
-        return of(this.estacionesDisponibles());
+        return this.http.get<{
+          asignacionId?: number | string;
+          operarioId?: number | string;
+          operarioNombre?: string;
+          atraccionId: number | string;
+          atraccionNombre: string;
+          tipoAtraccion?: string;
+          capacidadMaxima?: number;
+          aforoActual?: number;
+          duracionMinutosBase?: number;
+          toleranciaMinutos?: number;
+          caidasLimite?: number;
+          edadMinima?: number;
+          edadMaxima?: number;
+        }>(`${environment.apiUrl}/operario/estacion-activa`).pipe(
+          map(dto => {
+            const esEvento = dto.tipoAtraccion === 'EVENTOS_CAIDAS' || dto.tipoAtraccion === 'EVENTO';
+            const estacion: EstacionTrabajo = {
+              idAsignacion: dto.asignacionId ?? 1,
+              atraccionId: dto.atraccionId,
+              atraccionNombre: dto.atraccionNombre,
+              tipoAtraccion: esEvento ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA',
+              capacidadMaxima: dto.capacidadMaxima ?? 12,
+              ocupacionActual: dto.aforoActual ?? 0,
+              duracionMinutosBase: dto.duracionMinutosBase ?? 15,
+              toleranciaMinutos: dto.toleranciaMinutos ?? 2,
+              caidasMaximas: dto.caidasLimite ?? 3,
+              edadMinima: dto.edadMinima ?? 3,
+              edadMaxima: dto.edadMaxima ?? 12,
+              operarioId: dto.operarioId ?? (this.authService.currentUser()?.id || 1),
+              operarioNombre: dto.operarioNombre || this.authService.currentUserName(),
+              confirmada: false,
+              estadoEnlace: this.wsService.estadoConexion()
+            };
+            this.estacionesDisponibles.set([estacion]);
+            this.estacionActiva.set(estacion);
+            return [estacion];
+          }),
+          catchError(() => {
+            this.estacionesDisponibles.set([]);
+            this.estacionActiva.set(null);
+            return of([]);
+          })
+        );
       })
     );
   }
@@ -786,6 +822,14 @@ export class OperacionService implements OnDestroy {
       const serializado = sessionStorage.getItem(this.STORAGE_ESTACION_KEY);
       if (serializado) {
         const estacion = JSON.parse(serializado) as EstacionTrabajo;
+        const currentUserId = this.authService.currentUser()?.id;
+        if (
+          estacion.atraccionNombre === 'Laberinto Mágico' ||
+          (currentUserId && estacion.operarioId && String(estacion.operarioId) !== String(currentUserId))
+        ) {
+          sessionStorage.removeItem(this.STORAGE_ESTACION_KEY);
+          return;
+        }
         this.estacionActiva.set(estacion);
         if (estacion.confirmada) {
           this.wsService.conectarEstacion(estacion.atraccionId);

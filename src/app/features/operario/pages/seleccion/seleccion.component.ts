@@ -149,15 +149,14 @@ export class OperarioSeleccionComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
-    if (!this.operacionService.estacionActiva()) {
-      this.operacionService
-        .consultarEstacionAsignada()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe();
-    }
+    this.operacionService
+      .consultarEstacionAsignada()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 
   logout(): void {
+    this.operacionService.limpiarEstacionLocal?.();
     this.authService.logout();
   }
 }
