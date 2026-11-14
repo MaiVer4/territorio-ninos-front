@@ -2,8 +2,25 @@ import { ChangeDetectionStrategy, Component, computed, Input, signal } from '@an
 import { CommonModule } from '@angular/common';
 import { OrdenEmisionFisica } from '../../../core/models/atraccion.model';
 import { Ticket } from '../../../core/models/ticket.model';
-import { ConfiguracionParque } from '../../../core/models/configuracion.model';
+import { ConfiguracionParque, CONFIG_PARQUE_DEFAULT } from '../../../core/models/configuracion.model';
 import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
+
+const BOLETA_DEMO_PREVIEW: Ticket = {
+  idTicket: 10842,
+  uuid: 'TDN-DEMO-TICKET-2026',
+  codigoBoleta: 'TDN-2026-00842',
+  codigoQr: 'TDN-DEMO-TICKET-2026',
+  atraccionId: 1,
+  atraccionNombre: 'PISCINA DE PELOTAS',
+  modalidadEtiqueta: '30 minutos',
+  menorNombre: 'Mateo (6 años)',
+  clienteNombre: 'Acudiente Demo',
+  clienteDocumento: '1094888777',
+  precioUnitario: 15000,
+  metodoPago: 'EFECTIVO',
+  idOrden: '10842',
+  estado: 'EMITIDA'
+};
 
 @Component({
   selector: 'app-ticket-print-template',
@@ -13,7 +30,9 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
   template: `
     <div
       data-testid="ticket-print-template-container"
-      class="ticket-print-root font-mono text-black bg-white select-none"
+      class="ticket-print-root font-mono text-black select-none"
+      [class.ticket-preview-wrapper]="modoPreview"
+      [class.bg-white]="!modoPreview"
       [ngClass]="paperWidthMm === 58 ? 'print-roll-58mm' : 'print-roll-80mm'">
 
       @for (boleta of boletasEfectivas(); track boleta.codigoBoleta || boleta.uuid || $index) {
@@ -133,6 +152,15 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
           </footer>
         </article>
       }
+
+      @if (modoPreview) {
+        <!-- Dientes de corte de papel (CSS Sawtooth) en preview -->
+        <div class="absolute -bottom-2 left-0 right-0 h-2 bg-transparent overflow-hidden flex no-print">
+          @for (item of teeth; track $index) {
+            <div class="w-2.5 h-2.5 bg-white transform rotate-45 -translate-y-1.5 shrink-0 border-r border-b border-slate-200"></div>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -178,7 +206,39 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
       padding-bottom: 2mm;
     }
 
+    /* Estilos para el modo preview visual (Ajustes de Administrador) */
+    .ticket-preview-wrapper {
+      background: #ffffff;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+      border-top-left-radius: 0.5rem;
+      border-top-right-radius: 0.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      position: relative;
+      min-height: 440px;
+      padding: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .ticket-preview-wrapper.print-roll-80mm {
+      width: 330px !important;
+      max-width: 330px !important;
+    }
+
+    .ticket-preview-wrapper.print-roll-58mm {
+      width: 260px !important;
+      max-width: 260px !important;
+    }
+
     @media print {
+      .ticket-preview-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+      }
+
       .ticket-print-root {
         width: 100% !important;
         margin: 0 !important;
@@ -212,6 +272,17 @@ export class TicketPrintTemplateComponent {
   private readonly _boletas = signal<Ticket[]>([]);
   private readonly _paperWidthMm = signal<58 | 80>(80);
   private readonly _config = signal<Partial<ConfiguracionParque> | null>(null);
+  private readonly _modoPreview = signal<boolean>(false);
+
+  readonly teeth = Array.from({ length: 35 });
+
+  @Input()
+  set modoPreview(val: boolean) {
+    this._modoPreview.set(!!val);
+  }
+  get modoPreview(): boolean {
+    return this._modoPreview();
+  }
 
   @Input()
   set orden(val: OrdenEmisionFisica | null) {
@@ -250,22 +321,27 @@ export class TicketPrintTemplateComponent {
     if (b && b.length > 0) {
       return b;
     }
-    return this._orden()?.boletas ?? [];
+    const ordenBoletas = this._orden()?.boletas;
+    if (ordenBoletas && ordenBoletas.length > 0) {
+      return ordenBoletas;
+    }
+    if (this._modoPreview()) {
+      return [BOLETA_DEMO_PREVIEW];
+    }
+    return [];
   });
 
   readonly datosParque = computed(() => {
     const c = this._config();
     return {
-      nombreComercial: c?.nombreComercial || 'Territorio de Niños',
-      razonSocial: c?.razonSocial || 'Territorio de Niños S.A.S.',
-      nit: c?.nit || '901.458.789-2',
-      direccion: c?.direccion || 'Av. Bolívar # 14N-55',
-      telefono: c?.telefono || '3104567890',
-      ciudad: c?.ciudad || 'Armenia, Quindío',
-      politicasSeguridad:
-        c?.politicasSeguridad ||
-        'Uso obligatorio de medias antideslizantes. Menores bajo supervisión de un adulto responsable. Prohibido alimentos en atracciones.',
-      mensajePie: c?.mensajePie || '¡Gracias por su visita a Territorio de Niños!'
+      nombreComercial: c?.nombreComercial || CONFIG_PARQUE_DEFAULT.nombreComercial,
+      razonSocial: c?.razonSocial || CONFIG_PARQUE_DEFAULT.razonSocial,
+      nit: c?.nit || CONFIG_PARQUE_DEFAULT.nit,
+      direccion: c?.direccion || CONFIG_PARQUE_DEFAULT.direccion,
+      telefono: c?.telefono || CONFIG_PARQUE_DEFAULT.telefono,
+      ciudad: c?.ciudad || CONFIG_PARQUE_DEFAULT.ciudad,
+      politicasSeguridad: c?.politicasSeguridad || CONFIG_PARQUE_DEFAULT.politicasSeguridad,
+      mensajePie: c?.mensajePie || CONFIG_PARQUE_DEFAULT.mensajePie
     };
   });
 

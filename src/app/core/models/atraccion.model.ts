@@ -29,6 +29,43 @@ export interface Atraccion {
   precio?: number;
   maxCapacity?: number;
   duracion?: number;
+
+  // Catálogo de venta y tarifas en tiempo real
+  ocupacionActual?: number;
+  aforoDisponible?: number;
+  tieneCupo?: boolean;
+  tieneOperarioAsignado?: boolean;
+  tarifasTiempo?: TarifaTiempoCatalogo[];
+  tarifasEvento?: TarifaEventoCatalogo[];
+}
+
+export interface TarifaTiempoCatalogo {
+  id: number;
+  atraccionId?: number;
+  nombreAtraccion?: string;
+  duracionMinutos: number;
+  precio: number;
+  activo?: boolean;
+  vigente?: boolean;
+}
+
+export interface TarifaEventoCatalogo {
+  id: number;
+  atraccionId?: number;
+  nombreAtraccion?: string;
+  intentos: number;
+  precio: number;
+  activo?: boolean;
+  vigente?: boolean;
+}
+
+export interface AtraccionCatalogoVenta extends Atraccion {
+  ocupacionActual?: number;
+  aforoDisponible?: number;
+  tieneCupo?: boolean;
+  tieneOperarioAsignado?: boolean;
+  tarifasTiempo?: TarifaTiempoCatalogo[];
+  tarifasEvento?: TarifaEventoCatalogo[];
 }
 
 export interface ModalidadSeleccionada {

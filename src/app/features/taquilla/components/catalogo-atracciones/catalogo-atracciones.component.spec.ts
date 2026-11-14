@@ -16,8 +16,17 @@ describe('CatalogoAtraccionesComponent', () => {
     tipo: 'TEMPORIZADA',
     estado: 'ACTIVO',
     capacidadMaxima: 15,
-    ninosActivos: 5,
-    duracionMinutosBase: 15
+    ocupacionActual: 5,
+    aforoDisponible: 10,
+    tieneCupo: true,
+    tieneOperarioAsignado: true,
+    duracionMinutosBase: 15,
+    tarifasTiempo: [
+      { id: 101, duracionMinutos: 15, precio: 9000, activo: true },
+      { id: 102, duracionMinutos: 30, precio: 18000, activo: true },
+      { id: 103, duracionMinutos: 60, precio: 33000, activo: true }
+    ],
+    tarifasEvento: []
   };
 
   const mockAtraccionCaidas: Atraccion = {
@@ -29,9 +38,17 @@ describe('CatalogoAtraccionesComponent', () => {
     tipo: 'EVENTOS_CAIDAS',
     estado: 'ACTIVO',
     capacidadMaxima: 5,
-    ninosActivos: 2,
+    ocupacionActual: 2,
+    aforoDisponible: 3,
+    tieneCupo: true,
+    tieneOperarioAsignado: false,
     duracionMinutosBase: 0,
-    caidasLimite: 3
+    caidasLimite: 3,
+    tarifasTiempo: [],
+    tarifasEvento: [
+      { id: 201, intentos: 3, precio: 10000, activo: true },
+      { id: 202, intentos: 5, precio: 15000, activo: true }
+    ]
   };
 
   const mockAtraccionLleno: Atraccion = {
@@ -41,8 +58,15 @@ describe('CatalogoAtraccionesComponent', () => {
     tipo: 'TEMPORIZADA',
     estado: 'ACTIVO',
     capacidadMaxima: 8,
-    ninosActivos: 8,
-    duracionMinutosBase: 15
+    ocupacionActual: 8,
+    aforoDisponible: 0,
+    tieneCupo: false,
+    tieneOperarioAsignado: true,
+    duracionMinutosBase: 15,
+    tarifasTiempo: [
+      { id: 301, duracionMinutos: 15, precio: 5000, activo: true }
+    ],
+    tarifasEvento: []
   };
 
   const mockAtraccionInactiva: Atraccion = {
@@ -52,8 +76,29 @@ describe('CatalogoAtraccionesComponent', () => {
     tipo: 'TEMPORIZADA',
     estado: 'INACTIVO',
     capacidadMaxima: 20,
-    ninosActivos: 0,
-    duracionMinutosBase: 20
+    ocupacionActual: 0,
+    aforoDisponible: 20,
+    tieneCupo: true,
+    duracionMinutosBase: 20,
+    tarifasTiempo: [
+      { id: 401, duracionMinutos: 20, precio: 8000, activo: true }
+    ],
+    tarifasEvento: []
+  };
+
+  const mockAtraccionSinTarifa: Atraccion = {
+    id: 5,
+    nombre: 'Muro de Escalar',
+    tarifaMinuto: 1000,
+    tipo: 'TEMPORIZADA',
+    estado: 'ACTIVO',
+    capacidadMaxima: 10,
+    ocupacionActual: 0,
+    aforoDisponible: 10,
+    tieneCupo: true,
+    duracionMinutosBase: 15,
+    tarifasTiempo: [],
+    tarifasEvento: []
   };
 
   beforeEach(async () => {
@@ -202,5 +247,58 @@ describe('CatalogoAtraccionesComponent', () => {
     const empty = fixture.debugElement.query(By.css('[data-testid="empty-catalog"]'));
     expect(empty).toBeTruthy();
     expect(empty.nativeElement.textContent).toContain('No se encontraron atracciones');
+  });
+
+  it('should display badge-sin-operario when tieneOperarioAsignado is false', () => {
+    const cardCaidas = fixture.debugElement.query(By.css('[data-testid="card-atraccion-2"]'));
+    const badgeSinOperario = cardCaidas.query(By.css('[data-testid="badge-sin-operario"]'));
+    expect(badgeSinOperario).toBeTruthy();
+    expect(badgeSinOperario.nativeElement.textContent).toContain('Sin operario');
+  });
+
+  it('should block attraction and display message when no rates are configured', () => {
+    component.atracciones = [mockAtraccionSinTarifa];
+    fixture.detectChanges();
+
+    const card = fixture.debugElement.query(By.css('[data-testid="card-atraccion-5"]'));
+    expect(card).toBeTruthy();
+    expect(card.nativeElement.classList).toContain('opacity-60');
+
+    const msg = card.query(By.css('[data-testid="msg-sin-tarifa"]'));
+    expect(msg).toBeTruthy();
+    expect(msg.nativeElement.textContent).toContain('Sin tarifa configurada');
+
+    const btnAgregar = card.query(By.css('[data-testid="btn-agregar-5"]'));
+    expect(btnAgregar.nativeElement.disabled).toBe(true);
+    expect(btnAgregar.nativeElement.textContent).toContain('Sin Tarifa');
+  });
+
+  it('should ignore inactive rates when activo is false', () => {
+    const atraccionConInactivas: Atraccion = {
+      id: 6,
+      nombre: 'Brincolín con tarifas inactivas',
+      tipo: 'TEMPORIZADA',
+      estado: 'ACTIVO',
+      capacidadMaxima: 10,
+      ocupacionActual: 0,
+      aforoDisponible: 10,
+      tieneCupo: true,
+      duracionMinutosBase: 15,
+      tarifaMinuto: 500,
+      tarifasTiempo: [
+        { id: 601, duracionMinutos: 15, precio: 5000, activo: true },
+        { id: 602, duracionMinutos: 30, precio: 9000, activo: false }
+      ],
+      tarifasEvento: []
+    };
+
+    component.atracciones = [atraccionConInactivas];
+    fixture.detectChanges();
+
+    const btn15 = fixture.debugElement.query(By.css('[data-testid="btn-modalidad-6-15"]'));
+    const btn30 = fixture.debugElement.query(By.css('[data-testid="btn-modalidad-6-30"]'));
+
+    expect(btn15).toBeTruthy();
+    expect(btn30).toBeNull();
   });
 });

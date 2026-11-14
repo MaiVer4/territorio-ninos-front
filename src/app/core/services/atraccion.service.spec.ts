@@ -43,6 +43,33 @@ describe('AtraccionService', () => {
     req.flush(mockAtracciones);
   });
 
+  it('should get sales catalog from /ventas/catalogo', () => {
+    const mockCatalogo = [
+      {
+        id: 1,
+        nombre: 'Carrusel Mágico',
+        tipo: 'TEMPORIZADA',
+        capacidadMaxima: 10,
+        ocupacionActual: 2,
+        aforoDisponible: 8,
+        tieneCupo: true,
+        tieneOperarioAsignado: true,
+        tarifasTiempo: [{ id: 101, duracionMinutos: 15, precio: 5000, activo: true }],
+        tarifasEvento: []
+      }
+    ];
+
+    service.getCatalogoVenta().subscribe(catalogo => {
+      expect(catalogo.length).toBe(1);
+      expect(catalogo[0].aforoDisponible).toBe(8);
+      expect(catalogo[0].tarifasTiempo?.length).toBe(1);
+    });
+
+    const req = httpTesting.expectOne(request => request.url.endsWith('/ventas/catalogo'));
+    expect(req.request.method).toBe('GET');
+    req.flush(mockCatalogo);
+  });
+
   it('should get attraction by id', () => {
     service.getById(1).subscribe(res => {
       expect(res.id).toBe(1);

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { Atraccion } from '../models/atraccion.model';
+import { Atraccion, AtraccionCatalogoVenta } from '../models/atraccion.model';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -13,6 +13,10 @@ export class AtraccionService {
 
   getAll(): Observable<Atraccion[]> {
     return this.http.get<Atraccion[]>(this.apiUrl);
+  }
+
+  getCatalogoVenta(): Observable<AtraccionCatalogoVenta[]> {
+    return this.http.get<AtraccionCatalogoVenta[]>(`${environment.apiUrl}/ventas/catalogo`);
   }
 
   getById(id: number): Observable<Atraccion> {

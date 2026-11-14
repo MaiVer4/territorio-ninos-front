@@ -1,18 +1,43 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, of } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
 import { OrdenEmisionFisica } from '../models/atraccion.model';
 import { Ticket } from '../models/ticket.model';
-import { ConfiguracionParque } from '../models/configuracion.model';
+import { ConfiguracionParque, CONFIG_PARQUE_DEFAULT } from '../models/configuracion.model';
+import { ConfiguracionService } from './configuracion.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PrintService {
+  private readonly configuracionService = inject(ConfiguracionService, { optional: true });
+
   readonly imprimiendo = signal<boolean>(false);
   readonly ordenEnImpresion = signal<OrdenEmisionFisica | null>(null);
   readonly boletasEnImpresion = signal<Ticket[]>([]);
   readonly anchoPapelMm = signal<58 | 80>(80);
-  readonly configParque = signal<Partial<ConfiguracionParque> | null>(null);
+  readonly configParque = signal<Partial<ConfiguracionParque> | null>(CONFIG_PARQUE_DEFAULT);
   readonly totalImpresionesSesion = signal<number>(0);
+
+  /**
+   * Refresca la configuración del parque desde el backend si está disponible.
+   */
+  refrescarConfiguracion(): Observable<ConfiguracionParque | null> {
+    if (!this.configuracionService) {
+      return of(this.configParque() as ConfiguracionParque | null);
+    }
+    return this.configuracionService.getConfiguracion().pipe(
+      tap(cfg => {
+        if (cfg) {
+          this.configurarDatosParque(cfg);
+          if (cfg.anchoPapelMm) {
+            this.configurarAnchoPapel(cfg.anchoPapelMm);
+          }
+        }
+      }),
+      catchError(() => of(this.configParque() as ConfiguracionParque | null))
+    );
+  }
 
   /**
    * Configura el formato de ancho de rollo térmico (80mm estándar POS o 58mm estrecho).
@@ -25,7 +50,10 @@ export class PrintService {
    * Configura los datos fiscales y encabezado/pie del parque para los tiquetes impresos.
    */
   configurarDatosParque(config: Partial<ConfiguracionParque>): void {
-    this.configParque.set(config);
+    this.configParque.update(prev => ({
+      ...(prev || CONFIG_PARQUE_DEFAULT),
+      ...config
+    }));
   }
 
   /**

@@ -116,11 +116,19 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                 }
 
                 <!-- Badge Flotante Superior Izquierdo: Tipo -->
-                <div class="absolute top-2.5 left-2.5">
+                <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap max-w-[70%]">
                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider backdrop-blur-md shadow-2xs"
                     [ngClass]="a.tipo === 'EVENTOS_CAIDAS' ? 'bg-amber-500/90 text-white' : 'bg-blue-600/90 text-white'">
                     {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Por Caídas' : 'Por Tiempo' }}
                   </span>
+                  @if (a.tieneOperarioAsignado === false) {
+                    <span
+                      data-testid="badge-sin-operario"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500 text-slate-900 shadow-2xs"
+                      title="No tiene operario activo asignado">
+                      Sin operario
+                    </span>
+                  }
                 </div>
 
                 <!-- Badge Flotante Superior Derecho: Estado / Cupos -->
@@ -152,7 +160,12 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                 <!-- Indicador Flotante Inferior: Precio Base -->
                 <div class="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between">
                   <div class="px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-white text-[11px] font-bold shadow-2xs">
-                    Base: {{ formatearCOP(calcularPrecioBase(a)) }}
+                    @let precioMin = calcularPrecioBase(a);
+                    @if (precioMin !== null) {
+                      Desde {{ formatearCOP(precioMin) }}
+                    } @else {
+                      Sin Tarifa
+                    }
                   </div>
                   <div class="px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-slate-200 text-[10px] font-semibold">
                     Cap: {{ capacidad }}
@@ -194,22 +207,30 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                       Modalidad / Tiempo
                     </label>
 
-                    <div class="grid grid-cols-3 gap-1.5">
-                      @for (mod of getModalidades(a); track mod.etiqueta) {
-                        <button
-                          type="button"
-                          [attr.data-testid]="'btn-modalidad-' + a.id + '-' + mod.valor"
-                          [disabled]="bloqueada"
-                          (click)="seleccionarModalidad(a, mod)"
-                          [class]="modalidadActual.etiqueta === mod.etiqueta
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold'
-                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200 font-semibold'"
-                          class="px-1.5 py-1 text-[10px] rounded-lg border transition text-center flex flex-col items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-                          <span>{{ mod.etiqueta }}</span>
-                          <span class="text-[9px] opacity-80 font-mono">{{ formatearCOP(mod.precio) }}</span>
-                        </button>
-                      }
-                    </div>
+                    @let modalidades = getModalidades(a);
+                    @if (modalidades.length === 0) {
+                      <div data-testid="msg-sin-tarifa" class="py-2.5 px-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-center">
+                        <p class="text-[11px] font-bold text-amber-800">Sin tarifa configurada</p>
+                        <p class="text-[10px] text-amber-600">No se puede vender en caja</p>
+                      </div>
+                    } @else {
+                      <div class="grid grid-cols-3 gap-1.5">
+                        @for (mod of modalidades; track mod.etiqueta) {
+                          <button
+                            type="button"
+                            [attr.data-testid]="'btn-modalidad-' + a.id + '-' + mod.valor"
+                            [disabled]="bloqueada"
+                            (click)="seleccionarModalidad(a, mod)"
+                            [class]="modalidadActual?.etiqueta === mod.etiqueta
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-extrabold'
+                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200 font-semibold'"
+                            class="px-1.5 py-1 text-[10px] rounded-lg border transition text-center flex flex-col items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                            <span>{{ mod.etiqueta }}</span>
+                            <span class="text-[9px] opacity-80 font-mono">{{ formatearCOP(mod.precio) }}</span>
+                          </button>
+                        }
+                      </div>
+                    }
                   </div>
                 </div>
 
@@ -220,7 +241,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                     <span
                       [attr.data-testid]="'precio-seleccion-' + a.id"
                       class="text-sm font-extrabold font-mono text-slate-800">
-                      {{ formatearCOP(modalidadActual.precio) }}
+                      {{ modalidadActual ? formatearCOP(modalidadActual.precio) : '-' }}
                     </span>
                   </div>
 
@@ -236,7 +257,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    <span>{{ bloqueada ? (cupos <= 0 ? 'Sin Cupo' : 'No Disp.') : 'Añadir' }}</span>
+                    <span>{{ bloqueada ? (cupos <= 0 ? 'Sin Cupo' : modalidades.length === 0 ? 'Sin Tarifa' : 'No Disp.') : 'Añadir' }}</span>
                   </button>
                 </div>
               </div>
@@ -295,128 +316,88 @@ export class CatalogoAtraccionesComponent {
   });
 
   calcularCuposDisponibles(a: Atraccion): number {
-    const capacidad = a.capacidadMaxima || a.maxCapacity || 10;
-    const ocupados = a.ninosActivos || 0;
+    if (a.aforoDisponible !== undefined && a.aforoDisponible !== null) {
+      return Math.max(0, a.aforoDisponible);
+    }
+    const capacidad = a.capacidadMaxima || a.maxCapacity || 0;
+    const ocupados = a.ocupacionActual ?? a.ninosActivos ?? 0;
     return Math.max(0, capacidad - ocupados);
   }
 
   estaBloqueada(a: Atraccion): boolean {
     const estadoInactivo = !!a.estado && a.estado !== 'ACTIVO';
-    const aforoCompleto = this.calcularCuposDisponibles(a) <= 0;
-    return estadoInactivo || aforoCompleto;
+    const aforoCompleto = a.tieneCupo === false || this.calcularCuposDisponibles(a) <= 0;
+    const sinTarifas = this.getModalidades(a).length === 0;
+    return estadoInactivo || aforoCompleto || sinTarifas;
   }
 
   calcularPorcentajeOcupacion(ocupados: number, capacidad: number): number {
-    if (capacidad <= 0) return 100;
+    if (capacidad <= 0) return 0;
     return Math.min(100, Math.round((ocupados / capacidad) * 100));
   }
 
-  calcularPrecioBase(a: Atraccion): number {
-    const ext = a as Atraccion & {
-      tarifasBloque?: Array<{ minutos: number; precio: number; vigente?: boolean }>;
-      tarifasEvento?: Array<{ intentos: number; precio: number; vigente?: boolean }>;
-    };
-
-    if (a.tipo === 'EVENTOS_CAIDAS') {
-      const evento = ext.tarifasEvento?.find(e => e.vigente !== false);
-      if (evento) return evento.precio;
-      return a.precio || a.tarifaMinuto || 10000;
+  calcularPrecioBase(a: Atraccion): number | null {
+    const mods = this.getModalidades(a);
+    if (mods.length > 0) {
+      return Math.min(...mods.map(m => m.precio));
     }
-
-    const bloque = ext.tarifasBloque?.find(b => b.vigente !== false);
-    if (bloque) return bloque.precio;
-
-    if (a.precio) return a.precio;
-    const dur = a.duracionMinutosBase || a.duracion || 15;
-    const tarifa = a.tarifaMinuto || 600;
-    return dur * tarifa;
+    return null;
   }
 
   getModalidades(a: Atraccion): ModalidadSeleccionada[] {
-    const ext = a as Atraccion & {
-      tarifasBloque?: Array<{ minutos: number; precio: number; vigente?: boolean }>;
-      tarifasEvento?: Array<{ intentos: number; precio: number; vigente?: boolean }>;
-    };
+    if (a.tipo === 'EVENTOS_CAIDAS') {
+      if (Array.isArray(a.tarifasEvento) && a.tarifasEvento.length > 0) {
+        return a.tarifasEvento
+          .filter(e => e.activo !== false && e.vigente !== false)
+          .map(e => ({
+            tipo: 'EVENTOS_CAIDAS' as const,
+            etiqueta: `${e.intentos} caídas`,
+            valor: e.intentos,
+            precio: Number(e.precio)
+          }));
+      }
+      return [];
+    }
 
-    if (a.tipo === 'EVENTOS_CAIDAS' && Array.isArray(ext.tarifasEvento) && ext.tarifasEvento.length > 0) {
-      return ext.tarifasEvento
-        .filter(e => e.vigente !== false)
-        .map(e => ({
-          tipo: 'EVENTOS_CAIDAS' as const,
-          etiqueta: `${e.intentos} caídas`,
-          valor: e.intentos,
-          precio: e.precio
+    // Modalidades TEMPORIZADA
+    if (Array.isArray(a.tarifasTiempo) && a.tarifasTiempo.length > 0) {
+      return a.tarifasTiempo
+        .filter(t => t.activo !== false && t.vigente !== false)
+        .map(t => ({
+          tipo: 'TEMPORIZADA' as const,
+          etiqueta: `${t.duracionMinutos} min`,
+          valor: t.duracionMinutos,
+          precio: Number(t.precio)
         }));
     }
 
-    if (a.tipo === 'TEMPORIZADA' && Array.isArray(ext.tarifasBloque) && ext.tarifasBloque.length > 0) {
+    const ext = a as unknown as {
+      tarifasBloque?: Array<{ minutos: number; precio: number; vigente?: boolean; activo?: boolean }>;
+    };
+    if (Array.isArray(ext.tarifasBloque) && ext.tarifasBloque.length > 0) {
       return ext.tarifasBloque
-        .filter(b => b.vigente !== false)
+        .filter(b => b.vigente !== false && b.activo !== false)
         .map(b => ({
           tipo: 'TEMPORIZADA' as const,
           etiqueta: `${b.minutos} min`,
           valor: b.minutos,
-          precio: b.precio
+          precio: Number(b.precio)
         }));
     }
 
-    const base = this.calcularPrecioBase(a);
-
-    if (a.tipo === 'EVENTOS_CAIDAS') {
-      const caidasBase = a.caidasLimite || 3;
-      return [
-        {
-          tipo: 'EVENTOS_CAIDAS',
-          etiqueta: `${caidasBase} caídas`,
-          valor: caidasBase,
-          precio: base
-        },
-        {
-          tipo: 'EVENTOS_CAIDAS',
-          etiqueta: '5 caídas',
-          valor: 5,
-          precio: Math.round(base * 1.5)
-        },
-        {
-          tipo: 'EVENTOS_CAIDAS',
-          etiqueta: '8 caídas',
-          valor: 8,
-          precio: Math.round(base * 2.2)
-        }
-      ];
-    }
-
-    // Modalidades TEMPORIZADA (15, 30, 60 minutos)
-    const tarifaMinuto = a.tarifaMinuto || Math.round(base / (a.duracionMinutosBase || 15)) || 500;
-    return [
-      {
-        tipo: 'TEMPORIZADA',
-        etiqueta: '15 min',
-        valor: 15,
-        precio: Math.round(tarifaMinuto * 15)
-      },
-      {
-        tipo: 'TEMPORIZADA',
-        etiqueta: '30 min',
-        valor: 30,
-        precio: Math.round(tarifaMinuto * 30)
-      },
-      {
-        tipo: 'TEMPORIZADA',
-        etiqueta: '60 min',
-        valor: 60,
-        precio: Math.round(tarifaMinuto * 55) // Descuento por 1 hora completa
-      }
-    ];
+    return [];
   }
 
-  getModalidadActual(a: Atraccion): ModalidadSeleccionada {
+  getModalidadActual(a: Atraccion): ModalidadSeleccionada | null {
     const key = a.id ?? a.nombre;
     const mapa = this.modalidadesSeleccionadas();
-    if (mapa[key]) {
+    const opciones = this.getModalidades(a);
+    if (opciones.length === 0) {
+      return null;
+    }
+    if (mapa[key] && opciones.some(o => o.etiqueta === mapa[key].etiqueta)) {
       return mapa[key];
     }
-    const opciones = this.getModalidades(a);
     return opciones[0];
   }
 
@@ -432,6 +413,7 @@ export class CatalogoAtraccionesComponent {
   agregarAtraccion(a: Atraccion): void {
     if (this.estaBloqueada(a)) return;
     const modalidad = this.getModalidadActual(a);
+    if (!modalidad) return;
     this.atraccionSeleccionada.emit({
       atraccion: a,
       modalidad
