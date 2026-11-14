@@ -10,7 +10,7 @@ import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente, Menor } from '../../../../core/models/cliente.model';
-import { Atraccion, OrdenEmisionFisica, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { Atraccion, AtraccionCatalogoVenta, OrdenEmisionFisica, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
 import { Ticket } from '../../../../core/models/ticket.model';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { PosAudioService } from '../../../../core/services/pos-audio.service';
@@ -93,9 +93,10 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
       @if (mostrarConsultaTickets()) {
         <div
           (click)="mostrarConsultaTickets.set(false)"
-          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain cursor-pointer"
+          class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain cursor-pointer no-print"
           role="dialog"
           aria-modal="true"
+          data-no-print="true"
           data-testid="modal-consulta-tickets">
           <div class="w-full max-w-6xl my-auto animate-in fade-in motion-safe:zoom-in-95 duration-150 cursor-default" (click)="$event.stopPropagation()">
             <app-consulta-tickets
@@ -630,7 +631,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                 <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span class="text-slate-500">Saldo teórico actual:</span>
                   <span class="font-mono font-bold text-slate-800">
-                    \${{ (montoEsperadoArqueo() ?? 0).toLocaleString('es-CO') }}
+                    \${{ montoEsperadoArqueo().toLocaleString('es-CO') }}
                   </span>
                 </div>
               }
@@ -724,7 +725,7 @@ export class TaquillaPosComponent implements OnInit {
   readonly boletasGeneradas = this.colaEmisionService.boletasGeneradas;
   readonly historialTicketsTurno = this.colaEmisionService.historialTicketsTurno;
 
-  readonly atracciones = signal<Atraccion[]>([]);
+  readonly atracciones = signal<AtraccionCatalogoVenta[]>([]);
   readonly cargandoAtracciones = signal<boolean>(false);
   readonly itemsSeleccionados = signal<SeleccionCatalogoPOS[]>([]);
 
@@ -787,7 +788,7 @@ export class TaquillaPosComponent implements OnInit {
   cargarCatalogoAtracciones(): void {
     if (!this.atraccionService) return;
     this.cargandoAtracciones.set(true);
-    this.atraccionService.getAll().pipe(
+    this.atraccionService.getCatalogoVenta().pipe(
       takeUntilDestroyed(this.destroyRef),
       finalize(() => this.cargandoAtracciones.set(false))
     ).subscribe({
@@ -800,16 +801,24 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   onAtraccionSeleccionada(sel: SeleccionCatalogoPOS): void {
-    const capacidad = sel.atraccion.capacidadMaxima || sel.atraccion.maxCapacity || 10;
-    const ocupados = sel.atraccion.ninosActivos || 0;
-    const cuposDisponibles = Math.max(0, capacidad - ocupados);
+    const a = sel.atraccion;
+    const capacidad = a.capacidadMaxima || a.maxCapacity || 0;
+    const ocupados = a.ocupacionActual ?? a.ninosActivos ?? 0;
+    const cuposDisponibles = a.aforoDisponible !== undefined && a.aforoDisponible !== null
+      ? a.aforoDisponible
+      : Math.max(0, capacidad - ocupados);
+
+    if (a.tieneCupo === false || cuposDisponibles <= 0) {
+      this.notificationService?.warn(`No hay cupos disponibles para "${a.nombre}".`);
+      return;
+    }
 
     const enCarrito = this.itemsSeleccionados()
-      .filter(it => it.atraccion.id === sel.atraccion.id)
+      .filter(it => it.atraccion.id === a.id)
       .reduce((acc, it) => acc + (it.cantidad ?? 1), 0);
 
-    if (cuposDisponibles > 0 && enCarrito >= cuposDisponibles) {
-      this.notificationService?.warn(`No quedan más cupos disponibles para "${sel.atraccion.nombre}".`);
+    if (enCarrito >= cuposDisponibles) {
+      this.notificationService?.warn(`No quedan más cupos disponibles para "${a.nombre}".`);
       return;
     }
 
@@ -920,9 +929,6 @@ export class TaquillaPosComponent implements OnInit {
       );
     }
 
-    // 3. Disparar impresión automática inmediatamente tras confirmar la venta (SCRUM-377 / HU-21.06)
-    this.printService.imprimirOrden(ordenFisica);
-
     // 4. Si el pago es en efectivo, acumular en turnoActual para balance de arqueo
     const turno = this.turnoActual();
     if (turno && resumen.metodoPago === 'EFECTIVO') {
@@ -936,16 +942,22 @@ export class TaquillaPosComponent implements OnInit {
     this.itemsSeleccionados.set([]);
     this.limpiarCliente();
 
-    // 6. Cerrar modal y mostrar cola de emisión física
+    // 6. Cerrar modal de confirmación y mostrar cola de emisión física ANTES de disparar la impresión
     this.mostrarModalConfirmarPago.set(false);
     this.resumenPendientePago.set(null);
     this.mostrarColaEmision.set(true);
+
+    // 7. Refrescar aforo y cupos del catálogo de ventas tras la venta
+    this.cargarCatalogoAtracciones();
 
     this.notificationService?.success(
       `Orden liquidada exitosamente (${resumen.metodoPago}) por valor de $${resumen.granTotal.toLocaleString('es-CO')} COP. Pasada a cola de emisión física (#${ordenFisica.idOrden}).`
     );
 
     this.procesandoPago.set(false);
+
+    // 8. Disparar impresión automática inmediatamente tras confirmar la venta y cerrar el modal (SCRUM-377 / HU-21.06)
+    this.printService.imprimirOrden(ordenFisica);
   }
 
   emitirOrdenFisica(idOrden: string): void {

@@ -15,10 +15,11 @@ import { TurnoResponseDTO } from '../../../../core/models/caja.model';
   template: `
     <!-- Backdrop bloqueante impenetrable -->
     <div
-      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 transition-all"
+      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 transition-all no-print"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title">
+      aria-labelledby="modal-title"
+      data-no-print="true">
       
       <!-- Contenedor del Modal -->
       <div

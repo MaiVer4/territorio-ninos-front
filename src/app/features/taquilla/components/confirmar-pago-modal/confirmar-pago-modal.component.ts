@@ -12,10 +12,11 @@ import { MetodoPagoPOS } from '../../../../core/models/enums';
     <!-- Backdrop bloqueante -->
     <div
       (click)="onBackdropClick($event)"
-      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain"
+      class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain no-print"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirmar-pago-title"
+      data-no-print="true"
       data-testid="modal-confirmar-pago">
 
       <!-- Contenedor del Modal -->

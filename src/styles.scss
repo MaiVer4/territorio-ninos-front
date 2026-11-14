@@ -123,6 +123,8 @@ select,
   button,
   .no-print,
   [data-no-print="true"],
+  [role="dialog"],
+  [aria-modal="true"],
   .cdk-overlay-container,
   .mat-mdc-snack-bar-container,
   .mat-mdc-dialog-container {

@@ -38,6 +38,7 @@ describe('TaquillaPosComponent', () => {
   };
   let atraccionServiceSpy: {
     getAll: ReturnType<typeof vi.fn>;
+    getCatalogoVenta: ReturnType<typeof vi.fn>;
   };
   let notificationServiceSpy: {
     success: ReturnType<typeof vi.fn>;
@@ -115,7 +116,8 @@ describe('TaquillaPosComponent', () => {
       actualizarCliente: vi.fn()
     };
     atraccionServiceSpy = {
-      getAll: vi.fn().mockReturnValue(of([mockAtraccion1, mockAtraccion2]))
+      getAll: vi.fn().mockReturnValue(of([mockAtraccion1, mockAtraccion2])),
+      getCatalogoVenta: vi.fn().mockReturnValue(of([mockAtraccion1, mockAtraccion2]))
     };
     notificationServiceSpy = {
       success: vi.fn(),
@@ -527,7 +529,7 @@ describe('TaquillaPosComponent', () => {
   describe('Catálogo de Atracciones y Pre-Orden (CA-01)', () => {
     it('should load and display attractions from AtraccionService on init', async () => {
       await setupComponent(mockTurno);
-      expect(atraccionServiceSpy.getAll).toHaveBeenCalled();
+      expect(atraccionServiceSpy.getCatalogoVenta).toHaveBeenCalled();
       expect(component.atracciones().length).toBe(2);
 
       const catalogoComponent = fixture.debugElement.query(By.css('app-catalogo-atracciones'));
@@ -673,7 +675,7 @@ describe('TaquillaPosComponent', () => {
     });
 
     it('should handle error when loading attractions catalogue fails', async () => {
-      atraccionServiceSpy.getAll.mockReturnValue(throwError(() => new Error('Error al cargar')));
+      atraccionServiceSpy.getCatalogoVenta.mockReturnValue(throwError(() => new Error('Error al cargar')));
       await setupComponent(mockTurno);
 
       expect(component.atracciones()).toEqual([]);
