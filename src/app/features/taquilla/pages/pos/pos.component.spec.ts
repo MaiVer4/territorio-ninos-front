@@ -682,9 +682,9 @@ describe('TaquillaPosComponent', () => {
       expect(notificationServiceSpy.error).toHaveBeenCalledWith('Error al cargar el catálogo de atracciones.');
     });
 
-    it('should directly process payment and print tickets in 1 click without opening modal when liquidarOrden is triggered', async () => {
+    it('should directly process payment in 1 click without opening modal or window.print when liquidarOrden is triggered', async () => {
       await setupComponent(mockTurno);
-      const printSpy = vi.spyOn(component.printService, 'imprimirOrden').mockReturnValue(true);
+      const printSpy = vi.spyOn(component.printService, 'imprimirOrden');
 
       component.itemsSeleccionados.set([
         {
@@ -712,7 +712,9 @@ describe('TaquillaPosComponent', () => {
 
       expect(component.mostrarModalConfirmarPago()).toBe(false);
       expect(component.itemsSeleccionados().length).toBe(0);
-      expect(printSpy).toHaveBeenCalled();
+      expect(printSpy).not.toHaveBeenCalled();
+      expect(component.printService.ordenEnImpresion()?.granTotal).toBe(9000);
+      expect(component.mostrarColaEmision()).toBe(true);
 
       const modalEl = fixture.debugElement.query(By.css('app-confirmar-pago-modal'));
       expect(modalEl).toBeNull();
@@ -1013,7 +1015,7 @@ describe('TaquillaPosComponent', () => {
       windowPrintSpy.mockRestore();
     });
 
-    it('should automatically trigger printService.imprimirOrden and window.print upon onPagoConfirmado (HU-21.06)', async () => {
+    it('should prepare order in printService without opening window.print automatically upon onPagoConfirmado (HU-21.06)', async () => {
       await setupComponent(mockTurno);
       const printSpy = vi.spyOn(component.printService, 'imprimirOrden');
 
@@ -1037,11 +1039,11 @@ describe('TaquillaPosComponent', () => {
 
       component.onPagoConfirmado(resumen);
 
-      expect(printSpy).toHaveBeenCalled();
-      const ordenImpresa = printSpy.mock.calls[0][0];
-      expect(ordenImpresa.granTotal).toBe(9000);
-      expect(ordenImpresa.boletas.length).toBe(1);
-      expect(windowPrintSpy).toHaveBeenCalled();
+      expect(printSpy).not.toHaveBeenCalled();
+      expect(windowPrintSpy).not.toHaveBeenCalled();
+      const ordenPreparada = component.printService.ordenEnImpresion();
+      expect(ordenPreparada?.granTotal).toBe(9000);
+      expect(ordenPreparada?.boletas.length).toBe(1);
       expect(notificationServiceSpy.success).toHaveBeenCalledWith(
         expect.stringContaining('Orden liquidada exitosamente')
       );

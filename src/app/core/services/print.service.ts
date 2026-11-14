@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { ApplicationRef, Injectable, inject, signal } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { OrdenEmisionFisica } from '../models/atraccion.model';
@@ -11,6 +11,7 @@ import { ConfiguracionService } from './configuracion.service';
 })
 export class PrintService {
   private readonly configuracionService = inject(ConfiguracionService, { optional: true });
+  private readonly appRef = inject(ApplicationRef, { optional: true });
 
   readonly imprimiendo = signal<boolean>(false);
   readonly ordenEnImpresion = signal<OrdenEmisionFisica | null>(null);
@@ -91,6 +92,13 @@ export class PrintService {
     this.imprimiendo.set(true);
     if (typeof document !== 'undefined' && document.body) {
       document.body.classList.add('pos-printing-active');
+    }
+
+    // Forzar sincronización inmediata del DOM de Angular antes de que window.print() congele el hilo principal
+    try {
+      this.appRef?.tick();
+    } catch {
+      // Ignorar si ya hay un ciclo de detección en curso en pruebas unitarias
     }
 
     try {

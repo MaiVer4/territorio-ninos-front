@@ -942,8 +942,10 @@ export class TaquillaPosComponent implements OnInit {
 
     this.procesandoPago.set(false);
 
-    // 8. Disparar impresión automática inmediatamente tras confirmar la venta y cerrar el modal (SCRUM-377 / HU-21.06)
-    this.printService.imprimirOrden(ordenFisica);
+    // 8. Preparar orden en la plantilla de impresión sin abrir window.print() automáticamente;
+    //    la impresión física se dispara manualmente desde el botón "Imprimir" en la Cola de Emisión.
+    this.printService.ordenEnImpresion.set(ordenFisica);
+    this.printService.boletasEnImpresion.set(ordenFisica.boletas ?? []);
   }
 
   emitirOrdenFisica(idOrden: string): void {

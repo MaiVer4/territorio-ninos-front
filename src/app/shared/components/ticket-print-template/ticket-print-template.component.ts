@@ -41,7 +41,7 @@ const BOLETA_DEMO_PREVIEW: Ticket = {
           class="ticket-thermal-sheet">
 
           <!-- Encabezado Fiscal del Parque -->
-          <header class="text-center pb-2 mb-2 border-b border-dashed border-black/80" data-testid="print-parque-header">
+          <div class="ticket-print-header text-center pb-2 mb-2 border-b border-dashed border-black/80" data-testid="print-parque-header">
             <div class="inline-block px-1.5 py-0.5 bg-black text-white text-[10px] font-bold rounded mb-1">
               TDN
             </div>
@@ -63,7 +63,7 @@ const BOLETA_DEMO_PREVIEW: Ticket = {
                 {{ boleta.marcaImpresion || '** REIMPRESIÓN **' }}
               </div>
             }
-          </header>
+          </div>
 
           <!-- Metadatos de la Transacción y Boleta -->
           <section class="space-y-0.5 pb-2 mb-2 border-b border-dashed border-black/80 text-[10px]">
@@ -141,7 +141,7 @@ const BOLETA_DEMO_PREVIEW: Ticket = {
           </section>
 
           <!-- Normas de Seguridad y Mensaje de Pie Legal -->
-          <footer class="pt-2 border-t border-dashed border-black/80 text-center space-y-1 text-[8.5px] leading-tight" data-testid="print-ticket-pie">
+          <div class="ticket-print-footer pt-2 border-t border-dashed border-black/80 text-center space-y-1 text-[8.5px] leading-tight" data-testid="print-ticket-pie">
             <p class="font-bold uppercase tracking-wider text-[9px]">Normas de Seguridad</p>
             <p class="text-justify whitespace-pre-line text-black/90">
               {{ datosParque().politicasSeguridad }}
@@ -149,7 +149,7 @@ const BOLETA_DEMO_PREVIEW: Ticket = {
             <p class="font-bold text-[9.5px] pt-1">
               {{ datosParque().mensajePie }}
             </p>
-          </footer>
+          </div>
         </article>
       }
 
