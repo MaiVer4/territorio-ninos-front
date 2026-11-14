@@ -2,9 +2,12 @@ import { Injectable } from '@angular/core';
 import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../models/atraccion.model';
 import { MetodoPagoPOS } from '../models/enums';
 
+export type ModalidadImpuesto = 'INCLUIDO' | 'MAS_IVA';
+
 export interface ParametrosLiquidacionPOS {
   items: SeleccionCatalogoPOS[];
   porcentajeIva?: number;
+  modalidadImpuesto?: ModalidadImpuesto;
   metodoPago: MetodoPagoPOS;
   montoRecibido: number;
   fecha?: Date;
@@ -33,15 +36,30 @@ export class VentaCalculoService {
     return items.reduce((acc, it) => acc + this.calcularSubtotalLinea(it), 0);
   }
 
-  calcularSubtotalBase(granTotal: number, porcentajeIva: number = this.PORCENTAJE_IVA_DEFAULT): number {
-    if (granTotal <= 0) return 0;
-    if (porcentajeIva <= 0) return granTotal;
-    return Math.round(granTotal / (1 + (porcentajeIva / 100)));
+  calcularSubtotalBase(
+    valor: number,
+    porcentajeIva: number = this.PORCENTAJE_IVA_DEFAULT,
+    modalidad: ModalidadImpuesto = 'INCLUIDO'
+  ): number {
+    if (valor <= 0) return 0;
+    if (porcentajeIva <= 0) return valor;
+    if (modalidad === 'MAS_IVA') {
+      return valor;
+    }
+    return Math.round(valor / (1 + (porcentajeIva / 100)));
   }
 
-  calcularImpuestos(granTotal: number, porcentajeIva: number = this.PORCENTAJE_IVA_DEFAULT): number {
-    if (granTotal <= 0) return 0;
-    return granTotal - this.calcularSubtotalBase(granTotal, porcentajeIva);
+  calcularImpuestos(
+    valor: number,
+    porcentajeIva: number = this.PORCENTAJE_IVA_DEFAULT,
+    modalidad: ModalidadImpuesto = 'INCLUIDO'
+  ): number {
+    if (valor <= 0) return 0;
+    if (porcentajeIva <= 0) return 0;
+    if (modalidad === 'MAS_IVA') {
+      return Math.round(valor * (porcentajeIva / 100));
+    }
+    return valor - this.calcularSubtotalBase(valor, porcentajeIva, 'INCLUIDO');
   }
 
   calcularCambio(granTotal: number, montoRecibido: number, metodoPago: MetodoPagoPOS): number {
@@ -71,12 +89,14 @@ export class VentaCalculoService {
   construirResumenLiquidacion(params: ParametrosLiquidacionPOS): ResumenLiquidacionPOS {
     const items = params.items ? [...params.items] : [];
     const porcentajeIva = params.porcentajeIva ?? this.PORCENTAJE_IVA_DEFAULT;
+    const modalidad = params.modalidadImpuesto ?? 'INCLUIDO';
     const totalBoletas = this.calcularTotalBoletas(items);
     const granTotal = this.calcularGranTotal(items);
-    const subtotal = this.calcularSubtotalBase(granTotal, porcentajeIva);
-    const impuestos = this.calcularImpuestos(granTotal, porcentajeIva);
-    const cambio = this.calcularCambio(granTotal, params.montoRecibido, params.metodoPago);
-    const montoEfectivoFinal = params.metodoPago === 'EFECTIVO' ? params.montoRecibido : granTotal;
+    const subtotal = this.calcularSubtotalBase(granTotal, porcentajeIva, modalidad);
+    const impuestos = this.calcularImpuestos(granTotal, porcentajeIva, modalidad);
+    const totalFinal = modalidad === 'MAS_IVA' ? granTotal + impuestos : granTotal;
+    const cambio = this.calcularCambio(totalFinal, params.montoRecibido, params.metodoPago);
+    const montoEfectivoFinal = params.metodoPago === 'EFECTIVO' ? params.montoRecibido : totalFinal;
 
     return {
       items,
@@ -84,7 +104,7 @@ export class VentaCalculoService {
       subtotal,
       porcentajeIva,
       impuestos,
-      granTotal,
+      granTotal: totalFinal,
       metodoPago: params.metodoPago,
       montoRecibido: montoEfectivoFinal,
       cambio,

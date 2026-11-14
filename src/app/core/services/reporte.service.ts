@@ -37,15 +37,21 @@ export class ReporteService {
     cajero?: string;
   }): Observable<ReporteTurno[]> {
     let params = new HttpParams();
-    if (filtros?.fecha) params = params.set('fecha', filtros.fecha);
-    if (filtros?.fechaInicio) params = params.set('fechaInicio', filtros.fechaInicio);
-    if (filtros?.fechaFin) params = params.set('fechaFin', filtros.fechaFin);
-    if (filtros?.cajero) params = params.set('cajero', filtros.cajero);
+    if (filtros?.fecha && filtros.fecha.trim() !== '') params = params.set('fecha', filtros.fecha.trim());
+    if (filtros?.fechaInicio && filtros.fechaInicio.trim() !== '') params = params.set('fechaInicio', filtros.fechaInicio.trim());
+    if (filtros?.fechaFin && filtros.fechaFin.trim() !== '') params = params.set('fechaFin', filtros.fechaFin.trim());
+    if (filtros?.cajero && filtros.cajero.trim() !== '') params = params.set('cajero', filtros.cajero.trim());
 
     return this.http.get<ReporteTurno[]>(`${this.apiUrl}/turnos`, { params }).pipe(
       catchError(() => {
         // Fallback robusto combinando con CajaService
-        return this.cajaService.getHistorial(filtros?.fecha || filtros?.fechaInicio).pipe(
+        const fechaHistorial = (filtros?.fecha && filtros.fecha.trim() !== '')
+          ? filtros.fecha.trim()
+          : (filtros?.fechaInicio && filtros.fechaInicio.trim() !== '')
+            ? filtros.fechaInicio.trim()
+            : undefined;
+
+        return this.cajaService.getHistorial(fechaHistorial).pipe(
           map(turnosCaja => {
             return (turnosCaja || []).map(t => {
               const base = t.montoInicial || 0;
@@ -151,21 +157,23 @@ export class ReporteService {
   obtenerRotacionAtracciones(filtro?: FiltroPeriodoReporte): Observable<RotacionAtraccion[]> {
     let params = new HttpParams();
     if (filtro?.periodo) params = params.set('periodo', filtro.periodo);
-    if (filtro?.fechaInicio) params = params.set('fechaInicio', filtro.fechaInicio);
-    if (filtro?.fechaFin) params = params.set('fechaFin', filtro.fechaFin);
+    if (filtro?.fechaInicio && filtro.fechaInicio.trim() !== '') params = params.set('fechaInicio', filtro.fechaInicio.trim());
+    if (filtro?.fechaFin && filtro.fechaFin.trim() !== '') params = params.set('fechaFin', filtro.fechaFin.trim());
 
-    return this.http.get<RotacionAtraccion[]>(`${this.apiUrl}/rotacion-atracciones`, { params }).pipe(
+    return this.http.get<any[]>(`${this.apiUrl}/rotacion-atracciones`, { params }).pipe(
       map(data => {
-        if (!Array.isArray(data) || data.length === 0 || !data[0]?.nombre) {
+        if (!Array.isArray(data)) {
           throw new Error('Estructura de rotación vacía o inválida');
         }
-        return data.map(item => ({
-          ...item,
-          volumenVisitas: Number(item.volumenVisitas || 0),
-          ocupacionPromedioPorcentaje: Number(item.ocupacionPromedioPorcentaje || 0),
-          ingresosBrutos: Number(item.ingresosBrutos || 0),
-          tiempoPromedioMinutos: Number(item.tiempoPromedioMinutos || 0),
-          tendenciaPorcentaje: Number(item.tendenciaPorcentaje || 0)
+        return data.map((item: any) => ({
+          atraccionId: item.atraccionId ?? item.id,
+          nombre: item.nombre || item.nombreAtraccion || 'Atracción',
+          tipo: item.tipo || item.tipoAtraccion || 'TEMPORIZADA',
+          volumenVisitas: Number(item.volumenVisitas ?? item.cantidadTotalUsos ?? 0),
+          ocupacionPromedioPorcentaje: Number(item.ocupacionPromedioPorcentaje ?? item.porcentajeOcupacion ?? 0),
+          ingresosBrutos: Number(item.ingresosBrutos ?? 0),
+          tiempoPromedioMinutos: Number(item.tiempoPromedioMinutos ?? 0),
+          tendenciaPorcentaje: Number(item.tendenciaPorcentaje ?? 0)
         }));
       }),
       catchError(() => {
@@ -246,8 +254,12 @@ export class ReporteService {
   obtenerDatosGraficos(filtro?: FiltroPeriodoReporte): Observable<DatosGraficosReporte> {
     const periodo = filtro?.periodo || 'HOY';
     let params = new HttpParams().set('periodo', periodo);
-    if (filtro?.fechaInicio) params = params.set('fechaInicio', filtro.fechaInicio);
-    if (filtro?.fechaFin) params = params.set('fechaFin', filtro.fechaFin);
+    if (filtro?.fechaInicio && filtro.fechaInicio.trim() !== '') {
+      params = params.set('fechaInicio', filtro.fechaInicio.trim());
+    }
+    if (filtro?.fechaFin && filtro.fechaFin.trim() !== '') {
+      params = params.set('fechaFin', filtro.fechaFin.trim());
+    }
 
     return this.http.get<DatosGraficosReporte>(`${this.apiUrl}/graficos`, { params }).pipe(
       catchError(() => {

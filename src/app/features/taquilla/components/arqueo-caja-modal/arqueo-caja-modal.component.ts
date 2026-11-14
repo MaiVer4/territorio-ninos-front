@@ -66,9 +66,19 @@ interface DenominacionDef {
           <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-3.5 flex flex-col justify-between">
             <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Saldo Esperado</span>
             <span class="text-lg font-extrabold font-mono text-slate-800 mt-1">
-              {{ formatearCOP(_montoEsperado()) }}
+              @if (esModoCiego()) {
+                Conteo a Ciegas
+              } @else {
+                {{ formatearCOP(_montoEsperado() ?? 0) }}
+              }
             </span>
-            <span class="text-[10px] text-slate-400">Base + Ventas en efectivo</span>
+            <span class="text-[10px] text-slate-400">
+              @if (esModoCiego()) {
+                Arqueo ciego de seguridad
+              } @else {
+                Base + Ventas en efectivo
+              }
+            </span>
           </div>
 
           <!-- Total Contado Físico -->
@@ -91,38 +101,55 @@ interface DenominacionDef {
           </div>
 
           <!-- Diferencia / Estado de Balance -->
-          <div
-            class="rounded-2xl p-3.5 border flex flex-col justify-between transition-colors"
-            [ngClass]="{
-              'bg-emerald-50 border-emerald-200 text-emerald-900': estadoBalance() === 'CUADRADO',
-              'bg-blue-50 border-blue-200 text-blue-900': estadoBalance() === 'SOBRANTE',
-              'bg-rose-50 border-rose-200 text-rose-900': estadoBalance() === 'FALTANTE'
-            }">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold uppercase tracking-wider">Diferencia</span>
-              <span
-                class="text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase"
-                [ngClass]="{
-                  'bg-emerald-200/60 text-emerald-800': estadoBalance() === 'CUADRADO',
-                  'bg-blue-200/60 text-blue-800': estadoBalance() === 'SOBRANTE',
-                  'bg-rose-200/60 text-rose-800': estadoBalance() === 'FALTANTE'
-                }">
-                {{ estadoBalance() }}
+          @if (esModoCiego()) {
+            <div class="rounded-2xl p-3.5 border bg-slate-50 border-slate-200 text-slate-700 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider">Verificación</span>
+                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase bg-slate-200/70 text-slate-700">
+                  CIEGO
+                </span>
+              </div>
+              <span class="text-xs font-semibold text-slate-600 mt-1">
+                Validación en servidor al confirmar
+              </span>
+              <span class="text-[10px] text-slate-400">
+                El sistema contrastará el conteo con el libro mayor
               </span>
             </div>
-            <span class="text-lg font-extrabold font-mono mt-1">
-              {{ diferencia() > 0 ? '+' : '' }}{{ formatearCOP(diferencia()) }}
-            </span>
-            <span class="text-[10px] opacity-80">
-              @if (estadoBalance() === 'CUADRADO') {
-                Caja perfectamente cuadrada
-              } @else if (estadoBalance() === 'SOBRANTE') {
-                Excedente de efectivo en caja
-              } @else {
-                Faltante de efectivo en caja
-              }
-            </span>
-          </div>
+          } @else {
+            <div
+              class="rounded-2xl p-3.5 border flex flex-col justify-between transition-colors"
+              [ngClass]="{
+                'bg-emerald-50 border-emerald-200 text-emerald-900': estadoBalance() === 'CUADRADO',
+                'bg-blue-50 border-blue-200 text-blue-900': estadoBalance() === 'SOBRANTE',
+                'bg-rose-50 border-rose-200 text-rose-900': estadoBalance() === 'FALTANTE'
+              }">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider">Diferencia</span>
+                <span
+                  class="text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase"
+                  [ngClass]="{
+                    'bg-emerald-200/60 text-emerald-800': estadoBalance() === 'CUADRADO',
+                    'bg-blue-200/60 text-blue-800': estadoBalance() === 'SOBRANTE',
+                    'bg-rose-200/60 text-rose-800': estadoBalance() === 'FALTANTE'
+                  }">
+                  {{ estadoBalance() }}
+                </span>
+              </div>
+              <span class="text-lg font-extrabold font-mono mt-1">
+                {{ diferencia() > 0 ? '+' : '' }}{{ formatearCOP(diferencia()) }}
+              </span>
+              <span class="text-[10px] opacity-80">
+                @if (estadoBalance() === 'CUADRADO') {
+                  Caja perfectamente cuadrada
+                } @else if (estadoBalance() === 'SOBRANTE') {
+                  Excedente de efectivo en caja
+                } @else {
+                  Faltante de efectivo en caja
+                }
+              </span>
+            </div>
+          }
         </div>
 
         <!-- Tablas de Conteo Asistido (Billetes y Monedas) -->
@@ -302,9 +329,15 @@ interface DenominacionDef {
   `
 })
 export class ArqueoCajaModalComponent {
-  @Input() set montoEsperado(val: number) { this._montoEsperado.set(val ?? 0); }
-  get montoEsperado(): number { return this._montoEsperado(); }
-  readonly _montoEsperado = signal<number>(0);
+  @Input() set montoEsperado(val: number | null | undefined) {
+    this._montoEsperado.set(val === undefined ? null : val);
+  }
+  get montoEsperado(): number | null { return this._montoEsperado(); }
+  readonly _montoEsperado = signal<number | null>(null);
+
+  @Input() set esCierreCiego(val: boolean) { this._esCierreCiego.set(!!val); }
+  get esCierreCiego(): boolean { return this._esCierreCiego(); }
+  readonly _esCierreCiego = signal<boolean>(false);
 
   @Input() set idTurno(val: number) { this._idTurno.set(val ?? 0); }
   get idTurno(): number { return this._idTurno(); }
@@ -374,20 +407,39 @@ export class ArqueoCajaModalComponent {
 
   readonly totalFisico = computed(() => this.totalBilletes() + this.totalMonedas());
 
-  readonly diferencia = computed(() => this.totalFisico() - this._montoEsperado());
+  readonly esModoCiego = computed(() => this._esCierreCiego() || this._montoEsperado() == null);
+
+  readonly diferencia = computed(() => {
+    const esperado = this._montoEsperado();
+    if (this.esModoCiego() || esperado == null) {
+      return 0;
+    }
+    return this.totalFisico() - esperado;
+  });
 
   readonly estadoBalance = computed<EstadoBalanceArqueo>(() => {
+    if (this.esModoCiego()) {
+      return 'CUADRADO';
+    }
     const dif = this.diferencia();
     if (dif === 0) return 'CUADRADO';
     return dif > 0 ? 'SOBRANTE' : 'FALTANTE';
   });
 
-  readonly requiereJustificacion = computed(() => this.diferencia() !== 0);
+  readonly requiereJustificacion = computed(() => {
+    if (this.esModoCiego()) {
+      return false;
+    }
+    return this.diferencia() !== 0;
+  });
 
   readonly estaProcesando = computed(() => this.cargando() || this._procesandoExterno());
 
   readonly puedeConfirmar = computed(() => {
     if (this.estaProcesando()) return false;
+    if (this.esModoCiego()) {
+      return this.totalFisico() >= 0;
+    }
     if (this.requiereJustificacion()) {
       return this.justificacion().trim().length >= 5;
     }
@@ -479,7 +531,7 @@ export class ArqueoCajaModalComponent {
 
     const resultado: ResultadoArqueoDTO = {
       idTurno: this._idTurno(),
-      montoEsperado: this._montoEsperado(),
+      montoEsperado: this._montoEsperado() ?? 0,
       totalFisico: this.totalFisico(),
       diferencia: this.diferencia(),
       estadoBalance: this.estadoBalance(),

@@ -1,6 +1,6 @@
 import { Component, computed, Input, signal, ChangeDetectionStrategy, EventEmitter, Output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
+import { ResumenLiquidacionPOS } from '../../../../core/models/atraccion.model';
 import { MetodoPagoPOS } from '../../../../core/models/enums';
 
 @Component({

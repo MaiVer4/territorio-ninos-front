@@ -31,6 +31,7 @@ export interface Ticket {
   id?: number | string;
   idTicket?: number | string;
   uuid?: string;
+  uuidCodigo?: string;
   idVenta?: number | string;
   idOrden?: string;
   codigoBoleta: string;

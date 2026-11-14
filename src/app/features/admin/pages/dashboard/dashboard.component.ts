@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy, ElementRef, ViewChild, signal, computed, 
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Chart, registerables } from 'chart.js';
 import { AtraccionService } from '../../../../core/services/atraccion.service';

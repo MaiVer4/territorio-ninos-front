@@ -86,4 +86,32 @@ describe('errorInterceptor', () => {
 
     expect(notificationServiceSpy.error).toHaveBeenCalledWith('Acceso denegado: No tienes permisos suficientes para realizar esta acción.');
   });
+
+  it('should notify business rule error details when API returns 400 with detalles', () => {
+    httpClient.post('/api/ventas', {}).subscribe({
+      error: () => {}
+    });
+
+    const req = httpTesting.expectOne('/api/ventas');
+    req.flush(
+      { mensaje: 'Regla de negocio no cumplida', detalles: 'Aforo máximo superado en la atracción' },
+      { status: 400, statusText: 'Bad Request' }
+    );
+
+    expect(notificationServiceSpy.error).toHaveBeenCalledWith('Aforo máximo superado en la atracción');
+  });
+
+  it('should notify conflict message when API returns 409', () => {
+    httpClient.post('/api/turnos/apertura', {}).subscribe({
+      error: () => {}
+    });
+
+    const req = httpTesting.expectOne('/api/turnos/apertura');
+    req.flush(
+      { mensaje: 'Conflicto: Ya existe un turno activo para este cajero' },
+      { status: 409, statusText: 'Conflict' }
+    );
+
+    expect(notificationServiceSpy.error).toHaveBeenCalledWith('Conflicto: Ya existe un turno activo para este cajero');
+  });
 });

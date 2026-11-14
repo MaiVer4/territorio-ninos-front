@@ -26,6 +26,8 @@ export interface TurnoResponseDTO {
   montoInicial: number;
   montoFinal?: number;
   totalRecaudado?: number;
+  ventasEfectivoSistema?: number | null;
+  totalEsperado?: number | null;
   fechaApertura: string;
   fechaCierre?: string;
   estado: EstadoTurno;

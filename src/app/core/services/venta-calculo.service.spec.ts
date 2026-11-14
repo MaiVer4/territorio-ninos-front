@@ -128,6 +128,15 @@ describe('VentaCalculoService', () => {
       expect(service.calcularSubtotalBase(-500, 19)).toBe(0);
       expect(service.calcularImpuestos(-500, 19)).toBe(0);
     });
+
+    it('should support MAS_IVA mode consistent with backend tax-exclusive calculation', () => {
+      const subtotalBase = 10000;
+      const base = service.calcularSubtotalBase(subtotalBase, 19, 'MAS_IVA');
+      const impuestos = service.calcularImpuestos(subtotalBase, 19, 'MAS_IVA');
+
+      expect(base).toBe(10000);
+      expect(impuestos).toBe(1900);
+    });
   });
 
   describe('calcularCambio y calcularFaltanteEfectivo', () => {

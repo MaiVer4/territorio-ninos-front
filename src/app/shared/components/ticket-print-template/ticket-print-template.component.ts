@@ -111,8 +111,8 @@ import { QrViewerComponent } from '../qr-viewer/qr-viewer.component';
           <!-- Código QR Vectorial de Validación (HU-20.05 / HU-20.06 / HU-21.05) -->
           <section class="flex flex-col items-center justify-center my-2" data-testid="print-ticket-qr">
             <app-qr-viewer
-              [value]="boleta.codigoQr || boleta.uuid || boleta.codigoBoleta"
-              [uuid]="boleta.uuid || ''"
+              [value]="boleta.uuidCodigo || boleta.codigoQr || boleta.uuid || ''"
+              [uuid]="boleta.uuid || boleta.uuidCodigo || ''"
               [codigoVisible]="boleta.codigoBoleta"
               [size]="paperWidthMm === 58 ? 116 : 140"
               [margin]="4"

@@ -60,7 +60,8 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
       @if (mostrarModalArqueo() && turnoActual()) {
         <app-arqueo-caja-modal
           [idTurno]="turnoActual()!.idTurno"
-          [montoEsperado]="montoEsperadoArqueo()"
+          [montoEsperado]="esCierreCiego() ? null : montoEsperadoArqueo()"
+          [esCierreCiego]="esCierreCiego()"
           [procesandoExterno]="procesandoArqueo()"
           (confirmarArqueo)="onArqueoConfirmado($event)"
           (cancelar)="mostrarModalArqueo.set(false)">
@@ -525,8 +526,8 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                             @if (obtenerBoletaActivaCarrusel(orden); as boletaActiva) {
                               <div data-testid="carrusel-boleta-activa" class="flex flex-col items-center gap-1.5">
                                 <app-qr-viewer
-                                  [value]="boletaActiva.codigoQr || boletaActiva.uuid || boletaActiva.codigoBoleta"
-                                  [uuid]="boletaActiva.uuid || ''"
+                                  [value]="boletaActiva.uuidCodigo || boletaActiva.codigoQr || boletaActiva.uuid || ''"
+                                  [uuid]="boletaActiva.uuid || boletaActiva.uuidCodigo || ''"
                                   [codigoVisible]="boletaActiva.codigoBoleta"
                                   [size]="136"
                                   [margin]="4"
@@ -625,11 +626,11 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                   \${{ (turnoActual()?.montoInicial ?? 0).toLocaleString('es-CO') }} COP
                 </span>
               </p>
-              @if (turnoActual()) {
+              @if (turnoActual() && !esCierreCiego()) {
                 <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span class="text-slate-500">Saldo teórico actual:</span>
                   <span class="font-mono font-bold text-slate-800">
-                    \${{ montoEsperadoArqueo().toLocaleString('es-CO') }}
+                    \${{ (montoEsperadoArqueo() ?? 0).toLocaleString('es-CO') }}
                   </span>
                 </div>
               }
@@ -738,6 +739,12 @@ export class TaquillaPosComponent implements OnInit {
     nombreCompleto: ['', [Validators.required]],
     telefono: ['', [Validators.required, Validators.pattern(/^[0-9+\s-]{7,15}$/)]],
     correo: ['', [Validators.email]]
+  });
+
+  readonly esCierreCiego = computed(() => {
+    const rol = this.authService.currentUser()?.rol;
+    const turno = this.turnoActual();
+    return rol === 'TAQUILLERO' && turno?.ventasEfectivoSistema === null;
   });
 
   readonly montoEsperadoArqueo = computed(() => {
@@ -1257,7 +1264,7 @@ export class TaquillaPosComponent implements OnInit {
         this.mostrarModalApertura.set(true);
       },
       error: (err) => {
-        const msg = err?.error?.mensaje || 'Error al procesar el cierre y arqueo de caja.';
+        const msg = err?.error?.detalles || err?.error?.mensaje || 'Error al procesar el cierre y arqueo de caja.';
         this.notificationService?.error(msg);
       }
     });

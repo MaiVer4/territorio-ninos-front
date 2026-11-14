@@ -17,8 +17,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         // Cierre preventivo forzado inmediato sin disparar llamada HTTP circular
         authService.logout(true);
       } else if (error.status === 403) {
-        const mensaje = error.error?.mensaje || error.error?.detalles || 'Acceso denegado: No tienes permisos suficientes para realizar esta acción.';
+        const mensaje = error.error?.detalles || error.error?.mensaje || 'Acceso denegado: No tienes permisos suficientes para realizar esta acción.';
         notificationService?.error(mensaje);
+      } else if (error.status >= 400 && error.status < 500 && !isAuthUrl) {
+        const mensaje = error.error?.detalles || error.error?.mensaje || error.error?.message;
+        if (mensaje && typeof mensaje === 'string') {
+          notificationService?.error(mensaje);
+        }
       }
       return throwError(() => error);
     })

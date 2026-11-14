@@ -393,6 +393,8 @@ describe('ColaEmisionService', () => {
       expect(req.request.body.montoRecibido).toBe(30000);
       expect(req.request.body.items.length).toBe(3);
       expect(req.request.body.items[0].atraccionId).toBe(1);
+      expect(req.request.body.items[0].tipoTarifa).toBe('TIEMPO');
+      expect(req.request.body.items[2].tipoTarifa).toBe('EVENTO');
 
       req.flush({
         idVenta: 500,

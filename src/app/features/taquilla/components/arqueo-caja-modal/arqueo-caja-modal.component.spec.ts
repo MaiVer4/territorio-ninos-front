@@ -135,4 +135,22 @@ describe('ArqueoCajaModalComponent', () => {
     component.onCancelar();
     expect(canceled).toBe(true);
   });
+
+  it('should support blind shift close (esCierreCiego=true or montoEsperado=null) without false SOBRANTE or forced justification', () => {
+    component.esCierreCiego = true;
+    component.montoEsperado = null;
+    component.incrementar(50000);
+    fixture.detectChanges();
+
+    expect(component.esModoCiego()).toBe(true);
+    expect(component.totalFisico()).toBe(50000);
+    expect(component.diferencia()).toBe(0);
+    expect(component.estadoBalance()).toBe('CUADRADO');
+    expect(component.requiereJustificacion()).toBe(false);
+    expect(component.puedeConfirmar()).toBe(true);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Conteo a Ciegas');
+    expect(compiled.textContent).toContain('CIEGO');
+  });
 });

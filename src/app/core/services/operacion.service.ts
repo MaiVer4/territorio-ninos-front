@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed, effect } from '@angular/core';
+import { Injectable, inject, signal, computed, effect, OnDestroy } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
@@ -20,7 +20,7 @@ import { AsignacionService } from './asignacion.service';
 @Injectable({
   providedIn: 'root'
 })
-export class OperacionService {
+export class OperacionService implements OnDestroy {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
   private asignacionService = inject(AsignacionService);
@@ -420,15 +420,40 @@ export class OperacionService {
       catchError((error: HttpErrorResponse) => {
         // Si el backend responde con error de cliente (400, 404, 409, 422), rechazar de forma segura (Fail-Closed)
         if (error.status >= 400 && error.status < 500) {
+          let causa: CausaRechazoTicket = error.error?.causaRechazo;
+          const msg = (error.error?.mensaje || error.error?.message || error.error?.mensajeExplicativo || error.error?.detalles || '').toString();
+          const lowerMsg = msg.toLowerCase();
+
+          if (!causa) {
+            if (error.status === 400 || lowerMsg.includes('json') || lowerMsg.includes('formato')) {
+              causa = 'FORMATO_QR_INVALIDO';
+            } else if (error.status === 404 || lowerMsg.includes('no encontrado') || lowerMsg.includes('inexistente')) {
+              causa = 'BOLETO_NO_ENCONTRADO';
+            } else if (error.status === 409) {
+              if (lowerMsg.includes('aforo')) {
+                causa = 'AFORO_COMPLETO';
+              } else {
+                causa = 'BOLETO_YA_CONSUMIDO';
+              }
+            } else if (error.status === 422) {
+              if (lowerMsg.includes('edad') || lowerMsg.includes('años')) {
+                causa = 'EDAD_FUERA_RANGO';
+              } else {
+                causa = 'ATRACCION_INCORRECTA';
+              }
+            } else {
+              causa = 'BOLETO_NO_ENCONTRADO';
+            }
+          }
+
           const rechazoServidor: ResultadoValidacionQr = {
             aprobado: false,
             uuid: codigoLimpio,
-            causaRechazo: error.error?.causaRechazo || 'BOLETO_NO_ENCONTRADO',
+            causaRechazo: causa,
             mensajeExplicativo:
-              error.error?.mensajeExplicativo ||
-              error.error?.mensaje ||
-              error.error?.message ||
-              'El boleto fue rechazado o no existe en el servidor.'
+              causa === 'FORMATO_QR_INVALIDO' && lowerMsg.includes('json')
+                ? 'El código escaneado no tiene un formato válido de UUID o ticket.'
+                : (msg || 'El boleto fue rechazado o no existe en el servidor.')
           };
           this.resultadoValidacionActual.set(rechazoServidor);
           return of(rechazoServidor);
@@ -778,5 +803,10 @@ export class OperacionService {
     } catch {
       // Ignorar
     }
+  }
+
+  ngOnDestroy(): void {
+    this.salidasTimers.forEach(timer => clearTimeout(timer));
+    this.salidasTimers.clear();
   }
 }

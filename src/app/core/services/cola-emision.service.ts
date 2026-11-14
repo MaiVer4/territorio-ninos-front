@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { BoletaEmisionFisica, OrdenEmisionFisica, ResumenLiquidacionPOS } from '../models/atraccion.model';
+import { OrdenEmisionFisica, ResumenLiquidacionPOS } from '../models/atraccion.model';
 import { ContextoVentaTicket, EstadoTicket, Ticket, VentaResponseDTO } from '../models/ticket.model';
 
 @Injectable({
@@ -244,14 +244,20 @@ export class ColaEmisionService {
   ): Observable<VentaResponseDTO | null> {
     if (!this.http) return of(null);
 
-    const items = orden.boletas.map(b => ({
-      atraccionId: Number(b.atraccionId),
-      modalidad: b.modalidadEtiqueta || 'Estándar',
-      precioUnitario: b.precioUnitario ?? 0,
-      cantidad: 1,
-      subtotal: b.precioUnitario ?? 0,
-      menorId: b.menorId
-    }));
+    const items = orden.boletas.map(b => {
+      const esEvento = b.tipoAtraccion === 'EVENTOS_CAIDAS';
+      return {
+        atraccionId: Number(b.atraccionId),
+        tipoTarifa: esEvento ? 'EVENTO' : 'TIEMPO',
+        modalidad: b.modalidadEtiqueta || 'Estándar',
+        precioUnitario: b.precioUnitario ?? 0,
+        cantidad: 1,
+        subtotal: b.precioUnitario ?? 0,
+        menorId: b.menorId ?? undefined,
+        tarifaTiempoId: !esEvento && b.idTicket ? Number(b.idTicket) : undefined,
+        tarifaEventoId: esEvento && b.idTicket ? Number(b.idTicket) : undefined
+      };
+    });
 
     const req$ = this.http
       .post<VentaResponseDTO>(this.apiUrl, {
@@ -273,11 +279,14 @@ export class ColaEmisionService {
             this.sincronizarUuidsDesdeBackend(orden.idOrden, listaBackend);
           }
         }),
-        catchError(() => of(null)),
         shareReplay(1)
       );
 
-    req$.subscribe();
+    req$.subscribe({
+      error: err => {
+        console.error('Error al sincronizar venta con el backend:', err);
+      }
+    });
     return req$;
   }
 
@@ -286,13 +295,15 @@ export class ColaEmisionService {
       lista.map((b, idx) => {
         if (b.idOrden !== idOrden) return b;
         const srv = boletasServidor[idx];
-        if (!srv?.uuid) return b;
+        const srvUuid = srv?.uuid || (srv as any)?.uuidCodigo || (typeof srv?.id === 'string' ? srv.id : undefined);
+        if (!srvUuid) return b;
         return {
           ...b,
           id: srv.id ?? srv.idTicket ?? b.id,
           idTicket: srv.idTicket ?? srv.id ?? b.idTicket,
-          uuid: srv.uuid,
-          codigoQr: srv.codigoQr || srv.uuid,
+          uuid: srvUuid,
+          uuidCodigo: srvUuid,
+          codigoQr: srv.codigoQr || srvUuid,
           codigoBoleta: srv.codigoBoleta || b.codigoBoleta
         };
       });

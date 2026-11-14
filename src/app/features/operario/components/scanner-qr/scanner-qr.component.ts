@@ -17,7 +17,6 @@ import { FormsModule } from '@angular/forms';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { SoundNotificationService } from '../../../../core/services/sound-notification.service';
-import { ResultadoValidacionQr } from '../../../../core/models/operador.model';
 
 @Component({
   selector: 'app-scanner-qr',

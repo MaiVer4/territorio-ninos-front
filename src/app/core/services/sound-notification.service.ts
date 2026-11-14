@@ -1,9 +1,9 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, OnDestroy } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
 })
-export class SoundNotificationService {
+export class SoundNotificationService implements OnDestroy {
   readonly sonidoHabilitado = signal<boolean>(true);
   readonly vibracionHabilitada = signal<boolean>(true);
 
@@ -197,5 +197,17 @@ export class SoundNotificationService {
 
   setVibracionHabilitada(habilitada: boolean): void {
     this.vibracionHabilitada.set(habilitada);
+  }
+
+  ngOnDestroy(): void {
+    this.silenciarTodasLasAlarmas();
+    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+      try {
+        this.audioCtx.close().catch(() => {});
+      } catch {
+        // no-op
+      }
+      this.audioCtx = null;
+    }
   }
 }

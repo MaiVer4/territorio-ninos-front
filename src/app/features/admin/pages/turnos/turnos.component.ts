@@ -4,9 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CajaService } from '../../../../core/services/caja.service';
 import { ReporteService } from '../../../../core/services/reporte.service';
-import { exportToCsv } from '../../../../core/utils/csv-exporter';
 import { extractInitials } from '../../../../core/utils/initials.util';
-import { DetalleConciliacionTurno } from '../../../../core/models/reporte.model';
 
 export interface TurnoItem {
   id: number;

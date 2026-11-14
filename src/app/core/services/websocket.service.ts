@@ -1,10 +1,11 @@
-import { Injectable, inject, signal, OnDestroy } from '@angular/core';
+import { Injectable, inject, signal, OnDestroy, InjectionToken } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { EstadoEnlaceOperario } from '../models/operador.model';
 import { NotificationService } from './notification.service';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
 import { Observable, Subject } from 'rxjs';
-import { Client, StompSubscription } from '@stomp/stompjs';
+import { Client, StompSubscription, IMessage } from '@stomp/stompjs';
 
 export interface OccupancyEvent {
   atraccionId: number | string;
@@ -14,21 +15,47 @@ export interface OccupancyEvent {
 }
 
 export interface MensajeEstacionWs {
-  tipo: 'ACTUALIZACION_COLA' | 'PAUSA_GENERAL' | 'SINCRONIZACION_RELOJ' | 'SALIDA_MENOR' | 'ALERTA_AFORO';
+  tipo:
+    | 'ACTUALIZACION_COLA'
+    | 'PAUSA_GENERAL'
+    | 'SINCRONIZACION_RELOJ'
+    | 'SALIDA_MENOR'
+    | 'ALERTA_AFORO'
+    | 'NUEVO_INGRESO'
+    | 'PAUSA'
+    | 'REANUDACION'
+    | 'ALERTA_PRE_EXPIRACION'
+    | 'TIEMPO_EXPIRADO'
+    | 'SESION_FINALIZADA';
   atraccionId: number | string;
+  sesionId?: number | string | null;
+  mensaje?: string;
   serverTimestamp?: string | number;
-  payload: unknown;
+  timestamp?: string | number;
+  payload?: unknown;
+  colaActualizada?: unknown;
+  sesion?: unknown;
 }
+
+/**
+ * Token de inyección para la factoría de clientes STOMP (DIP - Dependency Inversion Principle).
+ */
+export const STOMP_CLIENT_FACTORY = new InjectionToken<() => Client>('STOMP_CLIENT_FACTORY', {
+  providedIn: 'root',
+  factory: () => () => new Client()
+});
 
 @Injectable({
   providedIn: 'root'
 })
 export class WebSocketService implements OnDestroy {
-  private notificationService = inject(NotificationService);
-  private authService = inject(AuthService, { optional: true });
+  private readonly document = inject(DOCUMENT);
+  private readonly notificationService = inject(NotificationService);
+  private readonly authService = inject(AuthService, { optional: true });
+  private readonly stompFactory = inject(STOMP_CLIENT_FACTORY);
 
   // Telemetría de Ocupación para Admin Dashboard (HU-11)
-  private occupancySubject = new Subject<OccupancyEvent>();
+  private readonly occupancySubject = new Subject<OccupancyEvent>();
   public readonly occupancy$: Observable<OccupancyEvent> = this.occupancySubject.asObservable();
   readonly connected = signal<boolean>(true);
 
@@ -45,7 +72,8 @@ export class WebSocketService implements OnDestroy {
   private readonly mensajesSubject = new Subject<MensajeEstacionWs>();
   private atraccionIdActiva: number | string | null = null;
   private reconexionTimer: ReturnType<typeof setTimeout> | null = null;
-  private deshabilitarConexionReal = false; // Flag para pruebas unitarias / entornos mock
+  private deshabilitarConexionReal = false;
+  private listenersIniciados = false;
 
   constructor() {
     this.iniciarListenersConectividad();
@@ -54,6 +82,8 @@ export class WebSocketService implements OnDestroy {
   ngOnDestroy(): void {
     this.desconectar();
     this.removerListenersConectividad();
+    this.occupancySubject.complete();
+    this.mensajesSubject.complete();
   }
 
   /**
@@ -75,57 +105,12 @@ export class WebSocketService implements OnDestroy {
     this.atraccionIdActiva = atraccionId;
     this.limpiarReconexionTimer();
 
-    if (this.deshabilitarConexionReal || typeof window === 'undefined') {
+    if (this.deshabilitarConexionReal || !this.isWindowAvailable()) {
       this.estadoConexion.set('CONECTADO');
       return this.mensajesSubject.asObservable();
     }
 
-    try {
-      if (!this.stompClient) {
-        const brokerURL = this.construirBrokerUrl();
-        const token = this.authService?.getToken?.();
-        const connectHeaders: Record<string, string> = token
-          ? { Authorization: `Bearer ${token}` }
-          : {};
-
-        this.stompClient = new Client({
-          brokerURL,
-          connectHeaders,
-          reconnectDelay: 0,
-          heartbeatIncoming: 4000,
-          heartbeatOutgoing: 4000,
-          onConnect: () => {
-            const eraReconexion = this.reintentosReconexion() > 0 || this.estadoConexion() === 'RECONECTANDO';
-            this.estadoConexion.set('CONECTADO');
-            this.connected.set(true);
-            this.reintentosReconexion.set(0);
-            this.suscribirTopico();
-            if (this.dashboardAdminActivo) {
-              this.suscribirTopicoDashboard();
-            }
-            if (eraReconexion) {
-              this.notificationService.success('Reconectado con éxito', 'Conexión Restablecida');
-            }
-          },
-          onDisconnect: () => {
-            this.iniciarReconexionConBackoff();
-          },
-          onStompError: () => {
-            this.iniciarReconexionConBackoff();
-          },
-          onWebSocketClose: () => {
-            this.iniciarReconexionConBackoff();
-          }
-        });
-
-        this.stompClient.activate();
-      } else if (this.stompClient.connected) {
-        this.suscribirTopico();
-      }
-    } catch {
-      this.iniciarReconexionConBackoff();
-    }
-
+    this.asegurarClienteStompConectado();
     return this.mensajesSubject.asObservable();
   }
 
@@ -134,43 +119,14 @@ export class WebSocketService implements OnDestroy {
    */
   conectarDashboardAdmin(): Observable<OccupancyEvent> {
     this.dashboardAdminActivo = true;
-    if (!this.deshabilitarConexionReal && typeof window !== 'undefined' && this.stompClient?.connected) {
-      this.suscribirTopicoDashboard();
+    if (!this.deshabilitarConexionReal && this.isWindowAvailable()) {
+      if (this.stompClient?.connected) {
+        this.suscribirTopicoDashboard();
+      } else {
+        this.asegurarClienteStompConectado();
+      }
     }
     return this.occupancy$;
-  }
-
-  private suscribirTopicoDashboard(): void {
-    if (!this.stompClient || !this.stompClient.connected) return;
-    this.canalDashboardSuscripcion?.unsubscribe();
-    this.canalDashboardSuscripcion = this.stompClient.subscribe('/topic/admin/dashboard', message => {
-      try {
-        const parsed = JSON.parse(message.body) as OccupancyEvent;
-        this.occupancySubject.next(parsed);
-      } catch {
-        // Error de parseo JSON
-      }
-    });
-  }
-
-  private suscribirTopico(): void {
-    if (!this.stompClient || !this.stompClient.connected || !this.atraccionIdActiva) return;
-
-    this.canalSuscripcion?.unsubscribe();
-    const topico = `/topic/atraccion/${this.atraccionIdActiva}`;
-
-    this.canalSuscripcion = this.stompClient.subscribe(topico, message => {
-      try {
-        const parsed = JSON.parse(message.body) as MensajeEstacionWs;
-        if (parsed.serverTimestamp) {
-          this.sincronizarRelojServidor(parsed.serverTimestamp);
-        }
-        this.ultimoMensajeRecibido.set(parsed);
-        this.mensajesSubject.next(parsed);
-      } catch {
-        // Error de parseo JSON
-      }
-    });
   }
 
   /**
@@ -180,7 +136,7 @@ export class WebSocketService implements OnDestroy {
   sincronizarRelojServidor(serverTimestampIsoOrMs: string | number): number {
     const serverMs = typeof serverTimestampIsoOrMs === 'string'
       ? Date.parse(serverTimestampIsoOrMs)
-      : serverTimestampIsoOrMs;
+      : Number(serverTimestampIsoOrMs);
 
     if (!isNaN(serverMs)) {
       const nowLocal = Date.now();
@@ -202,22 +158,26 @@ export class WebSocketService implements OnDestroy {
    * Emite un mensaje manualmente para pruebas o simulación local.
    */
   emitirMensajeLocal(mensaje: MensajeEstacionWs): void {
-    if (mensaje.serverTimestamp) {
-      this.sincronizarRelojServidor(mensaje.serverTimestamp);
+    const timestampServidor = mensaje.serverTimestamp ?? mensaje.timestamp;
+    if (timestampServidor !== undefined && timestampServidor !== null) {
+      this.sincronizarRelojServidor(timestampServidor);
     }
     this.ultimoMensajeRecibido.set(mensaje);
     this.mensajesSubject.next(mensaje);
   }
 
+  /**
+   * Construye la URL canónica del broker WebSocket alineada con Spring Boot (`/ws-operacion/websocket`).
+   */
   construirBrokerUrl(): string {
     const api = environment.apiUrl || '';
     if (api.startsWith('http://') || api.startsWith('https://')) {
       const wsBase = api.replace(/^http/, 'ws').replace(/\/api\/?$/, '');
       return `${wsBase}/ws-operacion/websocket`;
     }
-    const loc = window.location;
-    const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = loc.host || 'localhost:8080';
+    const loc = this.document?.defaultView?.location;
+    const proto = loc?.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = loc?.host || 'localhost:8080';
     return `${proto}//${host}/territorioninos/ws-operacion/websocket`;
   }
 
@@ -254,6 +214,130 @@ export class WebSocketService implements OnDestroy {
     }, delayMs);
   }
 
+  desconectar(): void {
+    this.limpiarReconexionTimer();
+    this.canalSuscripcion?.unsubscribe();
+    this.canalSuscripcion = null;
+    this.canalDashboardSuscripcion?.unsubscribe();
+    this.canalDashboardSuscripcion = null;
+    this.dashboardAdminActivo = false;
+
+    if (this.stompClient) {
+      try {
+        this.stompClient.deactivate();
+      } catch {
+        // Ignorar errores al desactivar cliente STOMP
+      }
+      this.stompClient = null;
+    }
+
+    this.atraccionIdActiva = null;
+    this.estadoConexion.set('SIN_CONEXION');
+    this.connected.set(false);
+  }
+
+  setDeshabilitarConexionReal(deshabilitar: boolean): void {
+    this.deshabilitarConexionReal = deshabilitar;
+  }
+
+  // ==========================================
+  // MÉTODOS PRIVADOS DE GESTIÓN STOMP (SRP)
+  // ==========================================
+
+  private asegurarClienteStompConectado(): void {
+    try {
+      if (!this.stompClient) {
+        const client = this.stompFactory();
+        client.configure({
+          brokerURL: this.construirBrokerUrl(),
+          connectHeaders: this.construirCabecerasAutenticacion(),
+          reconnectDelay: 0,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
+          beforeConnect: () => {
+            client.connectHeaders = this.construirCabecerasAutenticacion();
+          },
+          onConnect: () => {
+            const eraReconexion = this.reintentosReconexion() > 0 || this.estadoConexion() === 'RECONECTANDO';
+            this.estadoConexion.set('CONECTADO');
+            this.connected.set(true);
+            this.reintentosReconexion.set(0);
+            this.suscribirTopico();
+            if (this.dashboardAdminActivo) {
+              this.suscribirTopicoDashboard();
+            }
+            if (eraReconexion) {
+              this.notificationService.success('Reconectado con éxito', 'Conexión Restablecida');
+            }
+          },
+          onDisconnect: () => this.iniciarReconexionConBackoff(),
+          onStompError: () => this.iniciarReconexionConBackoff(),
+          onWebSocketClose: () => this.iniciarReconexionConBackoff()
+        });
+
+        this.stompClient = client;
+        this.stompClient.activate();
+      } else if (this.stompClient.connected) {
+        this.suscribirTopico();
+        if (this.dashboardAdminActivo) {
+          this.suscribirTopicoDashboard();
+        }
+      }
+    } catch {
+      this.iniciarReconexionConBackoff();
+    }
+  }
+
+  private construirCabecerasAutenticacion(): Record<string, string> {
+    const token = this.authService?.getToken?.();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  private suscribirTopicoDashboard(): void {
+    if (!this.stompClient || !this.stompClient.connected) return;
+    this.canalDashboardSuscripcion?.unsubscribe();
+    this.canalDashboardSuscripcion = this.stompClient.subscribe('/topic/admin/dashboard', (message: IMessage) => {
+      try {
+        const raw = JSON.parse(message.body) as OccupancyEvent & {
+          colaActualizada?: { totalEnCola?: number; ninosActivos?: number };
+        };
+        const ninosActivos =
+          typeof raw.ninosActivos === 'number'
+            ? raw.ninosActivos
+            : (raw.colaActualizada?.ninosActivos ?? raw.colaActualizada?.totalEnCola ?? 0);
+        this.occupancySubject.next({
+          atraccionId: raw.atraccionId,
+          ninosActivos,
+          operarioNombre: raw.operarioNombre,
+          capacidadMaxima: raw.capacidadMaxima
+        });
+      } catch {
+        // Ignorar payload malformado
+      }
+    });
+  }
+
+  private suscribirTopico(): void {
+    if (!this.stompClient || !this.stompClient.connected || !this.atraccionIdActiva) return;
+
+    this.canalSuscripcion?.unsubscribe();
+    const topico = `/topic/atraccion/${this.atraccionIdActiva}`;
+
+    this.canalSuscripcion = this.stompClient.subscribe(topico, (message: IMessage) => {
+      try {
+        const parsed = JSON.parse(message.body) as MensajeEstacionWs;
+        const ts = parsed.serverTimestamp ?? parsed.timestamp;
+        if (ts !== undefined && ts !== null) {
+          this.sincronizarRelojServidor(ts);
+        }
+        this.ultimoMensajeRecibido.set(parsed);
+        this.mensajesSubject.next(parsed);
+      } catch {
+        // Ignorar error de parseo JSON
+      }
+    });
+  }
+
   private reintentarConexion(): void {
     if (!this.atraccionIdActiva) return;
 
@@ -267,32 +351,6 @@ export class WebSocketService implements OnDestroy {
     }
 
     this.conectarEstacion(this.atraccionIdActiva);
-  }
-
-  desconectar(): void {
-    this.limpiarReconexionTimer();
-    this.canalSuscripcion?.unsubscribe();
-    this.canalSuscripcion = null;
-    this.canalDashboardSuscripcion?.unsubscribe();
-    this.canalDashboardSuscripcion = null;
-    this.dashboardAdminActivo = false;
-
-    if (this.stompClient) {
-      try {
-        this.stompClient.deactivate();
-      } catch {
-        // Ignorar
-      }
-      this.stompClient = null;
-    }
-
-    this.atraccionIdActiva = null;
-    this.estadoConexion.set('SIN_CONEXION');
-    this.connected.set(false);
-  }
-
-  setDeshabilitarConexionReal(deshabilitar: boolean): void {
-    this.deshabilitarConexionReal = deshabilitar;
   }
 
   private limpiarReconexionTimer(): void {
@@ -317,14 +375,22 @@ export class WebSocketService implements OnDestroy {
   };
 
   private iniciarListenersConectividad(): void {
-    if (typeof window === 'undefined') return;
-    window.addEventListener('online', this.handleOnline);
-    window.addEventListener('offline', this.handleOffline);
+    const win = this.document?.defaultView;
+    if (!win || this.listenersIniciados) return;
+    win.addEventListener('online', this.handleOnline);
+    win.addEventListener('offline', this.handleOffline);
+    this.listenersIniciados = true;
   }
 
   private removerListenersConectividad(): void {
-    if (typeof window === 'undefined') return;
-    window.removeEventListener('online', this.handleOnline);
-    window.removeEventListener('offline', this.handleOffline);
+    const win = this.document?.defaultView;
+    if (!win || !this.listenersIniciados) return;
+    win.removeEventListener('online', this.handleOnline);
+    win.removeEventListener('offline', this.handleOffline);
+    this.listenersIniciados = false;
+  }
+
+  private isWindowAvailable(): boolean {
+    return typeof window !== 'undefined' && !!this.document?.defaultView;
   }
 }

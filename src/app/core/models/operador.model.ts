@@ -28,7 +28,8 @@ export type CausaRechazoTicket =
   | 'ATRACCION_INCORRECTA'
   | 'EDAD_FUERA_RANGO'
   | 'BOLETO_NO_ENCONTRADO'
-  | 'AFORO_COMPLETO';
+  | 'AFORO_COMPLETO'
+  | 'FORMATO_QR_INVALIDO';
 
 export interface ResultadoValidacionQr {
   aprobado: boolean;

@@ -124,7 +124,19 @@ export class TicketConsultaService {
     const params = new HttpParams().set('criterio', termLimpio);
 
     return this.http.get<Ticket[]>(`${this.apiUrl}/buscar`, { params }).pipe(
-      map(remotos => this.combinarConLocales(remotos || [], termLimpio)),
+      map(remotos => {
+        const normalizados = (remotos || []).map(r => {
+          const u = r.uuid || (r as any).uuidCodigo || (typeof r.id === 'string' ? r.id : undefined);
+          return {
+            ...r,
+            uuid: u,
+            uuidCodigo: u,
+            codigoQr: r.codigoQr || u,
+            codigoBoleta: r.codigoBoleta || (u ? `BOL-${u.substring(0, 6).toUpperCase()}` : '')
+          };
+        });
+        return this.combinarConLocales(normalizados, termLimpio);
+      }),
       catchError(() => {
         // En caso de que el backend no tenga el endpoint activo, consultar sobre el historial local del turno
         return of(this.filtrarLocales(termLimpio));
@@ -145,7 +157,7 @@ export class TicketConsultaService {
 
     return this.buscarTickets(uuidLimpio).pipe(
       map(lista => {
-        const exacto = lista.find(t => t.uuid?.toLowerCase() === uuidLimpio.toLowerCase() || t.codigoBoleta === uuidLimpio);
+        const exacto = lista.find(t => (t.uuid || t.uuidCodigo)?.toLowerCase() === uuidLimpio.toLowerCase() || t.codigoBoleta === uuidLimpio);
         return exacto || (lista.length > 0 ? lista[0] : null);
       })
     );

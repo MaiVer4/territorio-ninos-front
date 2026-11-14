@@ -82,4 +82,12 @@ describe('SoundNotificationService (HU-25.06, HU-30.05, HU-31.03..06)', () => {
     expect(service.sonidoHabilitado()).toBe(false);
     expect(service.estaAlarmaSonando('s3')).toBe(false);
   });
+
+  it('should silence all active alarms and close AudioContext on ngOnDestroy', () => {
+    service.reproducirAlarmaTiempoAgotado('s-destroy');
+    expect(service.estaAlarmaSonando('s-destroy')).toBe(true);
+
+    service.ngOnDestroy();
+    expect(service.estaAlarmaSonando('s-destroy')).toBe(false);
+  });
 });

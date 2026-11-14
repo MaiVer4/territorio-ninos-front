@@ -388,4 +388,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(reqSync.request.method).toBe('POST');
     reqSync.flush({ status: 'OK' });
   });
+
+  it('should clean up timers on ngOnDestroy without throwing errors', () => {
+    expect(() => service.ngOnDestroy()).not.toThrow();
+  });
 });

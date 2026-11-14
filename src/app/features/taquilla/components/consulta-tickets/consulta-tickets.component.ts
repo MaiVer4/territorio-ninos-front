@@ -213,8 +213,8 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
                             <span class="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-800 rounded font-sans font-bold">REIMP</span>
                           }
                         </div>
-                        <div class="text-[10px] font-mono text-slate-400 truncate max-w-[110px]" [title]="t.uuid || ''">
-                          {{ t.uuid || 'N/A' }}
+                        <div class="text-[10px] font-mono text-slate-400 truncate max-w-[110px]" [title]="t.uuid || t.uuidCodigo || ''">
+                          {{ t.uuid || t.uuidCodigo || 'N/A' }}
                         </div>
                       </td>
 
@@ -339,17 +339,17 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
               <!-- Previsualización Óptica del Código QR -->
               <div class="flex flex-col items-center justify-center p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                 <app-qr-viewer
-                  [value]="t.codigoQr || t.uuid || t.codigoBoleta"
-                  [uuid]="t.uuid || ''"
+                  [value]="t.uuidCodigo || t.codigoQr || t.uuid || ''"
+                  [uuid]="t.uuid || t.uuidCodigo || ''"
                   [codigoVisible]="t.codigoBoleta"
                   [size]="140"
                   [margin]="4"
                   errorCorrectionLevel="M"
                   [mostrarInsigniaOptica]="true">
                 </app-qr-viewer>
-                @if (t.uuid) {
-                  <p class="text-[9px] font-mono text-slate-400 mt-2 truncate max-w-full" [title]="t.uuid">
-                    UUID: {{ t.uuid }}
+                @if (t.uuid || t.uuidCodigo) {
+                  <p class="text-[9px] font-mono text-slate-400 mt-2 truncate max-w-full" [title]="t.uuid || t.uuidCodigo || ''">
+                    UUID: {{ t.uuid || t.uuidCodigo }}
                   </p>
                 }
               </div>
