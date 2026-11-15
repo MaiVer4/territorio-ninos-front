@@ -350,6 +350,8 @@ export class CatalogoAtraccionesComponent {
         return a.tarifasEvento
           .filter(e => e.activo !== false && e.vigente !== false)
           .map(e => ({
+            id: e.id,
+            tarifaId: e.id,
             tipo: 'EVENTOS_CAIDAS' as const,
             etiqueta: `${e.intentos} caídas`,
             valor: e.intentos,
@@ -364,6 +366,8 @@ export class CatalogoAtraccionesComponent {
       return a.tarifasTiempo
         .filter(t => t.activo !== false && t.vigente !== false)
         .map(t => ({
+          id: t.id,
+          tarifaId: t.id,
           tipo: 'TEMPORIZADA' as const,
           etiqueta: `${t.duracionMinutos} min`,
           valor: t.duracionMinutos,
@@ -372,12 +376,14 @@ export class CatalogoAtraccionesComponent {
     }
 
     const ext = a as unknown as {
-      tarifasBloque?: Array<{ minutos: number; precio: number; vigente?: boolean; activo?: boolean }>;
+      tarifasBloque?: Array<{ id?: number; minutos: number; precio: number; vigente?: boolean; activo?: boolean }>;
     };
     if (Array.isArray(ext.tarifasBloque) && ext.tarifasBloque.length > 0) {
       return ext.tarifasBloque
         .filter(b => b.vigente !== false && b.activo !== false)
         .map(b => ({
+          id: b.id,
+          tarifaId: b.id,
           tipo: 'TEMPORIZADA' as const,
           etiqueta: `${b.minutos} min`,
           valor: b.minutos,

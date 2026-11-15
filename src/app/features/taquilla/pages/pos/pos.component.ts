@@ -868,10 +868,11 @@ export class TaquillaPosComponent implements OnInit {
     const docCliente = this.clienteForm.get('numeroDocumento')?.value?.trim();
     const nomCliente = this.clienteForm.get('nombreCompleto')?.value?.trim();
     const telCliente = this.clienteForm.get('telefono')?.value?.trim();
+    const clienteId = this.clienteSeleccionado()?.idCliente ?? this.clienteSeleccionado()?.id;
     const clienteContexto = {
       clienteNombre: this.nombreClienteTitular(),
       clienteDocumento: docCliente || undefined,
-      clienteId: this.clienteSeleccionado()?.idCliente
+      clienteId
     };
     const ordenFisica = this.colaEmisionService.encolarVenta(resumen, clienteContexto);
 
@@ -897,8 +898,21 @@ export class TaquillaPosComponent implements OnInit {
         .subscribe(nuevoCliente => {
           const idResuelto =
             nuevoCliente?.idCliente ??
-            (nuevoCliente as { id?: number } | null)?.id ??
+            nuevoCliente?.id ??
             clienteContexto.clienteId;
+
+          if (nuevoCliente?.menores && nuevoCliente.menores.length > 0) {
+            ordenFisica.boletas.forEach(b => {
+              if (!b.menorId) {
+                const menorEncontrado = nuevoCliente.menores?.find(m => m.nombreCompleto === b.menorNombre)
+                  ?? (nuevoCliente.menores?.length === 1 ? nuevoCliente.menores[0] : null);
+                if (menorEncontrado) {
+                  b.menorId = menorEncontrado.idMenor ?? menorEncontrado.id;
+                }
+              }
+            });
+          }
+
           this.colaEmisionService.sincronizarVentaBackend(
             ordenFisica,
             idResuelto,

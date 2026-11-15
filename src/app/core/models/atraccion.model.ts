@@ -69,6 +69,8 @@ export interface AtraccionCatalogoVenta extends Atraccion {
 }
 
 export interface ModalidadSeleccionada {
+  id?: number;
+  tarifaId?: number;
   tipo: TipoAtraccion;
   etiqueta: string; // Ej: '15 min', '30 min', '60 min', '3 caídas'
   valor: number;    // Minutos (15, 30, 60) o número de caídas (3, 5)

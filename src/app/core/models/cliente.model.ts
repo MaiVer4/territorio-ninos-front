@@ -1,4 +1,5 @@
 export interface Menor {
+  id?: number;
   idMenor?: number;
   nombreCompleto: string;
   documento?: string;
@@ -9,6 +10,7 @@ export interface Menor {
 }
 
 export interface Cliente {
+  id?: number;
   idCliente?: number;
   tipoDocumento: 'CC' | 'TI' | 'CE' | 'PASAPORTE' | string;
   numeroDocumento: string;

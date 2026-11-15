@@ -30,6 +30,8 @@ export interface TiempoRestanteInfo {
 export interface Ticket {
   id?: number | string;
   idTicket?: number | string;
+  tarifaTiempoId?: number;
+  tarifaEventoId?: number;
   uuid?: string;
   uuidCodigo?: string;
   idVenta?: number | string;

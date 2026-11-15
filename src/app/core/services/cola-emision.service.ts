@@ -4,12 +4,16 @@ import { Observable, catchError, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { OrdenEmisionFisica, ResumenLiquidacionPOS } from '../models/atraccion.model';
 import { ContextoVentaTicket, EstadoTicket, Ticket, VentaResponseDTO } from '../models/ticket.model';
+import { NotificationService } from './notification.service';
+import { PrintService } from './print.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ColaEmisionService {
   private readonly http = inject(HttpClient, { optional: true });
+  private readonly printService = inject(PrintService, { optional: true });
+  private readonly notificationService = inject(NotificationService, { optional: true });
   private readonly apiUrl = `${environment.apiUrl}/ventas`;
 
   readonly ordenes = signal<OrdenEmisionFisica[]>([]);
@@ -147,6 +151,8 @@ export class ColaEmisionService {
         const cantidad = Math.max(1, item.cantidad ?? 1);
         const menorNombre = item.menorAsignado?.nombreCompleto?.trim() || 'Sin menor asignado';
         const atraccionId = item.atraccion.id ?? 0;
+        const esEvento = item.atraccion.tipo === 'EVENTOS_CAIDAS';
+        const tarifaId = item.modalidad.tarifaId ?? item.modalidad.id;
 
         for (let i = 0; i < cantidad; i++) {
           const codigoBoleta = `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(contadorBoleta).padStart(3, '0')}`;
@@ -156,7 +162,9 @@ export class ColaEmisionService {
           contadorBoleta++;
 
           const ticket: Ticket = {
-            idTicket: undefined,
+            idTicket: tarifaId,
+            tarifaTiempoId: !esEvento ? tarifaId : undefined,
+            tarifaEventoId: esEvento ? tarifaId : undefined,
             uuid,
             idOrden: contexto?.idOrden,
             idVenta: contexto?.idVenta,
@@ -168,7 +176,7 @@ export class ColaEmisionService {
             modalidadEtiqueta: item.modalidad.etiqueta,
             duracionMinutos: item.atraccion.tipo === 'TEMPORIZADA' ? item.modalidad.valor : undefined,
             caidasPermitidas: item.atraccion.tipo === 'EVENTOS_CAIDAS' ? item.modalidad.valor : undefined,
-            menorId: item.menorAsignado?.idMenor,
+            menorId: item.menorAsignado?.idMenor ?? (item.menorAsignado as any)?.id,
             menorNombre,
             menorEdad: item.menorAsignado?.edad,
             clienteId: contexto?.clienteId,
@@ -246,6 +254,8 @@ export class ColaEmisionService {
 
     const items = orden.boletas.map(b => {
       const esEvento = b.tipoAtraccion === 'EVENTOS_CAIDAS';
+      const tarifaTiempoId = !esEvento ? (b.tarifaTiempoId ?? (b.idTicket ? Number(b.idTicket) : undefined)) : undefined;
+      const tarifaEventoId = esEvento ? (b.tarifaEventoId ?? (b.idTicket ? Number(b.idTicket) : undefined)) : undefined;
       return {
         atraccionId: Number(b.atraccionId),
         tipoTarifa: esEvento ? 'EVENTO' : 'TIEMPO',
@@ -254,15 +264,17 @@ export class ColaEmisionService {
         cantidad: 1,
         subtotal: b.precioUnitario ?? 0,
         menorId: b.menorId ?? undefined,
-        tarifaTiempoId: !esEvento && b.idTicket ? Number(b.idTicket) : undefined,
-        tarifaEventoId: esEvento && b.idTicket ? Number(b.idTicket) : undefined
+        tarifaTiempoId,
+        tarifaEventoId
       };
     });
+
+    const clienteIdFinal = clienteId ?? orden.boletas[0]?.clienteId;
 
     const req$ = this.http
       .post<VentaResponseDTO>(this.apiUrl, {
         idOrden: orden.idOrden,
-        clienteId: clienteId ?? orden.boletas[0]?.clienteId,
+        clienteId: clienteIdFinal,
         clienteDocumento,
         clienteNombre: orden.clienteNombre,
         metodoPago: orden.metodoPago,
@@ -285,6 +297,8 @@ export class ColaEmisionService {
     req$.subscribe({
       error: err => {
         console.error('Error al sincronizar venta con el backend:', err);
+        const msg = err?.error?.detalles || err?.error?.mensaje || 'Error al persistir la venta en base de datos.';
+        this.notificationService?.error(`Error de persistencia en servidor: ${msg}`);
       }
     });
     return req$;
@@ -316,6 +330,13 @@ export class ColaEmisionService {
     const reciente = this.ordenReciente();
     if (reciente?.idOrden === idOrden) {
       this.ordenReciente.set({ ...reciente, boletas: reconciliar(reciente.boletas) });
+    }
+    if (this.printService) {
+      if (this.printService.ordenEnImpresion()?.idOrden === idOrden) {
+        const ordActual = this.printService.ordenEnImpresion()!;
+        this.printService.ordenEnImpresion.set({ ...ordActual, boletas: reconciliar(ordActual.boletas) });
+        this.printService.boletasEnImpresion.set(reconciliar(this.printService.boletasEnImpresion()));
+      }
     }
   }
 
