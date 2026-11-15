@@ -1,5 +1,5 @@
 # Mapa de Arquitectura y Componentes del Frontend (`territorio-front`)
-> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-14 (commit 71e4ecf).
+> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-15 (commit 519e085).
 
 ## 1. Stack, Convenciones y Reglas de Desarrollo
 - **Stack:** Angular `21.2.0` (100% Standalone Components), Signals (`signal`, `computed`, `effect`), RxJS (`HttpClient`), Tailwind CSS `3.4.19`, Angular Material Icons (`material-symbols-outlined`), STOMP/WebSocket, Vitest `4.0.8`.
