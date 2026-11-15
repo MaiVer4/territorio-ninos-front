@@ -22,7 +22,7 @@ describe('AdminDashboardComponent', () => {
       tarifaMinuto: 1000,
       capacidadMaxima: 20,
       duracionMinutosBase: 30,
-      ninosActivos: 10,
+      ocupacionActiva: 10,
       estado: 'ACTIVO'
     }
   ];

@@ -463,7 +463,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   initWebSocketTelemetry() {
-    this.webSocketService.occupancy$
+    this.webSocketService.conectarDashboardAdmin()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event) => {
         this.atraccionesDb.update((list) =>
@@ -472,6 +472,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
               return {
                 ...a,
                 ninosActivos: event.ninosActivos,
+                ocupacionActiva: event.ninosActivos,
                 operarioAsignado: event.operarioNombre || a.operarioAsignado
               };
             }
@@ -495,12 +496,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
           const mapped = atracciones.map((a, i) => {
             const asig = asignaciones?.find((x) => x.atraccionId === a.id && x.activo);
+            const ninosActivos = a.ocupacionActiva ?? a.ninosActivos ?? a.ocupacionActual ?? 0;
             return {
               ...a,
               color: a.color || colors[i % colors.length],
               lightBg: a.lightBg || lightBgs[i % lightBgs.length],
               operarioAsignado: asig?.operarioNombre,
-              ninosActivos: a.ninosActivos || 0
+              ninosActivos,
+              ocupacionActiva: ninosActivos
             };
           });
           this.atraccionesDb.set(mapped);

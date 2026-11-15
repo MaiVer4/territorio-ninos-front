@@ -31,6 +31,7 @@ export interface Atraccion {
   duracion?: number;
 
   // Catálogo de venta y tarifas en tiempo real
+  ocupacionActiva?: number;
   ocupacionActual?: number;
   aforoDisponible?: number;
   tieneCupo?: boolean;

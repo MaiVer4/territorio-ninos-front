@@ -299,17 +299,37 @@ export class WebSocketService implements OnDestroy {
     this.canalDashboardSuscripcion = this.stompClient.subscribe('/topic/admin/dashboard', (message: IMessage) => {
       try {
         const raw = JSON.parse(message.body) as OccupancyEvent & {
-          colaActualizada?: { totalEnCola?: number; ninosActivos?: number };
+          ocupacionActiva?: number;
+          sesion?: { operarioNombre?: string };
+          colaActualizada?: {
+            atraccionId?: number | string;
+            ocupacionActiva?: number;
+            capacidadMaxima?: number;
+            totalEnCola?: number;
+            ninosActivos?: number;
+            sesionesActivas?: Array<{ operarioNombre?: string }>;
+          };
         };
         const ninosActivos =
           typeof raw.ninosActivos === 'number'
             ? raw.ninosActivos
-            : (raw.colaActualizada?.ninosActivos ?? raw.colaActualizada?.totalEnCola ?? 0);
+            : typeof raw.ocupacionActiva === 'number'
+              ? raw.ocupacionActiva
+              : (raw.colaActualizada?.ocupacionActiva
+                  ?? raw.colaActualizada?.ninosActivos
+                  ?? raw.colaActualizada?.totalEnCola
+                  ?? raw.colaActualizada?.sesionesActivas?.length
+                  ?? 0);
+        const operarioNombre =
+          raw.operarioNombre
+          ?? raw.sesion?.operarioNombre
+          ?? raw.colaActualizada?.sesionesActivas?.[0]?.operarioNombre;
+        const capacidadMaxima = raw.capacidadMaxima ?? raw.colaActualizada?.capacidadMaxima;
         this.occupancySubject.next({
-          atraccionId: raw.atraccionId,
+          atraccionId: raw.atraccionId ?? raw.colaActualizada?.atraccionId ?? 0,
           ninosActivos,
-          operarioNombre: raw.operarioNombre,
-          capacidadMaxima: raw.capacidadMaxima
+          operarioNombre,
+          capacidadMaxima
         });
       } catch {
         // Ignorar payload malformado
