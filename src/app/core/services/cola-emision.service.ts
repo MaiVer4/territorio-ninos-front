@@ -101,10 +101,11 @@ export class ColaEmisionService {
     if (Array.isArray(listaDTO) && listaDTO.length > 0) {
       listaDTO.forEach((item, index) => {
         const atraccionId = item.atraccionId ?? 0;
+        const uuid = item.uuid?.trim() || item.uuidCodigo?.trim() || this.generarUuidTicket();
+        const prefijoUuid = uuid.split('-')[0].toUpperCase();
         const codigoBoleta =
           item.codigoBoleta?.trim() ||
-          `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(index + 1).padStart(3, '0')}`;
-        const uuid = item.uuid?.trim() || this.generarUuidTicket();
+          `TDN-${atraccionId}-${prefijoUuid}-${String(index + 1).padStart(3, '0')}`;
         const codigoQr = item.codigoQr?.trim() || uuid;
 
         const ticket: Ticket = {
@@ -155,8 +156,9 @@ export class ColaEmisionService {
         const tarifaId = item.modalidad.tarifaId ?? item.modalidad.id;
 
         for (let i = 0; i < cantidad; i++) {
-          const codigoBoleta = `TDN-${atraccionId}-${timestamp.toString(36).toUpperCase()}-${String(contadorBoleta).padStart(3, '0')}`;
           const uuid = this.generarUuidTicket();
+          const prefijoUuid = uuid.split('-')[0].toUpperCase();
+          const codigoBoleta = `TDN-${atraccionId}-${prefijoUuid}-${String(contadorBoleta).padStart(3, '0')}`;
           // Carga útil óptica con UUID v4 (HU-20.06 / Notion: CA-04)
           const codigoQr = uuid;
           contadorBoleta++;
@@ -264,12 +266,16 @@ export class ColaEmisionService {
         cantidad: 1,
         subtotal: b.precioUnitario ?? 0,
         menorId: b.menorId ?? undefined,
+        menorNombre: b.menorNombre,
+        menorEdad: b.menorEdad,
+        uuid: b.uuid,
+        codigoBoleta: b.codigoBoleta,
         tarifaTiempoId,
         tarifaEventoId
       };
     });
 
-    const clienteIdFinal = clienteId ?? orden.boletas[0]?.clienteId;
+    const clienteIdFinal = clienteId ?? orden.boletas[0]?.clienteId ?? 0;
 
     const req$ = this.http
       .post<VentaResponseDTO>(this.apiUrl, {

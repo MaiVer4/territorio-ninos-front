@@ -174,7 +174,15 @@ export class OperacionService implements OnDestroy {
       return;
     }
 
-    this.http.post(`${this.apiUrl}/${endpoint}`, { atraccionId, idSesion, ticketUuid, ...payload }).pipe(
+    this.http.post<{ id?: number | string }>(`${this.apiUrl}/${endpoint}`, { atraccionId, idSesion, ticketUuid, ...payload }).pipe(
+      tap(res => {
+        if (tipo === 'INICIAR_SESION' && res?.id && idSesion) {
+          const idServidor = String(res.id);
+          this.colaActiva.update(cola =>
+            cola.map(s => (s.idSesion === idSesion ? { ...s, idSesion: idServidor } : s))
+          );
+        }
+      }),
       catchError((err: unknown) => {
         if (err instanceof HttpErrorResponse && err.status === 0) {
           this.offlineQueue.encolarAccion(tipo, atraccionId, payload, idSesion, ticketUuid);
