@@ -51,6 +51,7 @@ __screenshots__/
 .claude/
 .claude.json
 CLAUDE.md
+GEMINI.md
 .cursor/
 .cursorrules
 .windsurf/
