@@ -1,0 +1,1 @@
+../../../Territrio-De-Ninos/docs/context/DATABASE_SCHEMA.md
