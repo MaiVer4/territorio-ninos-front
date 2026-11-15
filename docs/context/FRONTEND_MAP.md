@@ -1,5 +1,5 @@
 # Mapa de Arquitectura y Componentes del Frontend (`territorio-front`)
-> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-15 (commit 519e085).
+> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-15 (commit f72657f).
 
 ## 1. Stack, Convenciones y Reglas de Desarrollo
 - **Stack:** Angular `21.2.0` (100% Standalone Components), Signals (`signal`, `computed`, `effect`), RxJS (`HttpClient`), Tailwind CSS `3.4.19`, Angular Material Icons (`material-symbols-outlined`), STOMP/WebSocket, Vitest `4.0.8`.
@@ -60,7 +60,7 @@
 | `OperacionService` | `GET /operario/estacion-activa`, `POST /operacion/escanear`, `POST /operacion/iniciar-sesion`, `GET /operacion/cola/{id}`, `POST /operacion/sesiones/{id}/pausar|reanudar|salida|descontar-intento`, `POST /operacion/atraccion/{id}/pausa-general` | `estacionActiva`, `colaActiva`, `resultadoValidacionActual`, `paradaEmergenciaActiva`, `ocupacionActual`, `capacidadMaxima`, `colaOrdenadaPorUrgencia` | Motor de la vista de operario: validación QR, semáforo de cronómetros (`VERDE`/`AMARILLO`/`ROJO`/`PAUSADO`), caídas en modo evento y cola offline. |
 | `OfflineQueueService` | *(Persistencia en `localStorage`)* | `accionesPendientes`, `accionesDescartadas`, `totalPendientes`, `hayAccionesPendientes` | Encola acciones operativas cuando se pierde conexión y las reintenta al reconectar. |
 | `WebsocketService` | STOMP `/territorioninos/ws-operacion` (`/topic/atraccion/{id}`, `/topic/operacion/dashboard`) | `connected`, `estadoConexion`, `serverTimeOffsetMs`, `ultimoMensajeRecibido` | Sincronización en tiempo real de colas, aforo del dashboard y offset de reloj con el servidor. |
-| `ReporteService` | `GET /reportes/turnos`, `GET /reportes/turnos/{id}/detalle`, `GET /reportes/rotacion-atracciones`, `GET /reportes/graficos/*`, `GET /reportes/exportar/csv|pdf` | `descargandoArchivo`, `formatoDescargaActivo` | Reportes de conciliación de caja, rotación de atracciones, gráficos y descarga de blobs PDF/CSV. |
+| `ReporteService` | `GET /reportes/turnos`, `GET /reportes/turnos/{id}/detalle`, `GET /reportes/rotacion-atracciones`, `GET /reportes/graficos`, `GET /reportes/exportar/csv|pdf` | `descargandoArchivo`, `formatoDescargaActivo` | Reportes de conciliación de caja, rotación de atracciones, series estadísticas reales de ventas/afluencia por hora y descarga de blobs PDF/CSV. |
 | `AuditoriaService` | `GET /auditoria/tickets/{criterio}`, `GET /auditoria/incidentes` | — | Consulta de línea de tiempo inmutable de un ticket y bitácora de incidentes/pausas (> 5 min resaltados). |
 | `ConfiguracionService` | `GET /configuracion`, `PUT /configuracion` | — | Lectura y actualización de datos fiscales del parque, ancho de papel y tiempo de gracia. |
 | `UsuarioService` | `GET/POST/PUT/DELETE /usuarios` | — | Gestión de colaboradores (`ADMINISTRADOR`, `TAQUILLERO`, `OPERARIO`). |
