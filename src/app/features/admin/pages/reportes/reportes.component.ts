@@ -648,10 +648,10 @@ export class ReportesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.chartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm'],
+        labels: [],
         datasets: [{
           label: 'Ventas',
-          data: [120000, 385000, 520000, 780000, 650000, 895000, 720000, 940000, 560000],
+          data: [],
           borderColor: '#F97316',
           borderWidth: 2.5,
           backgroundColor: gradient,

@@ -120,12 +120,27 @@ describe('ReporteService (HU-36.08, HU-37.06, HU-39.07, HU-40.06)', () => {
     });
 
     const req = httpMock.expectOne(r => r.url.includes('/reportes/graficos'));
-    req.error(new ProgressEvent('error'));
+    expect(req.request.params.get('periodo')).toBe('HOY');
+    req.flush({
+      ventasPorHora: [{ hora: '10am', ventasCop: 30000, afluencia: 2 }],
+      evolucionSemanal: [],
+      distribucionMetodosPago: []
+    });
 
-    expect(datos).toBeDefined();
-    expect(datos.ventasPorHora.length).toBe(9);
-    expect(datos.evolucionSemanal.length).toBe(7);
-    expect(datos.distribucionMetodosPago.length).toBe(4);
+    expect(datos.ventasPorHora[0].ventasCop).toBe(30000);
+  });
+
+  it('should return empty datasets (no fake data) when /reportes/graficos fails', () => {
+    let datos: any = null;
+    service.obtenerDatosGraficos({ periodo: 'HOY', fechaInicio: '', fechaFin: '' }).subscribe(res => {
+      datos = res;
+    });
+
+    httpMock.expectOne(r => r.url.includes('/reportes/graficos')).error(new ProgressEvent('error'));
+
+    expect(datos.ventasPorHora).toEqual([]);
+    expect(datos.evolucionSemanal).toEqual([]);
+    expect(datos.distribucionMetodosPago).toEqual([]);
   });
 
   it('should handle blob download and trigger browser save with timestamped name (HU-39.06..08)', () => {

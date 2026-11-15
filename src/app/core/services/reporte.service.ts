@@ -262,42 +262,11 @@ export class ReporteService {
     }
 
     return this.http.get<DatosGraficosReporte>(`${this.apiUrl}/graficos`, { params }).pipe(
-      catchError(() => {
-        let mult = 1;
-        if (periodo === 'ULTIMOS_7_DIAS') mult = 4.5;
-        if (periodo === 'ESTE_MES') mult = 18;
-
-        const mock: DatosGraficosReporte = {
-          ventasPorHora: [
-            { hora: '8am', ventasCop: Math.round(120000 * mult), afluencia: 8 },
-            { hora: '9am', ventasCop: Math.round(385000 * mult), afluencia: 24 },
-            { hora: '10am', ventasCop: Math.round(520000 * mult), afluencia: 35 },
-            { hora: '11am', ventasCop: Math.round(780000 * mult), afluencia: 52 },
-            { hora: '12pm', ventasCop: Math.round(650000 * mult), afluencia: 44 },
-            { hora: '1pm', ventasCop: Math.round(895000 * mult), afluencia: 58 },
-            { hora: '2pm', ventasCop: Math.round(720000 * mult), afluencia: 49 },
-            { hora: '3pm', ventasCop: Math.round(940000 * mult), afluencia: 63 },
-            { hora: '4pm', ventasCop: Math.round(560000 * mult), afluencia: 38 }
-          ],
-          evolucionSemanal: [
-            { fecha: '2026-10-26', etiquetaDia: 'Lun', ingresosCop: 2850000 },
-            { fecha: '2026-10-27', etiquetaDia: 'Mar', ingresosCop: 3120000 },
-            { fecha: '2026-10-28', etiquetaDia: 'Mié', ingresosCop: 2980000 },
-            { fecha: '2026-10-29', etiquetaDia: 'Jue', ingresosCop: 3450000 },
-            { fecha: '2026-10-30', etiquetaDia: 'Vie', ingresosCop: 4890000 },
-            { fecha: '2026-10-31', etiquetaDia: 'Sáb', ingresosCop: 6850000 },
-            { fecha: '2026-11-01', etiquetaDia: 'Dom', ingresosCop: 7420000 }
-          ],
-          distribucionMetodosPago: [
-            { metodo: 'EFECTIVO', etiqueta: 'Efectivo', montoCop: 18450000, porcentaje: 45.2 },
-            { metodo: 'TARJETA_DEBITO', etiqueta: 'Tarjeta Débito', montoCop: 12240000, porcentaje: 30.0 },
-            { metodo: 'TARJETA_CREDITO', etiqueta: 'Tarjeta Crédito', montoCop: 6520000, porcentaje: 16.0 },
-            { metodo: 'TRANSFERENCIA', etiqueta: 'Transferencia', montoCop: 3590000, porcentaje: 8.8 }
-          ]
-        };
-
-        return of(mock);
-      })
+      catchError(() => of<DatosGraficosReporte>({
+        ventasPorHora: [],
+        evolucionSemanal: [],
+        distribucionMetodosPago: []
+      }))
     );
   }
 
