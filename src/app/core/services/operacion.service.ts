@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, effect, OnDestroy } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
@@ -16,6 +16,7 @@ import { SoundNotificationService } from './sound-notification.service';
 import { WebSocketService } from './websocket.service';
 import { OfflineQueueService } from './offline-queue.service';
 import { AsignacionService } from './asignacion.service';
+import { AtraccionService } from './atraccion.service';
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +25,7 @@ export class OperacionService implements OnDestroy {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
   private asignacionService = inject(AsignacionService);
+  private atraccionService = inject(AtraccionService);
   private notificationService = inject(NotificationService);
   private soundService = inject(SoundNotificationService);
   private wsService = inject(WebSocketService);
@@ -193,53 +195,84 @@ export class OperacionService implements OnDestroy {
   }
 
   /**
-   * Consulta las asignaciones activas del operario (HU-24.06 / SCRUM-392).
+   * Consulta todas las atracciones activas del parque y las asignaciones del operario (HU-24).
    */
   consultarEstacionAsignada(): Observable<EstacionTrabajo[]> {
-    return this.asignacionService.getActiveAssignments().pipe(
-      map(asignaciones => {
+    return forkJoin({
+      atracciones: this.atraccionService.getActivas().pipe(catchError(() => of([]))),
+      asignaciones: this.asignacionService.getActiveAssignments().pipe(catchError(() => of([])))
+    }).pipe(
+      map(({ atracciones, asignaciones }) => {
         const currentUser = this.authService.currentUser();
         const userId = currentUser?.id;
-        const userRole = currentUser?.rol;
 
-        const asignacionesFiltradas =
-          userRole === 'OPERARIO' && userId
-            ? asignaciones.filter(a => String(a.operarioId ?? (a as { usuarioId?: number | string }).usuarioId) === String(userId))
-            : asignaciones;
+        let mapeadas: EstacionTrabajo[] = [];
 
-        const mapeadas: EstacionTrabajo[] = asignacionesFiltradas.map(a => {
-          const asignacionExt = a as {
-            tipoAtraccion?: string;
-            capacidadMaxima?: number;
-            duracionMinutosBase?: number;
-            toleranciaMinutos?: number;
-            caidasLimite?: number;
-            edadMinima?: number;
-            edadMaxima?: number;
-          };
-          const esEventoCaidas =
-            asignacionExt.tipoAtraccion === 'EVENTOS_CAIDAS' ||
-            (a.atraccionNombre?.toLowerCase().includes('toro') ?? false) ||
-            (a.atraccionNombre?.toLowerCase().includes('evento') ?? false);
+        if (atracciones && atracciones.length > 0) {
+          mapeadas = atracciones.map(a => {
+            const asigAtraccion = asignaciones.find(
+              asig => String(asig.atraccionId) === String(a.id) && asig.activo
+            );
+            const esMio = asigAtraccion
+              ? String(asigAtraccion.operarioId ?? (asigAtraccion as { usuarioId?: number | string }).usuarioId) === String(userId)
+              : false;
+            const ocupadaPorOtro = asigAtraccion ? !esMio : false;
+            const nombreOtro = ocupadaPorOtro ? asigAtraccion?.operarioNombre : undefined;
 
-          return {
-            idAsignacion: a.id || 1,
-            atraccionId: a.atraccionId,
-            atraccionNombre: a.atraccionNombre || 'Atracción Asignada',
-            tipoAtraccion: esEventoCaidas ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA',
-            capacidadMaxima: asignacionExt.capacidadMaxima ?? 12,
-            ocupacionActual: 0,
-            duracionMinutosBase: asignacionExt.duracionMinutosBase ?? 15,
-            toleranciaMinutos: asignacionExt.toleranciaMinutos ?? 2,
-            caidasMaximas: asignacionExt.caidasLimite ?? 3,
-            edadMinima: asignacionExt.edadMinima ?? 3,
-            edadMaxima: asignacionExt.edadMaxima ?? 12,
-            operarioId: a.operarioId,
-            operarioNombre: a.operarioNombre || this.authService.currentUserName(),
-            confirmada: false,
-            estadoEnlace: this.wsService.estadoConexion()
-          };
-        });
+            const esEventoCaidas =
+              a.tipo === 'EVENTOS_CAIDAS' ||
+              (a.nombre?.toLowerCase().includes('toro') ?? false) ||
+              (a.nombre?.toLowerCase().includes('evento') ?? false);
+
+            return {
+              idAsignacion: asigAtraccion?.id || a.id || 1,
+              atraccionId: a.id!,
+              atraccionNombre: a.nombre,
+              tipoAtraccion: esEventoCaidas ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA',
+              capacidadMaxima: a.capacidadMaxima ?? 12,
+              ocupacionActual: a.ocupacionActiva ?? 0,
+              duracionMinutosBase: a.duracionMinutosBase ?? 15,
+              toleranciaMinutos: a.toleranciaMinutos ?? 2,
+              caidasMaximas: a.caidasLimite ?? 3,
+              edadMinima: a.edadMinima ?? 3,
+              edadMaxima: a.edadMaxima ?? 12,
+              operarioId: asigAtraccion?.operarioId ?? (userId || 1),
+              operarioNombre: esMio
+                ? (asigAtraccion?.operarioNombre || this.authService.currentUserName())
+                : (nombreOtro || this.authService.currentUserName()),
+              confirmada: false,
+              estadoEnlace: this.wsService.estadoConexion(),
+              ocupadaPorOtroOperario: ocupadaPorOtro,
+              nombreOtroOperario: nombreOtro,
+              esMiEstacion: esMio
+            };
+          });
+        } else if (asignaciones && asignaciones.length > 0) {
+          // Fallback a asignaciones si no hay lista de atracciones
+          mapeadas = asignaciones.map(asig => {
+            const esMio = String(asig.operarioId ?? (asig as { usuarioId?: number | string }).usuarioId) === String(userId);
+            return {
+              idAsignacion: asig.id || 1,
+              atraccionId: asig.atraccionId,
+              atraccionNombre: asig.atraccionNombre || 'Atracción Asignada',
+              tipoAtraccion: (asig as { tipoAtraccion?: string }).tipoAtraccion === 'EVENTOS_CAIDAS' ? 'EVENTOS_CAIDAS' : 'TEMPORIZADA',
+              capacidadMaxima: (asig as { capacidadMaxima?: number }).capacidadMaxima ?? 12,
+              ocupacionActual: 0,
+              duracionMinutosBase: (asig as { duracionMinutosBase?: number }).duracionMinutosBase ?? 15,
+              toleranciaMinutos: (asig as { toleranciaMinutos?: number }).toleranciaMinutos ?? 2,
+              caidasMaximas: (asig as { caidasLimite?: number }).caidasLimite ?? 3,
+              edadMinima: (asig as { edadMinima?: number }).edadMinima ?? 3,
+              edadMaxima: (asig as { edadMaxima?: number }).edadMaxima ?? 12,
+              operarioId: asig.operarioId,
+              operarioNombre: asig.operarioNombre || this.authService.currentUserName(),
+              confirmada: false,
+              estadoEnlace: this.wsService.estadoConexion(),
+              ocupadaPorOtroOperario: !esMio,
+              nombreOtroOperario: !esMio ? asig.operarioNombre : undefined,
+              esMiEstacion: esMio
+            };
+          });
+        }
 
         this.estacionesDisponibles.set(mapeadas);
 
@@ -256,10 +289,10 @@ export class OperacionService implements OnDestroy {
           return [];
         }
 
-        const miAsignacion = asignacionesFiltradas.find(a => String(a.operarioId) === String(userId) || !userId);
-        const seleccionada = miAsignacion
-          ? mapeadas.find(m => String(m.idAsignacion) === String(miAsignacion.id)) || mapeadas[0]
-          : mapeadas[0];
+        // Preseleccionar: primero la que esté asignada a este operario, o la primera libre
+        const miEstacion = mapeadas.find(m => m.esMiEstacion);
+        const primeraLibre = mapeadas.find(m => !m.ocupadaPorOtroOperario);
+        const seleccionada = miEstacion || primeraLibre || mapeadas[0];
 
         if (seleccionada) {
           const mantenerConfirmada =
@@ -313,7 +346,9 @@ export class OperacionService implements OnDestroy {
               operarioId: dto.operarioId ?? (this.authService.currentUser()?.id || 1),
               operarioNombre: dto.operarioNombre || this.authService.currentUserName(),
               confirmada: false,
-              estadoEnlace: this.wsService.estadoConexion()
+              estadoEnlace: this.wsService.estadoConexion(),
+              ocupadaPorOtroOperario: false,
+              esMiEstacion: true
             };
             this.estacionesDisponibles.set([estacion]);
             this.estacionActiva.set(estacion);
@@ -333,6 +368,13 @@ export class OperacionService implements OnDestroy {
    * Confirma la estación e inicia labores en campo habilitando el escáner (HU-24.06, HU-24.07).
    */
   confirmarEstacionTrabajo(estacion: EstacionTrabajo): void {
+    if (estacion.ocupadaPorOtroOperario) {
+      this.notificationService.error(
+        `La atracción ${estacion.atraccionNombre} ya está atendida por ${estacion.nombreOtroOperario || 'otro operario'}.`
+      );
+      return;
+    }
+
     const confirmada: EstacionTrabajo = {
       ...estacion,
       confirmada: true,
@@ -344,6 +386,13 @@ export class OperacionService implements OnDestroy {
     // Conectar WebSocket a los tópicos de esta estación
     this.wsService.conectarEstacion(confirmada.atraccionId);
     this.notificationService.success(`Estación ${confirmada.atraccionNombre} confirmada`, 'Labores Iniciadas');
+
+    // Notificar/vincular en backend
+    this.http.post<{ id?: number | string }>(`${this.apiUrl}/vincular`, {
+      atraccionId: confirmada.atraccionId
+    }).pipe(
+      catchError(() => of(null))
+    ).subscribe();
   }
 
   /**

@@ -21,6 +21,9 @@ export interface EstacionTrabajo {
   estadoEnlace: EstadoEnlaceOperario;
   enPausaGeneral?: boolean;
   motivoPausaGeneral?: string;
+  ocupadaPorOtroOperario?: boolean;
+  nombreOtroOperario?: string;
+  esMiEstacion?: boolean;
 }
 
 export type CausaRechazoTicket =

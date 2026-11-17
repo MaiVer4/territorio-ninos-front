@@ -102,4 +102,18 @@ describe('SeleccionAtraccionComponent (HU-24.07, HU-24.08, HU-34.04)', () => {
     unbindBtn.nativeElement.click();
     expect(operacionServiceSpy.desvincularEstacionActiva).toHaveBeenCalled();
   });
+
+  it('should disable confirm button when active station is occupied by another operator', () => {
+    operacionServiceSpy.estacionActiva.set({
+      ...mockEstacion,
+      confirmada: false,
+      ocupadaPorOtroOperario: true,
+      nombreOtroOperario: 'Pedro'
+    });
+    fixture.detectChanges();
+
+    const confirmBtn = fixture.debugElement.query(By.css('[data-testid="btn-confirmar-estacion"]'));
+    expect(confirmBtn).toBeTruthy();
+    expect(confirmBtn.nativeElement.disabled).toBe(true);
+  });
 });

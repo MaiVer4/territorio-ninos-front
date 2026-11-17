@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { OperacionService } from './operacion.service';
 import { AuthService } from './auth.service';
 import { AsignacionService } from './asignacion.service';
+import { AtraccionService } from './atraccion.service';
 import { NotificationService } from './notification.service';
 import { SoundNotificationService } from './sound-notification.service';
 import { WebSocketService } from './websocket.service';
@@ -23,6 +24,9 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
   };
   let asignacionServiceSpy: {
     getActiveAssignments: ReturnType<typeof vi.fn>;
+  };
+  let atraccionServiceSpy: {
+    getActivas: ReturnType<typeof vi.fn>;
   };
   let soundServiceSpy: {
     reproducirBeepEscaneo: ReturnType<typeof vi.fn>;
@@ -66,6 +70,31 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       ]))
     };
 
+    atraccionServiceSpy = {
+      getActivas: vi.fn().mockReturnValue(of([
+        {
+          id: 1,
+          nombre: 'Laberinto Mágico',
+          tipo: 'TEMPORIZADA',
+          tarifaMinuto: 1000,
+          capacidadMaxima: 10,
+          duracionMinutosBase: 15,
+          ocupacionActiva: 0,
+          estado: 'ACTIVO'
+        },
+        {
+          id: 2,
+          nombre: 'Piscina de Pelotas',
+          tipo: 'TEMPORIZADA',
+          tarifaMinuto: 1500,
+          capacidadMaxima: 20,
+          duracionMinutosBase: 20,
+          ocupacionActiva: 5,
+          estado: 'ACTIVO'
+        }
+      ]))
+    };
+
     soundServiceSpy = {
       reproducirBeepEscaneo: vi.fn().mockReturnValue(true),
       reproducirAlarmaTiempoAgotado: vi.fn().mockReturnValue(true),
@@ -95,6 +124,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authServiceSpy },
         { provide: AsignacionService, useValue: asignacionServiceSpy },
+        { provide: AtraccionService, useValue: atraccionServiceSpy },
         { provide: SoundNotificationService, useValue: soundServiceSpy },
         { provide: WebSocketService, useValue: wsServiceSpy },
         { provide: NotificationService, useValue: notificationServiceSpy },
@@ -107,6 +137,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
   });
 
   afterEach(() => {
+    httpMock.match(r => r.url.includes('/operacion/vincular')).forEach(req => req.flush({}));
     httpMock.verify();
     sessionStorage.clear();
     TestBed.resetTestingModule();
@@ -117,9 +148,36 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       service.consultarEstacionAsignada().subscribe(res => resolve(res));
     });
 
-    expect(estaciones.length).toBeGreaterThan(0);
+    expect(estaciones.length).toBe(2);
     expect(service.estacionActiva()).toBeTruthy();
     expect(service.estacionActiva()?.atraccionNombre).toBe('Laberinto Mágico');
+    expect(estaciones[0].esMiEstacion).toBe(true);
+    expect(estaciones[1].esMiEstacion).toBe(false);
+  });
+
+  it('should block confirming an attraction occupied by another operator', () => {
+    const estacionOcupada: EstacionTrabajo = {
+      idAsignacion: 99,
+      atraccionId: 2,
+      atraccionNombre: 'Piscina de Pelotas',
+      tipoAtraccion: 'TEMPORIZADA',
+      capacidadMaxima: 20,
+      ocupacionActual: 0,
+      duracionMinutosBase: 15,
+      operarioId: 99,
+      operarioNombre: 'Otro Operario',
+      confirmada: false,
+      estadoEnlace: 'CONECTADO',
+      ocupadaPorOtroOperario: true,
+      nombreOtroOperario: 'Otro Operario'
+    };
+
+    service.confirmarEstacionTrabajo(estacionOcupada);
+
+    expect(service.estacionActiva()?.confirmada).toBeFalsy();
+    expect(notificationServiceSpy.error).toHaveBeenCalledWith(
+      expect.stringContaining('ya está atendida por Otro Operario')
+    );
   });
 
   it('should confirm station and enable scanner flag (HU-24.06, HU-24.07, HU-34.06)', () => {

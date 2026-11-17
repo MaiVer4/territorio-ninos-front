@@ -15,6 +15,10 @@ export class AtraccionService {
     return this.http.get<Atraccion[]>(this.apiUrl);
   }
 
+  getActivas(): Observable<Atraccion[]> {
+    return this.http.get<Atraccion[]>(`${this.apiUrl}/activas`);
+  }
+
   getCatalogoVenta(): Observable<AtraccionCatalogoVenta[]> {
     return this.http.get<AtraccionCatalogoVenta[]>(`${environment.apiUrl}/ventas/catalogo`);
   }

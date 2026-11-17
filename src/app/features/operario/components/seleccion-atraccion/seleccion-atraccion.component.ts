@@ -119,24 +119,44 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
 
           <!-- Listado de Atracciones Asignadas / Disponibles -->
           <div class="space-y-3 mb-6 text-left">
-            @for (estacion of operacionService.estacionesDisponibles(); track estacion.idAsignacion) {
+            @for (estacion of operacionService.estacionesDisponibles(); track estacion.atraccionId) {
               <div
-                (click)="seleccionarEstacion(estacion)"
-                [class.ring-2]="operacionService.estacionActiva()?.idAsignacion === estacion.idAsignacion"
-                [class.ring-emerald-600]="operacionService.estacionActiva()?.idAsignacion === estacion.idAsignacion"
-                [class.bg-emerald-50]="operacionService.estacionActiva()?.idAsignacion === estacion.idAsignacion"
-                class="border border-slate-200 rounded-2xl p-4 transition cursor-pointer hover:border-emerald-300 hover:bg-slate-50 relative">
+                (click)="!estacion.ocupadaPorOtroOperario && seleccionarEstacion(estacion)"
+                [class.ring-2]="operacionService.estacionActiva()?.atraccionId === estacion.atraccionId && !estacion.ocupadaPorOtroOperario"
+                [class.ring-emerald-600]="operacionService.estacionActiva()?.atraccionId === estacion.atraccionId && !estacion.ocupadaPorOtroOperario"
+                [class.bg-emerald-50]="operacionService.estacionActiva()?.atraccionId === estacion.atraccionId && !estacion.ocupadaPorOtroOperario"
+                [class.opacity-60]="estacion.ocupadaPorOtroOperario"
+                [class.cursor-not-allowed]="estacion.ocupadaPorOtroOperario"
+                [class.bg-slate-50]="estacion.ocupadaPorOtroOperario"
+                [class.cursor-pointer]="!estacion.ocupadaPorOtroOperario"
+                [class.hover:border-emerald-300]="!estacion.ocupadaPorOtroOperario"
+                class="border border-slate-200 rounded-2xl p-4 transition relative">
                 <div class="flex items-start justify-between gap-2">
                   <div>
-                    <h3 class="text-sm font-bold text-slate-800">{{ estacion.atraccionNombre }}</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <h3 class="text-sm font-bold text-slate-800">{{ estacion.atraccionNombre }}</h3>
+                      @if (estacion.ocupadaPorOtroOperario) {
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                          Ocupada por {{ estacion.nombreOtroOperario || 'otro operario' }}
+                        </span>
+                      } @else if (estacion.esMiEstacion) {
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          Asignada a ti
+                        </span>
+                      } @else {
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          Disponible
+                        </span>
+                      }
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">
                       Capacidad: <strong class="text-slate-700">{{ estacion.capacidadMaxima }} niños</strong> •
                       Edad: <strong class="text-slate-700">{{ estacion.edadMinima }}-{{ estacion.edadMaxima }} años</strong>
                     </p>
                   </div>
                   <span
-                    class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase"
-                    [ngClass]="estacion.tipoAtraccion === 'EVENTOS_CAIDAS' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'">
+                    class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0"
+                    [ngClass]="estacion.tipoAtraccion === 'EVENTOS_CAIDAS' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-700'">
                     {{ estacion.tipoAtraccion === 'EVENTOS_CAIDAS' ? 'Toro Mecánico' : 'Tiempo' }}
                   </span>
                 </div>
@@ -148,9 +168,9 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                   </svg>
                 </div>
-                <h4 class="text-xs font-bold text-amber-900 mb-1">Sin estaciones asignadas</h4>
+                <h4 class="text-xs font-bold text-amber-900 mb-1">Sin estaciones disponibles</h4>
                 <p class="text-[11px] text-amber-700 leading-relaxed">
-                  No tienes atracciones programadas para tu turno actual. Contacta al supervisor para asignarte a una estación.
+                  No hay atracciones activas registradas en el parque en este momento.
                 </p>
               </div>
             }
@@ -161,8 +181,9 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
             <button
               type="button"
               data-testid="btn-confirmar-estacion"
+              [disabled]="activa.ocupadaPorOtroOperario"
               (click)="confirmarEstacion(activa)"
-              class="w-full min-h-[50px] bg-emerald-600 hover:bg-emerald-700 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-extrabold text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer">
+              class="w-full min-h-[50px] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-extrabold text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
