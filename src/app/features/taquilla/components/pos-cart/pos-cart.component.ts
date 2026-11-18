@@ -571,7 +571,7 @@ export class PosCartComponent {
 
   estaEnCapacidadMaxima(item: SeleccionCatalogoPOS): boolean {
     const capacidad = item.atraccion.capacidadMaxima || item.atraccion.maxCapacity || 10;
-    const ocupados = item.atraccion.ninosActivos || 0;
+    const ocupados = item.atraccion.ocupacionActual ?? item.atraccion.ocupacionActiva ?? item.atraccion.ninosActivos ?? 0;
     const cupos = Math.max(0, capacidad - ocupados);
     const reservadosEnCarrito = this._items()
       .filter(it => it.atraccion.id === item.atraccion.id)

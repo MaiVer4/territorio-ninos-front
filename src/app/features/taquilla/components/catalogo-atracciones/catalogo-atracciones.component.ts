@@ -83,7 +83,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
           @for (a of atraccionesFiltradas(); track a.id) {
             @let cupos = calcularCuposDisponibles(a);
             @let capacidad = a.capacidadMaxima || a.maxCapacity || 10;
-            @let ocupados = a.ninosActivos || 0;
+            @let ocupados = a.ocupacionActual ?? a.ocupacionActiva ?? a.ninosActivos ?? 0;
             @let bloqueada = estaBloqueada(a);
             @let modalidadActual = getModalidadActual(a);
 
@@ -320,7 +320,7 @@ export class CatalogoAtraccionesComponent {
       return Math.max(0, a.aforoDisponible);
     }
     const capacidad = a.capacidadMaxima || a.maxCapacity || 0;
-    const ocupados = a.ocupacionActual ?? a.ninosActivos ?? 0;
+    const ocupados = a.ocupacionActual ?? a.ocupacionActiva ?? a.ninosActivos ?? 0;
     return Math.max(0, capacidad - ocupados);
   }
 

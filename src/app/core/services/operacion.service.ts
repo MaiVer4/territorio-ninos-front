@@ -10,6 +10,30 @@ import {
   SesionJuegoMenor,
   TipoAccionOffline
 } from '../models/operador.model';
+
+interface SesionServidorDTO {
+  sesionId: number | string;
+  ticketUuid?: string;
+  atraccionId?: number | string;
+  menorNombre?: string;
+  menorEdad?: number;
+  acudienteNombre?: string;
+  acudienteTelefono?: string;
+  duracionSegundos?: number;
+  segundosRestantes?: number;
+  tiempoRestantePausa?: number;
+  estadoSesion?: string;
+  segundosExceso?: number;
+  intentosTotales?: number;
+  intentosRestantes?: number;
+}
+
+interface ColaServidorDTO {
+  atraccionId?: number | string;
+  capacidadMaxima?: number;
+  ocupacionActiva?: number;
+  sesionesActivas?: SesionServidorDTO[];
+}
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
 import { SoundNotificationService } from './sound-notification.service';
@@ -117,6 +141,85 @@ export class OperacionService implements OnDestroy {
   constructor() {
     this.restaurarEstacionDesdeStorage();
     this.iniciarSincronizadorOffline();
+    this.iniciarSincronizadorColaServidor();
+  }
+
+  /**
+   * Fuente única de aforo: la cola local se reconcilia con las sesiones EN_CURSO/PAUSADA
+   * que el backend difunde en cada evento WebSocket de la estación.
+   */
+  private iniciarSincronizadorColaServidor(): void {
+    effect(() => {
+      const mensaje = this.wsService.ultimoMensajeRecibido?.();
+      const estacion = this.estacionActiva();
+      if (!mensaje || !estacion?.confirmada) return;
+      if (String(mensaje.atraccionId) !== String(estacion.atraccionId)) return;
+      const cola = mensaje.colaActualizada as ColaServidorDTO | undefined;
+      if (cola && Array.isArray(cola.sesionesActivas)) {
+        this.aplicarColaServidor(cola);
+      }
+    });
+  }
+
+  /**
+   * Carga la cola real de la atracción desde el backend (GET /operacion/cola/{id}).
+   */
+  sincronizarColaDesdeServidor(atraccionId: number | string): void {
+    this.http.get<ColaServidorDTO>(`${this.apiUrl}/cola/${atraccionId}`).pipe(
+      catchError(() => of(null))
+    ).subscribe(cola => {
+      if (cola && Array.isArray(cola.sesionesActivas)) {
+        this.aplicarColaServidor(cola);
+      }
+    });
+  }
+
+  private aplicarColaServidor(cola: ColaServidorDTO): void {
+    const actual = this.colaActiva();
+    const servidor = (cola.sesionesActivas ?? []).map(dto => {
+      const ticketUuid = String(dto.ticketUuid ?? '');
+      const previa = actual.find(s => s.ticketUuid === ticketUuid || s.idSesion === String(dto.sesionId));
+      return this.mapearSesionServidor(dto, previa);
+    });
+    const ticketsServidor = new Set(servidor.map(s => s.ticketUuid));
+    // Conservar inicios locales aún no confirmados por el backend
+    const pendientesLocales = actual.filter(
+      s => this.accionesPendientesPorSesionLocal.has(s.idSesion) && !ticketsServidor.has(s.ticketUuid)
+    );
+    this.colaActiva.set([...pendientesLocales, ...servidor]);
+  }
+
+  private mapearSesionServidor(dto: SesionServidorDTO, previa?: SesionJuegoMenor): SesionJuegoMenor {
+    const enPausa = dto.estadoSesion === 'PAUSADA';
+    const restantes = enPausa ? (dto.tiempoRestantePausa ?? dto.segundosRestantes ?? 0) : (dto.segundosRestantes ?? 0);
+    const duracion = dto.duracionSegundos ?? previa?.duracionTotalSegundos ?? restantes;
+    const nowServerMs = this.wsService.obtenerTiempoServidorActual();
+    return {
+      ...(previa ?? {}),
+      idSesion: String(dto.sesionId),
+      ticketUuid: String(dto.ticketUuid ?? previa?.ticketUuid ?? ''),
+      codigoBoleta: previa?.codigoBoleta ?? String(dto.ticketUuid ?? ''),
+      atraccionId: dto.atraccionId ?? previa?.atraccionId ?? this.estacionActiva()?.atraccionId ?? 1,
+      tipoAtraccion: previa?.tipoAtraccion ?? this.estacionActiva()?.tipoAtraccion ?? 'TEMPORIZADA',
+      menorNombre: dto.menorNombre ?? previa?.menorNombre ?? 'Menor en Juego',
+      menorEdad: dto.menorEdad ?? previa?.menorEdad,
+      acudienteNombre: dto.acudienteNombre ?? previa?.acudienteNombre ?? 'Acudiente',
+      acudienteTelefono: dto.acudienteTelefono ?? previa?.acudienteTelefono,
+      horaInicio: previa?.horaInicio ?? new Date(nowServerMs - (duracion - restantes) * 1000).toISOString(),
+      horaFin: enPausa
+        ? (previa?.horaFin ?? new Date(nowServerMs + restantes * 1000).toISOString())
+        : new Date(nowServerMs + restantes * 1000).toISOString(),
+      duracionTotalSegundos: duracion,
+      segundosRestantes: restantes,
+      segundosExcedidos: previa?.segundosExcedidos ?? dto.segundosExceso ?? 0,
+      estadoSemaforo: enPausa ? 'PAUSADO' : (previa?.estadoSemaforo ?? 'VERDE'),
+      enPausa,
+      segundosCongelados: enPausa ? restantes : undefined,
+      intentosMaximos: dto.intentosTotales ?? previa?.intentosMaximos,
+      intentosRealizados: dto.intentosTotales != null && dto.intentosRestantes != null
+        ? dto.intentosTotales - dto.intentosRestantes
+        : previa?.intentosRealizados
+    };
   }
 
   /**
@@ -426,6 +529,7 @@ export class OperacionService implements OnDestroy {
 
     // Conectar WebSocket a los tópicos de esta estación
     this.wsService.conectarEstacion(confirmada.atraccionId);
+    this.sincronizarColaDesdeServidor(confirmada.atraccionId);
     this.notificationService.success(`Estación ${confirmada.atraccionNombre} confirmada`, 'Labores Iniciadas');
 
     // Notificar/vincular en backend
@@ -931,6 +1035,7 @@ export class OperacionService implements OnDestroy {
         this.estacionActiva.set(estacion);
         if (estacion.confirmada) {
           this.wsService.conectarEstacion(estacion.atraccionId);
+          this.sincronizarColaDesdeServidor(estacion.atraccionId);
         }
       }
     } catch {

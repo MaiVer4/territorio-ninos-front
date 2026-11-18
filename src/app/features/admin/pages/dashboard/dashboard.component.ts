@@ -468,7 +468,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       .subscribe((event) => {
         this.atraccionesDb.update((list) =>
           list.map((a) => {
-            if (a.id === event.atraccionId) {
+            if (String(a.id) === String(event.atraccionId)) {
               return {
                 ...a,
                 ninosActivos: event.ninosActivos,

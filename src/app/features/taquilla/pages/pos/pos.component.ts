@@ -28,6 +28,7 @@ import { TicketPrintTemplateComponent } from '../../../../shared/components/tick
 import { PrintService } from '../../../../core/services/print.service';
 import { TicketReimpresionService } from '../../../../core/services/ticket-reimpresion.service';
 import { ConfiguracionService } from '../../../../core/services/configuracion.service';
+import { WebSocketService } from '../../../../core/services/websocket.service';
 import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
 
 @Component({
@@ -692,6 +693,7 @@ export class TaquillaPosComponent implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notificationService = inject(NotificationService, { optional: true });
+  private readonly webSocketService = inject(WebSocketService, { optional: true });
 
   readonly mostrarModalApertura = signal<boolean>(false);
   readonly mostrarModalArqueo = signal<boolean>(false);
@@ -753,6 +755,32 @@ export class TaquillaPosComponent implements OnInit {
     this.iniciarBusquedaCliente();
     this.cargarCatalogoAtracciones();
     this.cargarConfiguracionImpresion();
+    this.iniciarTelemetriaAforo();
+  }
+
+  private iniciarTelemetriaAforo(): void {
+    const stream$ = this.webSocketService?.conectarDashboardAdmin?.();
+    if (!stream$) return;
+    stream$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(event => {
+      this.atracciones.update(lista =>
+        lista.map(a => {
+          if (String(a.id) === String(event.atraccionId)) {
+            const capacidad = event.capacidadMaxima ?? a.capacidadMaxima ?? a.maxCapacity ?? 1;
+            const ocupados = event.ninosActivos ?? 0;
+            const aforoDisponible = Math.max(0, capacidad - ocupados);
+            return {
+              ...a,
+              ninosActivos: ocupados,
+              ocupacionActual: ocupados,
+              ocupacionActiva: ocupados,
+              aforoDisponible,
+              tieneCupo: aforoDisponible > 0
+            };
+          }
+          return a;
+        })
+      );
+    });
   }
 
   private cargarConfiguracionImpresion(): void {
@@ -779,7 +807,18 @@ export class TaquillaPosComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
       finalize(() => this.cargandoAtracciones.set(false))
     ).subscribe({
-      next: (lista) => this.atracciones.set(lista || []),
+      next: (lista) => {
+        const normalizada = (lista || []).map(a => {
+          const ocupados = a.ocupacionActual ?? a.ocupacionActiva ?? a.ninosActivos ?? 0;
+          return {
+            ...a,
+            ocupacionActual: ocupados,
+            ocupacionActiva: ocupados,
+            ninosActivos: ocupados
+          };
+        });
+        this.atracciones.set(normalizada);
+      },
       error: () => {
         this.atracciones.set([]);
         this.notificationService?.error('Error al cargar el catálogo de atracciones.');

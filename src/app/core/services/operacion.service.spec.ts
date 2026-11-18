@@ -138,6 +138,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
 
   afterEach(() => {
     httpMock.match(r => r.url.includes('/operacion/vincular')).forEach(req => req.flush({}));
+    httpMock.match(r => r.url.includes('/operacion/cola/')).forEach(req => req.flush({ sesionesActivas: [] }));
     httpMock.verify();
     sessionStorage.clear();
     TestBed.resetTestingModule();
