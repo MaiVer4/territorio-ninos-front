@@ -116,19 +116,11 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                 }
 
                 <!-- Badge Flotante Superior Izquierdo: Tipo -->
-                <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap max-w-[70%]">
+                <div class="absolute top-2.5 left-2.5">
                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider backdrop-blur-md shadow-2xs"
                     [ngClass]="a.tipo === 'EVENTOS_CAIDAS' ? 'bg-amber-500/90 text-white' : 'bg-blue-600/90 text-white'">
                     {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Por Caídas' : 'Por Tiempo' }}
                   </span>
-                  @if (a.tieneOperarioAsignado === false) {
-                    <span
-                      data-testid="badge-sin-operario"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500 text-slate-900 shadow-2xs"
-                      title="No tiene operario activo asignado">
-                      Sin operario
-                    </span>
-                  }
                 </div>
 
                 <!-- Badge Flotante Superior Derecho: Estado / Cupos -->
@@ -185,6 +177,18 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                   <p class="text-[11px] text-slate-500 line-clamp-1 mb-2.5">
                     {{ a.descripcion || (a.tipo === 'EVENTOS_CAIDAS' ? 'Atracción por caídas controladas' : 'Atracción temporizada por minutos') }}
                   </p>
+
+                  @if (a.tieneOperarioAsignado === false) {
+                    <!-- Banner de Alerta Sutil: Sin Operario Asignado -->
+                    <div
+                      data-testid="badge-sin-operario"
+                      class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-800 text-[11px] font-semibold mb-2.5">
+                      <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span class="truncate">Sin operario activo en estación</span>
+                    </div>
+                  }
 
                   <!-- Barra de Ocupación de Aforo -->
                   <div class="space-y-1 mb-3">
