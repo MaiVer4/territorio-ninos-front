@@ -15,6 +15,8 @@ export interface Atraccion {
   duracionMinutosBase: number;
   toleranciaMinutos?: number;
   caidasLimite?: number;
+  edadMinima?: number;
+  edadMaxima?: number;
   fechaCreacion?: string;
 
   // Propiedades opcionales para renderizado visual en componentes UI

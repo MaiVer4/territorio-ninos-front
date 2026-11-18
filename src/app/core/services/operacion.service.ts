@@ -163,6 +163,12 @@ export class OperacionService implements OnDestroy {
   /**
    * Despacha un evento operativo al backend por HTTP o lo encola en modo contingencia (HU-26, HU-29, HU-32, HU-35).
    */
+  private readonly accionesPendientesPorSesionLocal = new Map<string, Array<(idServidor: string) => void>>();
+
+  private esIdSesionLocal(idSesion: string): boolean {
+    return idSesion.startsWith('ses_');
+  }
+
   private despacharEventoOperativo(
     tipo: TipoAccionOffline,
     endpoint: string,
@@ -176,18 +182,53 @@ export class OperacionService implements OnDestroy {
       return;
     }
 
-    this.http.post<{ id?: number | string }>(`${this.apiUrl}/${endpoint}`, { atraccionId, idSesion, ticketUuid, ...payload }).pipe(
+    // Si la sesión aún tiene id local (inicio pendiente de respuesta), diferir hasta conocer el id del servidor
+    if (tipo !== 'INICIAR_SESION' && idSesion && this.accionesPendientesPorSesionLocal.has(idSesion)) {
+      const pendientes = this.accionesPendientesPorSesionLocal.get(idSesion)!;
+      pendientes.push(idServidor =>
+        this.despacharEventoOperativo(
+          tipo,
+          endpoint.replace(idSesion, idServidor),
+          { ...payload, idSesion: idServidor },
+          idServidor,
+          ticketUuid
+        )
+      );
+      this.accionesPendientesPorSesionLocal.set(idSesion, pendientes);
+      return;
+    }
+
+    if (tipo === 'INICIAR_SESION' && idSesion && this.esIdSesionLocal(idSesion)) {
+      this.accionesPendientesPorSesionLocal.set(idSesion, []);
+    }
+
+    this.http.post<{ id?: number | string; sesionId?: number | string }>(`${this.apiUrl}/${endpoint}`, { atraccionId, idSesion, ticketUuid, ...payload }).pipe(
       tap(res => {
-        if (tipo === 'INICIAR_SESION' && res?.id && idSesion) {
-          const idServidor = String(res.id);
-          this.colaActiva.update(cola =>
-            cola.map(s => (s.idSesion === idSesion ? { ...s, idSesion: idServidor } : s))
-          );
+        const idRemoto = res?.sesionId ?? res?.id;
+        if (tipo === 'INICIAR_SESION' && idSesion) {
+          const idServidor = idRemoto != null ? String(idRemoto) : idSesion;
+          if (idServidor !== idSesion) {
+            this.colaActiva.update(cola =>
+              cola.map(s => (s.idSesion === idSesion ? { ...s, idSesion: idServidor } : s))
+            );
+          }
+          const pendientes = this.accionesPendientesPorSesionLocal.get(idSesion) ?? [];
+          this.accionesPendientesPorSesionLocal.delete(idSesion);
+          pendientes.forEach(accion => accion(idServidor));
         }
       }),
       catchError((err: unknown) => {
+        if (tipo === 'INICIAR_SESION' && idSesion) {
+          this.accionesPendientesPorSesionLocal.delete(idSesion);
+        }
         if (err instanceof HttpErrorResponse && err.status === 0) {
           this.offlineQueue.encolarAccion(tipo, atraccionId, payload, idSesion, ticketUuid);
+        } else {
+          const detalle = err instanceof HttpErrorResponse ? (err.error?.message ?? err.message) : '';
+          this.notificationService.error(
+            `El servidor rechazó la acción ${tipo}. ${detalle}`.trim(),
+            'Error de sincronización'
+          );
         }
         return of(null);
       })
@@ -779,7 +820,7 @@ export class OperacionService implements OnDestroy {
     }
     const timer = setTimeout(() => {
       this.salidasTimers.delete(idSesion);
-      this.colaActiva.update(cola => cola.filter(s => s.idSesion !== idSesion));
+      this.colaActiva.update(cola => cola.filter(s => s.idSesion !== idSesion && s.ticketUuid !== sesion.ticketUuid));
       this.modalAforoCompletoAbierto.set(false);
       this.notificationService.info(`Salida confirmada para ${sesion.menorNombre}. Cupo liberado.`);
     }, 300);
