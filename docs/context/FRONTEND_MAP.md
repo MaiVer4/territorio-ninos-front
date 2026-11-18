@@ -1,5 +1,5 @@
 # Mapa de Arquitectura y Componentes del Frontend (`territorio-front`)
-> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-18 (commit 455cf60).
+> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-18 (commit 90a32ab).
 
 ## 1. Stack, Convenciones y Reglas de Desarrollo
 - **Stack:** Angular `21.2.0` (100% Standalone Components), Signals (`signal`, `computed`, `effect`), RxJS (`HttpClient`), Tailwind CSS `3.4.19`, Angular Material Icons (`material-symbols-outlined`), STOMP/WebSocket, Vitest `4.0.8`.
@@ -85,7 +85,7 @@
   - `components/`: `seleccion-atraccion`, `scanner-qr` (cámara + entrada manual de código corto/UUID), `resultado-validacion`, `cola-usuarios` (tarjetas ordenadas por urgencia), `cronometro` (temporizador regresivo con semáforo y pausas), `modo-evento` (contador de caídas/intentos y cronómetro de ronda).
 - **`features/admin/`:**
   - `layout/admin-layout`: Sidebar de navegación administrativa, header con usuario actual y `<router-outlet>`.
-  - `pages/`: `dashboard` (KPIs y aforo en vivo vía WS), `atracciones` (+ `atraccion-form`, `tarifas-modal`), `asignaciones`, `colaboradores` (+ `colaborador-form`), `turnos` (historial y conciliación), `reportes` (tablas, gráficos y exportación CSV/PDF), `auditoria` (+ `components/ticket-timeline`), `configuracion` (+ `ticket-preview`).
+  - `pages/`: `dashboard` (KPIs y aforo en vivo vía WS), `atracciones` (+ `atraccion-form` unificado con gestión directa de tarifas y modalidades libres, `tarifas-modal`), `asignaciones`, `colaboradores` (+ `colaborador-form`), `turnos` (historial y conciliación), `reportes` (tablas, gráficos y exportación CSV/PDF), `auditoria` (+ `components/ticket-timeline`), `configuracion` (+ `ticket-preview`).
 - **`shared/components/`:**
   - `qr-viewer`: Renderizador de código QR con validación óptica.
   - `ticket-print-template`: Plantilla térmica oculta en pantalla y visible en `@media print` (soporta 58mm y 80mm).
