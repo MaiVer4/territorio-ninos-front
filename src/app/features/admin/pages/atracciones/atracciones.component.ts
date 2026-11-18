@@ -2,11 +2,13 @@ import { Component, OnInit, inject, signal, DestroyRef, ChangeDetectionStrategy 
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
+import { TarifaService } from '../../../../core/services/tarifa.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 import { AtraccionFormComponent } from './atraccion-form.component';
-import { TarifasModalComponent } from './tarifas-modal.component';
 
 @Component({
   selector: 'app-atracciones',
@@ -18,8 +20,8 @@ import { TarifasModalComponent } from './tarifas-modal.component';
       <!-- Encabezado y acciones -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 class="font-bold text-slate-800 text-lg">Atracciones</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Configuración y estado de todas las atracciones del parque</p>
+          <h2 class="font-bold text-slate-800 text-lg">Atracciones y Tarifas</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Configuración unificada de atracciones, capacidades y tarifas de venta</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -55,80 +57,99 @@ import { TarifasModalComponent } from './tarifas-modal.component';
         </div>
       </div>
 
-      <!-- VISTA 1: GRID DE TARJETAS (Si existen atracciones) -->
+      <!-- VISTA 1: GRID DE TARJETAS -->
       @if (atracciones().length > 0) {
         @if (viewMode() === 'grid') {
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @for (a of atracciones(); track a.id) {
-              <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition">
-                <!-- Header de la tarjeta -->
-                <div class="flex items-start justify-between mb-3">
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    [style.background-color]="a.lightBg || '#DBEAFE'">
-                    <span class="text-base font-bold" [style.color]="a.color || '#2563EB'">★</span>
+              <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                  <!-- Header de la tarjeta -->
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      [style.background-color]="a.lightBg || '#DBEAFE'">
+                      <span class="text-base font-bold" [style.color]="a.color || '#2563EB'">★</span>
+                    </div>
+
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                      [ngClass]="a.estado === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'">
+                      @if (a.estado === 'ACTIVO') {
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span>
+                        Activa
+                      } @else {
+                        Inactiva
+                      }
+                    </span>
                   </div>
-                  
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                    [ngClass]="a.estado === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'">
-                    @if (a.estado === 'ACTIVO') {
-                      <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block"></span>
-                      Activa
+
+                  <!-- Nombre y Resumen -->
+                  <p class="font-bold text-slate-800 text-base mb-0.5 truncate">{{ a.nombre }}</p>
+                  <p class="text-xs text-slate-400 mb-3 truncate">
+                    {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Modalidad por caídas' : 'Modalidad por tiempo' }} · máx {{ a.maxCapacity || a.capacidadMaxima || 10 }} niños
+                  </p>
+
+                  <!-- Grid de Métricas Generales -->
+                  <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+                    <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
+                      <p class="text-slate-400 text-[10px]">Capacidad</p>
+                      <p class="font-bold text-slate-700">{{ a.maxCapacity || a.capacidadMaxima || 10 }} niños</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
+                      <p class="text-slate-400 text-[10px]">Tipo / Tolerancia</p>
+                      <p class="font-bold text-slate-700">
+                        {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Caídas' : 'Tiempo' }}
+                        <span class="text-[10px] font-normal text-slate-400">({{ a.toleranciaMinutos ?? 1 }}m gracia)</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Tarifas configuradas integradas en la tarjeta -->
+                  <div class="mb-3 bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Tarifas de venta</p>
+                    @if (a.tipo === 'EVENTOS_CAIDAS' && a.tarifasEvento && a.tarifasEvento.length > 0) {
+                      <div class="flex flex-wrap gap-1.5">
+                        @for (te of a.tarifasEvento; track te.id) {
+                          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-amber-200 text-[11px] font-bold text-slate-700 shadow-2xs">
+                            <span class="text-amber-700">{{ te.intentos }} caídas</span>
+                            <span class="text-slate-300">·</span>
+                            <span>\${{ te.precio.toLocaleString('es-CO') }}</span>
+                          </span>
+                        }
+                      </div>
+                    } @else if (a.tarifasTiempo && a.tarifasTiempo.length > 0) {
+                      <div class="flex flex-wrap gap-1.5">
+                        @for (tt of a.tarifasTiempo; track tt.id) {
+                          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-blue-200 text-[11px] font-bold text-slate-700 shadow-2xs">
+                            <span class="text-blue-700">{{ tt.duracionMinutos }} min</span>
+                            <span class="text-slate-300">·</span>
+                            <span>\${{ tt.precio.toLocaleString('es-CO') }}</span>
+                          </span>
+                        }
+                      </div>
                     } @else {
-                      Inactiva
+                      <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-600">
+                        @if (a.tipo === 'EVENTOS_CAIDAS') {
+                          {{ a.caidasLimite || 3 }} caídas · \${{ (a.precio || a.tarifaMinuto || 0).toLocaleString('es-CO') }}
+                        } @else {
+                          {{ a.duracionMinutosBase || a.duracion || 15 }} min · \${{ ((a.precio || a.tarifaMinuto || 0) * (a.duracionMinutosBase || 15)).toLocaleString('es-CO') }}
+                        }
+                      </span>
                     }
-                  </span>
-                </div>
-
-                <!-- Nombre y Resumen -->
-                <p class="font-bold text-slate-800 text-base mb-0.5 truncate">{{ a.nombre }}</p>
-                <p class="text-xs text-slate-400 mb-3 truncate">{{ a.tag || (a.tipo === 'EVENTOS_CAIDAS' ? ((a.caidasLimite || 3) + ' caídas · máx ' + (a.maxCapacity || a.capacidadMaxima || 10)) : ((a.duracion || a.duracionMinutosBase || 20) + ' min · máx ' + (a.maxCapacity || a.capacidadMaxima || 10))) }}</p>
-
-                <!-- Grid de Métricas -->
-                <div class="grid grid-cols-2 gap-2 text-xs mb-3">
-                  <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
-                    <p class="text-slate-400 text-[10px]">Precio</p>
-                    <p class="font-bold text-slate-700">
-                      \${{ (a.precio || a.tarifaMinuto || 0).toLocaleString('es-CO') }}
-                      <span class="text-[10px] font-normal text-slate-400">{{ a.tipo === 'EVENTOS_CAIDAS' ? ' / base' : ' / min' }}</span>
-                    </p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
-                    <p class="text-slate-400 text-[10px]">Capacidad</p>
-                    <p class="font-bold text-slate-700">{{ a.maxCapacity || a.capacidadMaxima || 10 }} niños</p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
-                    <p class="text-slate-400 text-[10px]">Tipo</p>
-                    <p class="font-bold text-slate-700">
-                      {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Caídas' : 'Tiempo' }}
-                    </p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-2 border border-slate-100/60">
-                    <p class="text-slate-400 text-[10px]">Duración</p>
-                    <p class="font-bold text-slate-700">
-                      {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Por caídas' : ((a.duracionMinutosBase || a.duracion || 15) + ' min') }}
-                    </p>
                   </div>
                 </div>
 
-                <!-- Botones de Acción -->
-                <div class="flex gap-2">
-                  <button (click)="openTarifasDialog(a)"
-                    class="flex-1 py-1.5 text-xs font-semibold text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50 transition flex items-center justify-center gap-1 cursor-pointer">
-                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    Tarifas
-                  </button>
+                <!-- Botones de Acción (Unificados: Editar incluye Tarifas) -->
+                <div class="flex gap-2 pt-1">
                   <button (click)="openDialog(a)"
-                    class="flex-1 py-1.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition flex items-center justify-center gap-1 cursor-pointer">
-                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    class="flex-1 py-2 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                     </svg>
-                    Editar
+                    Editar y Tarifas
                   </button>
                   <button (click)="deleteAtraccion(a)"
-                    class="flex-1 py-1.5 text-xs font-semibold text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition flex items-center justify-center gap-1 cursor-pointer">
-                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    class="py-2 px-3 text-xs font-semibold text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition flex items-center justify-center gap-1 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
                     Eliminar
@@ -147,9 +168,9 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                 <thead>
                   <tr class="bg-slate-50 border-b border-slate-100">
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Nombre</th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Precio</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tarifas de Venta</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Capacidad</th>
-                    <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo / Duración</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
                     <th class="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
                   </tr>
@@ -166,14 +187,32 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                           <span class="font-semibold text-slate-800">{{ a.nombre }}</span>
                         </div>
                       </td>
-                      <td class="px-5 py-3.5 font-bold text-slate-800 whitespace-nowrap">
-                        \${{ (a.precio || a.tarifaMinuto || 0).toLocaleString('es-CO') }}
+                      <td class="px-5 py-3.5">
+                        <div class="flex flex-wrap gap-1.5">
+                          @if (a.tipo === 'EVENTOS_CAIDAS' && a.tarifasEvento && a.tarifasEvento.length > 0) {
+                            @for (te of a.tarifasEvento; track te.id) {
+                              <span class="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-xs font-bold text-slate-700">
+                                {{ te.intentos }} caídas · \${{ te.precio.toLocaleString('es-CO') }}
+                              </span>
+                            }
+                          } @else if (a.tarifasTiempo && a.tarifasTiempo.length > 0) {
+                            @for (tt of a.tarifasTiempo; track tt.id) {
+                              <span class="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-xs font-bold text-slate-700">
+                                {{ tt.duracionMinutos }} min · \${{ tt.precio.toLocaleString('es-CO') }}
+                              </span>
+                            }
+                          } @else {
+                            <span class="text-xs font-semibold text-slate-600">
+                              \${{ (a.precio || a.tarifaMinuto || 0).toLocaleString('es-CO') }}
+                            </span>
+                          }
+                        </div>
                       </td>
                       <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
                         {{ a.maxCapacity || a.capacidadMaxima || 10 }} niños
                       </td>
                       <td class="px-5 py-3.5 text-slate-600 whitespace-nowrap">
-                        {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Caídas' : ((a.duracionMinutosBase || a.duracion || 15) + ' min') }}
+                        {{ a.tipo === 'EVENTOS_CAIDAS' ? 'Por Caídas' : 'Por Tiempo' }}
                       </td>
                       <td class="px-5 py-3.5 whitespace-nowrap">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
@@ -182,12 +221,9 @@ import { TarifasModalComponent } from './tarifas-modal.component';
                         </span>
                       </td>
                       <td class="px-5 py-3.5 text-right whitespace-nowrap">
-                        <div class="flex items-center justify-end gap-2">
-                          <button (click)="openTarifasDialog(a)" class="text-xs font-semibold text-amber-600 hover:text-amber-800 hover:underline cursor-pointer">
-                            Tarifas
-                          </button>
+                        <div class="flex items-center justify-end gap-3">
                           <button (click)="openDialog(a)" class="text-xs font-semibold text-blue-600 hover:underline cursor-pointer">
-                            Editar
+                            Editar y Tarifas
                           </button>
                           <button (click)="deleteAtraccion(a)" class="text-xs font-semibold text-red-500 hover:underline cursor-pointer">
                             Eliminar
@@ -211,7 +247,7 @@ import { TarifasModalComponent } from './tarifas-modal.component';
           </div>
           <h3 class="text-lg font-bold text-slate-800 mb-1">No hay atracciones registradas</h3>
           <p class="text-slate-400 text-sm max-w-md mb-6">
-            Aún no se han creado atracciones en la base de datos. Haz clic en el botón de abajo para registrar la primera atracción.
+            Aún no se han creado atracciones en la base de datos. Haz clic en el botón de abajo para registrar la primera atracción con sus tarifas.
           </p>
           <button (click)="openDialog()"
             class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-sm cursor-pointer">
@@ -227,13 +263,13 @@ import { TarifasModalComponent } from './tarifas-modal.component';
 })
 export class AtraccionesComponent implements OnInit {
   private atraccionService = inject(AtraccionService);
+  private tarifaService = inject(TarifaService, { optional: true });
   private notificationService = inject(NotificationService);
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
 
   viewMode = signal<'grid' | 'table'>('grid');
 
-  // Arranca vacío y solo representa lo que existe en la base de datos
   atracciones = signal<Atraccion[]>([]);
 
   ngOnInit() {
@@ -272,6 +308,7 @@ export class AtraccionesComponent implements OnInit {
               };
             });
             this.atracciones.set(mapped);
+            this.cargarTarifasDeAtracciones(mapped);
           } else {
             this.atracciones.set([]);
           }
@@ -282,9 +319,65 @@ export class AtraccionesComponent implements OnInit {
       });
   }
 
+  private cargarTarifasDeAtracciones(lista: Atraccion[]): void {
+    if (typeof this.tarifaService?.getTarifasByAtraccion !== 'function') return;
+    const conId = lista.filter(a => a.id != null);
+    if (conId.length === 0) return;
+
+    const peticiones$ = conId.map(a =>
+      this.tarifaService!.getTarifasByAtraccion(a.id!).pipe(
+        catchError(() => of(null))
+      )
+    );
+
+    forkJoin(peticiones$)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(resultados => {
+        const porAtraccion = new Map<string, NonNullable<typeof resultados[number]>>();
+        resultados.forEach((res, idx) => {
+          const id = conId[idx]?.id;
+          if (res && id != null) {
+            porAtraccion.set(String(id), res);
+          }
+        });
+
+        this.atracciones.update(actuales =>
+          actuales.map(a => {
+            const tarifario = a.id != null ? porAtraccion.get(String(a.id)) : undefined;
+            if (!tarifario) return a;
+            const tarifasTiempo = [...(tarifario.bloques || [])]
+              .sort((x, y) => x.minutos - y.minutos)
+              .map((b, idx) => ({
+                id: Number(b.id ?? idx + 1),
+                atraccionId: Number(a.id),
+                duracionMinutos: b.minutos,
+                precio: b.precio,
+                activo: b.vigente ?? true,
+                vigente: b.vigente ?? true
+              }));
+            const tarifasEvento = [...(tarifario.eventos || [])]
+              .sort((x, y) => x.intentos - y.intentos)
+              .map((e, idx) => ({
+                id: Number(e.id ?? idx + 1),
+                atraccionId: Number(a.id),
+                intentos: e.intentos,
+                precio: e.precio,
+                activo: e.vigente ?? true,
+                vigente: e.vigente ?? true
+              }));
+            return {
+              ...a,
+              tarifasTiempo,
+              tarifasEvento
+            };
+          })
+        );
+      });
+  }
+
   openDialog(atraccion?: Atraccion) {
     const dialogRef = this.dialog.open(AtraccionFormComponent, {
-      width: '520px',
+      width: '560px',
       panelClass: '!rounded-2xl',
       data: atraccion || null
     });
@@ -331,19 +424,5 @@ export class AtraccionesComponent implements OnInit {
         this.atracciones.update(list => list.filter(a => a.id !== atraccion.id));
       }
     }
-  }
-
-  openTarifasDialog(atraccion: Atraccion) {
-    const dialogRef = this.dialog.open(TarifasModalComponent, {
-      width: '500px',
-      panelClass: '!rounded-2xl',
-      data: atraccion
-    });
-
-    dialogRef.afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.loadAtracciones();
-      });
   }
 }

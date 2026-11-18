@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Inject, inject, signal, OnInit, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Inject, inject, signal, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -68,7 +68,7 @@ import { forkJoin } from 'rxjs';
                     <div class="w-28 shrink-0">
                       <label class="block text-[10px] text-slate-400 font-semibold mb-0.5">Duración</label>
                       <div class="flex items-center gap-1">
-                        <input type="number" formControlName="minutos" min="5" step="5"
+                        <input type="number" formControlName="minutos" min="1" step="1"
                           class="w-full px-2 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500" />
                         <span class="text-[11px] text-slate-500 font-medium">min</span>
                       </div>
@@ -212,6 +212,7 @@ export class TarifasModalComponent implements OnInit {
   private tarifaService = inject(TarifaService);
   private notificationService = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
+  private cdr = inject(ChangeDetectorRef);
 
   saving = signal(false);
 
@@ -251,9 +252,11 @@ export class TarifasModalComponent implements OnInit {
               this.initEventRates();
             }
           }
+          this.cdr.markForCheck();
         },
         error: () => {
           this.fallbackInitRates();
+          this.cdr.markForCheck();
         }
       });
     } else {
@@ -289,8 +292,8 @@ export class TarifasModalComponent implements OnInit {
       this.fb.group({
         id: [id],
         atraccionId: [this.data.id || 0],
-        minutos: [minutos, [Validators.required, Validators.min(5)]],
-        precio: [precio, [Validators.required, Validators.min(100)]],
+        minutos: [minutos, [Validators.required, Validators.min(1)]],
+        precio: [precio, [Validators.required, Validators.min(1)]],
         vigente: [vigente]
       })
     );

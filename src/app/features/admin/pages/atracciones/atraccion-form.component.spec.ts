@@ -3,6 +3,7 @@ import { of, throwError } from 'rxjs';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { AtraccionFormComponent } from './atraccion-form.component';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
+import { TarifaService } from '../../../../core/services/tarifa.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Atraccion } from '../../../../core/models/atraccion.model';
 
@@ -10,13 +11,33 @@ describe('AtraccionFormComponent', () => {
   let component: AtraccionFormComponent;
   let fixture: ComponentFixture<AtraccionFormComponent>;
   let atraccionServiceSpy: { create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  let tarifaServiceSpy: {
+    getTarifasByAtraccion: ReturnType<typeof vi.fn>;
+    saveTarifaBloque: ReturnType<typeof vi.fn>;
+    saveTarifaEvento: ReturnType<typeof vi.fn>;
+    deleteTarifaBloque: ReturnType<typeof vi.fn>;
+    deleteTarifaEvento: ReturnType<typeof vi.fn>;
+  };
   let notificationSpy: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   let dialogRefSpy: { close: ReturnType<typeof vi.fn> };
 
-  const setupComponent = async (data: Atraccion | null = null) => {
+  const setupComponent = async (data: Atraccion | null = null, bloquesIniciales = [{ id: 101, atraccionId: 5, minutos: 15, precio: 15000, vigente: true }]) => {
     atraccionServiceSpy = {
       create: vi.fn(),
       update: vi.fn()
+    };
+    tarifaServiceSpy = {
+      getTarifasByAtraccion: vi.fn().mockReturnValue(of({
+        atraccionId: data?.id ?? 0,
+        nombreAtraccion: data?.nombre ?? '',
+        tipo: data?.tipo ?? 'TEMPORIZADA',
+        bloques: bloquesIniciales,
+        eventos: []
+      })),
+      saveTarifaBloque: vi.fn().mockImplementation((b) => of({ ...b, id: b.id ?? 999 })),
+      saveTarifaEvento: vi.fn().mockImplementation((e) => of({ ...e, id: e.id ?? 888 })),
+      deleteTarifaBloque: vi.fn().mockReturnValue(of(undefined)),
+      deleteTarifaEvento: vi.fn().mockReturnValue(of(undefined))
     };
     notificationSpy = {
       success: vi.fn(),
@@ -30,6 +51,7 @@ describe('AtraccionFormComponent', () => {
       imports: [AtraccionFormComponent],
       providers: [
         { provide: AtraccionService, useValue: atraccionServiceSpy },
+        { provide: TarifaService, useValue: tarifaServiceSpy },
         { provide: NotificationService, useValue: notificationSpy },
         { provide: MatDialogRef, useValue: dialogRefSpy },
         { provide: MAT_DIALOG_DATA, useValue: data }
@@ -157,5 +179,43 @@ describe('AtraccionFormComponent', () => {
     await setupComponent(null);
     component.setControlType('EVENTOS_CAIDAS');
     expect(component.form.get('tipo')?.value).toBe('EVENTOS_CAIDAS');
+  });
+
+  it('should load existing tariffs in edit mode and sync added/edited/removed blocks with free minutes and prices', async () => {
+    const mockAtraccion: Atraccion = {
+      id: 4,
+      nombre: 'CASTILLO',
+      tarifaMinuto: 1000,
+      capacidadMaxima: 10,
+      duracionMinutosBase: 15,
+      toleranciaMinutos: 1,
+      tipo: 'TEMPORIZADA',
+      estado: 'ACTIVO'
+    };
+    await setupComponent(mockAtraccion, [
+      { id: 13, atraccionId: 4, minutos: 15, precio: 15000, vigente: true },
+      { id: 12, atraccionId: 4, minutos: 30, precio: 30000, vigente: true }
+    ]);
+
+    expect(tarifaServiceSpy.getTarifasByAtraccion).toHaveBeenCalledWith(4);
+    expect(component.bloquesArray.length).toBe(2);
+    expect(component.bloquesArray.at(0).value.minutos).toBe(15);
+
+    // El admin elimina el bloque de 30 min (id: 12), modifica el primero a 12 min libres / $14000 y agrega uno de 25 min / $22000
+    component.removeTimeBlock(1);
+    component.bloquesArray.at(0).patchValue({ minutos: 12, precio: 14000 });
+    component.addTimeBlock(25, 22000);
+    component.onTarifasChanged();
+
+    atraccionServiceSpy.update.mockReturnValue(of({ ...mockAtraccion, duracionMinutosBase: 12 }));
+    component.onSubmit();
+
+    expect(tarifaServiceSpy.deleteTarifaBloque).toHaveBeenCalledWith(12);
+    expect(tarifaServiceSpy.saveTarifaBloque).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 13, atraccionId: 4, minutos: 12, precio: 14000 })
+    );
+    expect(tarifaServiceSpy.saveTarifaBloque).toHaveBeenCalledWith(
+      expect.objectContaining({ atraccionId: 4, minutos: 25, precio: 22000 })
+    );
   });
 });
