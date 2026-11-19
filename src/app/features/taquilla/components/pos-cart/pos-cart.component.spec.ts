@@ -115,13 +115,12 @@ describe('PosCartComponent', () => {
     expect(component.subtotal()).toBe(15126);
   });
 
-  it('should disable + button when reaching available attraction capacity', () => {
-    // mockItem1 has capacidadMaxima=10, ninosActivos=8 => 2 available spots
+  it('should keep + button enabled even when exceeding attraction capacity (venta con espera)', () => {
     component.items = [{ ...mockItem1, cantidad: 2 }];
     fixture.detectChanges();
 
     const btnInc = fixture.debugElement.query(By.css('[data-testid="btn-incrementar-0"]'));
-    expect(btnInc.nativeElement.disabled).toBe(true);
+    expect(btnInc.nativeElement.disabled).toBe(false);
   });
 
   it('should decrement quantity when clicking - and emit itemsChange', () => {
@@ -370,7 +369,7 @@ describe('PosCartComponent', () => {
       expect(liquidacionResult!.fecha).toBeTruthy();
     });
 
-    it('should prevent incrementing when total across multiple lines reaches capacity', () => {
+    it('should allow incrementing when total across multiple lines reaches capacity', () => {
       // mockItem1 has cap=10, ninosActivos=8 => 2 spots available.
       // 2 separate lines of 1 ticket each = 2 tickets total.
       const line1: SeleccionCatalogoPOS = { ...mockItem1, cantidad: 1 };
@@ -378,9 +377,9 @@ describe('PosCartComponent', () => {
       component.items = [line1, line2];
       fixture.detectChanges();
 
-      expect(component.estaEnCapacidadMaxima(line1)).toBe(true);
+      expect(component.estaEnCapacidadMaxima(line1)).toBe(false);
       const btnInc0 = fixture.debugElement.query(By.css('[data-testid="btn-incrementar-0"]'));
-      expect(btnInc0.nativeElement.disabled).toBe(true);
+      expect(btnInc0.nativeElement.disabled).toBe(false);
     });
 
     it('should reset payment state (montoRecibido, format, and metodoPago) when items is set to empty array', () => {

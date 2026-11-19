@@ -570,13 +570,8 @@ export class PosCartComponent {
   }
 
   estaEnCapacidadMaxima(item: SeleccionCatalogoPOS): boolean {
-    const capacidad = item.atraccion.capacidadMaxima || item.atraccion.maxCapacity || 10;
-    const ocupados = item.atraccion.ocupacionActual ?? item.atraccion.ocupacionActiva ?? item.atraccion.ninosActivos ?? 0;
-    const cupos = Math.max(0, capacidad - ocupados);
-    const reservadosEnCarrito = this._items()
-      .filter(it => it.atraccion.id === item.atraccion.id)
-      .reduce((acc, it) => acc + (it.cantidad ?? 1), 0);
-    return cupos <= 0 || reservadosEnCarrito >= cupos;
+    // La venta con aforo lleno está permitida (ingreso diferido); solo bloquea atracciones inactivas.
+    return !!item.atraccion.estado && item.atraccion.estado !== 'ACTIVO';
   }
 
   getIdentificadorMenor(menor: Menor | null | undefined): string {

@@ -132,12 +132,12 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                       <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                       <span>{{ a.estado === 'MANTENIMIENTO' ? 'Mantenimiento' : 'Inactiva' }}</span>
                     </span>
-                  } @else if (cupos <= 0) {
+                  } @else if (estaLlena(a)) {
                     <span
                       data-testid="badge-aforo-completo"
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white shadow-2xs animate-pulse">
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white shadow-2xs">
                       <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                      <span>Aforo Completo</span>
+                      <span>{{ textoIngreso(a) }}</span>
                     </span>
                   } @else {
                     <span
@@ -189,6 +189,14 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                       <span class="truncate">Sin operario activo en estación</span>
                     </div>
                   }
+
+                  <p
+                    [attr.data-testid]="'ingreso-texto-' + a.id"
+                    class="text-[11px] font-bold mb-2"
+                    [class.text-rose-700]="estaLlena(a)"
+                    [class.text-emerald-700]="!estaLlena(a)">
+                    {{ textoIngreso(a) }}
+                  </p>
 
                   <!-- Barra de Ocupación de Aforo -->
                   <div class="space-y-1 mb-3">
@@ -261,7 +269,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    <span>{{ bloqueada ? (cupos <= 0 ? 'Sin Cupo' : modalidades.length === 0 ? 'Sin Tarifa' : 'No Disp.') : 'Añadir' }}</span>
+                    <span>{{ bloqueada ? (modalidades.length === 0 ? 'Sin Tarifa' : 'No Disp.') : 'Añadir' }}</span>
                   </button>
                 </div>
               </div>
@@ -330,9 +338,29 @@ export class CatalogoAtraccionesComponent {
 
   estaBloqueada(a: Atraccion): boolean {
     const estadoInactivo = !!a.estado && a.estado !== 'ACTIVO';
-    const aforoCompleto = a.tieneCupo === false || this.calcularCuposDisponibles(a) <= 0;
     const sinTarifas = this.getModalidades(a).length === 0;
-    return estadoInactivo || aforoCompleto || sinTarifas;
+    return estadoInactivo || sinTarifas;
+  }
+
+  estaLlena(a: Atraccion): boolean {
+    return a.tieneCupo === false || this.calcularCuposDisponibles(a) <= 0 || !!a.horaProximoIngreso;
+  }
+
+  /** Texto de ingreso: "Ingreso: AHORA" o "Lleno · ingreso ~HH:mm" / "Lleno · próximo turno". */
+  textoIngreso(a: Atraccion): string {
+    if (!this.estaLlena(a)) return 'Ingreso: AHORA';
+    const texto = (a.ingresoTexto || '').trim();
+    if (texto.toUpperCase() === 'PRÓXIMO TURNO' || (!texto && a.tipo === 'EVENTOS_CAIDAS' && !a.horaProximoIngreso)) {
+      return 'Lleno · próximo turno';
+    }
+    const hhmm = texto.match(/\d{1,2}:\d{2}/)?.[0] ?? this.extraerHora(a.horaProximoIngreso);
+    return hhmm ? `Lleno · ingreso ~${hhmm}` : 'Lleno · próximo turno';
+  }
+
+  private extraerHora(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const m = String(iso).match(/T(\d{2}:\d{2})/);
+    return m ? m[1] : null;
   }
 
   calcularPorcentajeOcupacion(ocupados: number, capacidad: number): number {

@@ -139,7 +139,9 @@ export class ColaEmisionService {
           metodoPago: item.metodoPago ?? origenDTO.metodoPago ?? contexto?.metodoPago,
           fechaEmision: item.fechaEmision ?? origenDTO.fecha ?? contexto?.fechaEmision ?? new Date(),
           estado: (item.estado as EstadoTicket) ?? 'GENERADO',
-          observaciones: item.observaciones
+          observaciones: item.observaciones,
+          horaIngresoEstimada: item.horaIngresoEstimada ?? null,
+          ingresoTexto: item.ingresoTexto?.trim() || 'AHORA'
         };
 
         boletasMapeadas.push(ticket);
@@ -187,7 +189,9 @@ export class ColaEmisionService {
             precioUnitario: item.modalidad.precio,
             metodoPago: resumenPOS.metodoPago ?? contexto?.metodoPago,
             fechaEmision: contexto?.fechaEmision ?? new Date(),
-            estado: 'PENDIENTE'
+            estado: 'PENDIENTE',
+            horaIngresoEstimada: item.atraccion.horaProximoIngreso ?? null,
+            ingresoTexto: item.atraccion.ingresoTexto?.trim() || 'AHORA'
           };
 
           boletasMapeadas.push(ticket);
@@ -324,7 +328,9 @@ export class ColaEmisionService {
           uuid: srvUuid,
           uuidCodigo: srvUuid,
           codigoQr: srv.codigoQr || srvUuid,
-          codigoBoleta: srv.codigoBoleta || b.codigoBoleta
+          codigoBoleta: srv.codigoBoleta || b.codigoBoleta,
+          horaIngresoEstimada: srv.horaIngresoEstimada ?? b.horaIngresoEstimada ?? null,
+          ingresoTexto: srv.ingresoTexto?.trim() || b.ingresoTexto || 'AHORA'
         };
       });
 

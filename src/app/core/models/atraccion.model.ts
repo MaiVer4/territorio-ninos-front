@@ -38,6 +38,10 @@ export interface Atraccion {
   aforoDisponible?: number;
   tieneCupo?: boolean;
   tieneOperarioAsignado?: boolean;
+  /** ISO LocalDateTime del próximo ingreso estimado; null = cupo disponible ya. */
+  horaProximoIngreso?: string | null;
+  /** "AHORA", "HH:mm (aprox.)" o "PRÓXIMO TURNO". */
+  ingresoTexto?: string | null;
   tarifasTiempo?: TarifaTiempoCatalogo[];
   tarifasEvento?: TarifaEventoCatalogo[];
 }

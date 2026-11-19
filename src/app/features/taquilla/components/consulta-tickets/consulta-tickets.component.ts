@@ -384,6 +384,13 @@ import { QrViewerComponent } from '../../../../shared/components/qr-viewer/qr-vi
                   </span>
                 </div>
 
+                <div class="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span class="text-slate-400 font-medium">Ingreso:</span>
+                  <span data-testid="detalle-ingreso" class="font-mono font-bold text-slate-800">
+                    {{ t.ingresoTexto || 'AHORA' }}
+                  </span>
+                </div>
+
                 <!-- Tiempo Restante con Barra de Progreso (HU-23.05) -->
                 <div class="pt-1 space-y-1">
                   <div class="flex justify-between text-xs font-bold">

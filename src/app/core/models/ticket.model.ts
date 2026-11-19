@@ -56,6 +56,10 @@ export interface Ticket {
   estado: EstadoTicket;
   observaciones?: string;
 
+  // Hora estimada de ingreso cuando el aforo está lleno (venta con espera)
+  horaIngresoEstimada?: Date | string | null;
+  ingresoTexto?: string | null;
+
   // Seguimiento operativo en tiempo real (HU-23.05 / SCRUM-387)
   horaCompra?: Date | string;
   tiempoRestanteMinutos?: number;

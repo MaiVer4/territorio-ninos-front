@@ -164,17 +164,25 @@ describe('CatalogoAtraccionesComponent', () => {
     expect(cardCaidas.nativeElement.textContent).toContain('5 caídas');
   });
 
-  it('should visually and functionally block attraction when aforo is full (cupos == 0)', () => {
+  it('should show full badge but still allow selling when aforo is full (cupos == 0)', () => {
     const cardLleno = fixture.debugElement.query(By.css('[data-testid="card-atraccion-3"]'));
-    expect(cardLleno.nativeElement.classList).toContain('opacity-60');
+    expect(cardLleno.nativeElement.classList).not.toContain('opacity-60');
 
     const badgeAforo = cardLleno.query(By.css('[data-testid="badge-aforo-completo"]'));
     expect(badgeAforo).toBeTruthy();
-    expect(badgeAforo.nativeElement.textContent).toContain('Aforo Completo');
+    expect(badgeAforo.nativeElement.textContent).toContain('Lleno');
 
     const btnAgregar = cardLleno.query(By.css('[data-testid="btn-agregar-3"]'));
-    expect(btnAgregar.nativeElement.disabled).toBe(true);
-    expect(btnAgregar.nativeElement.textContent).toContain('Sin Cupo');
+    expect(btnAgregar.nativeElement.disabled).toBe(false);
+    expect(btnAgregar.nativeElement.textContent).toContain('Añadir');
+  });
+
+  it('should format entry time text from backend fields', () => {
+    const base = { id: 9, nombre: 'X', tipo: 'TEMPORIZADA', capacidadMaxima: 5 } as any;
+    expect(component.textoIngreso({ ...base, aforoDisponible: 3, tieneCupo: true, ingresoTexto: 'AHORA' })).toBe('Ingreso: AHORA');
+    expect(component.textoIngreso({ ...base, aforoDisponible: 0, tieneCupo: false, horaProximoIngreso: '2026-11-19T15:40:00', ingresoTexto: '15:40 (aprox.)' })).toBe('Lleno · ingreso ~15:40');
+    expect(component.textoIngreso({ ...base, aforoDisponible: 0, tieneCupo: false, horaProximoIngreso: '2026-11-19T16:05:00' })).toBe('Lleno · ingreso ~16:05');
+    expect(component.textoIngreso({ ...base, tipo: 'EVENTOS_CAIDAS', aforoDisponible: 0, tieneCupo: false, ingresoTexto: 'PRÓXIMO TURNO' })).toBe('Lleno · próximo turno');
   });
 
   it('should visually and functionally block attraction when estado is not ACTIVO', () => {

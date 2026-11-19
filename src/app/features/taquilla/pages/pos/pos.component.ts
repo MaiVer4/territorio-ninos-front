@@ -774,7 +774,8 @@ export class TaquillaPosComponent implements OnInit {
               ocupacionActual: ocupados,
               ocupacionActiva: ocupados,
               aforoDisponible,
-              tieneCupo: aforoDisponible > 0
+              tieneCupo: aforoDisponible > 0,
+              ...(aforoDisponible > 0 ? { horaProximoIngreso: null, ingresoTexto: 'AHORA' } : {})
             };
           }
           return a;
@@ -828,23 +829,9 @@ export class TaquillaPosComponent implements OnInit {
 
   onAtraccionSeleccionada(sel: SeleccionCatalogoPOS): void {
     const a = sel.atraccion;
-    const capacidad = a.capacidadMaxima || a.maxCapacity || 0;
-    const ocupados = a.ocupacionActual ?? a.ninosActivos ?? 0;
-    const cuposDisponibles = a.aforoDisponible !== undefined && a.aforoDisponible !== null
-      ? a.aforoDisponible
-      : Math.max(0, capacidad - ocupados);
-
-    if (a.tieneCupo === false || cuposDisponibles <= 0) {
-      this.notificationService?.warn(`No hay cupos disponibles para "${a.nombre}".`);
-      return;
-    }
-
-    const enCarrito = this.itemsSeleccionados()
-      .filter(it => it.atraccion.id === a.id)
-      .reduce((acc, it) => acc + (it.cantidad ?? 1), 0);
-
-    if (enCarrito >= cuposDisponibles) {
-      this.notificationService?.warn(`No quedan más cupos disponibles para "${a.nombre}".`);
+    // El aforo lleno ya no bloquea la venta: el ticket queda con hora estimada de ingreso.
+    if (a.estado && a.estado !== 'ACTIVO') {
+      this.notificationService?.warn(`La atracción "${a.nombre}" no está disponible.`);
       return;
     }
 

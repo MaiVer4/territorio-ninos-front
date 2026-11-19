@@ -117,6 +117,10 @@ const BOLETA_DEMO_PREVIEW: Ticket = {
               <span>Modalidad / Duración:</span>
               <span class="font-bold">{{ boleta.modalidadEtiqueta }}</span>
             </div>
+            <div class="flex justify-between font-bold text-[11px]" data-testid="print-ticket-ingreso">
+              <span>Ingreso :</span>
+              <span>{{ boleta.ingresoTexto || 'AHORA' }}</span>
+            </div>
             <div class="flex justify-between text-[10px] text-black/80">
               <span>Medio de Pago:</span>
               <span>{{ boleta.metodoPago || orden?.metodoPago || 'PAGO POS' }}</span>

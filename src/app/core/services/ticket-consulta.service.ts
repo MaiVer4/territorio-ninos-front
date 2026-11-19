@@ -132,7 +132,9 @@ export class TicketConsultaService {
             uuid: u,
             uuidCodigo: u,
             codigoQr: r.codigoQr || u,
-            codigoBoleta: r.codigoBoleta || (u ? `BOL-${u.substring(0, 6).toUpperCase()}` : '')
+            codigoBoleta: r.codigoBoleta || (u ? `BOL-${u.substring(0, 6).toUpperCase()}` : ''),
+            horaIngresoEstimada: r.horaIngresoEstimada ?? null,
+            ingresoTexto: r.ingresoTexto?.trim() || 'AHORA'
           };
         });
         return this.combinarConLocales(normalizados, termLimpio);

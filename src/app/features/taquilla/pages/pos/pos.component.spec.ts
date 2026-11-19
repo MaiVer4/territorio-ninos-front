@@ -900,7 +900,7 @@ describe('TaquillaPosComponent', () => {
       expect(component.itemsSeleccionados().length).toBe(1);
     });
 
-    it('should warn and not add attraction when aggregate quantity in cart reaches capacity', async () => {
+    it('should allow adding attraction even when aggregate quantity in cart exceeds capacity', async () => {
       await setupComponent(mockTurno);
       // mockAtraccion2 has cap=5, ninosActivos=1 => 4 available spots
       component.itemsSeleccionados.set([
@@ -919,10 +919,8 @@ describe('TaquillaPosComponent', () => {
 
       component.onAtraccionSeleccionada(selectionToAdd);
 
-      expect(component.itemsSeleccionados().length).toBe(1);
-      expect(notificationServiceSpy.warn).toHaveBeenCalledWith(
-        expect.stringContaining('No quedan más cupos disponibles')
-      );
+      expect(component.itemsSeleccionados().length).toBe(2);
+      expect(notificationServiceSpy.warn).not.toHaveBeenCalled();
     });
 
     it('should clean menorAsignado from cart items when the child is removed from menoresOrden', async () => {
