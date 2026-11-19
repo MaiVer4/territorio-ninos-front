@@ -79,6 +79,8 @@ export class UnauthorizedComponent {
       this.router.navigate(['/taquilla/pos']);
     } else if (role === 'OPERARIO') {
       this.router.navigate(['/operario/seleccion']);
+    } else if (role === 'COORDINADOR') {
+      this.router.navigate(['/coordinador']);
     } else {
       this.router.navigate(['/login']);
     }

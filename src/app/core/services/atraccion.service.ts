@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Atraccion, AtraccionCatalogoVenta } from '../models/atraccion.model';
+import { EstadoAtraccion } from '../models/enums';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -41,5 +42,10 @@ export class AtraccionService {
 
   updateTolerance(id: number | string, toleranciaMinutos: number): Observable<Atraccion> {
     return this.http.put<Atraccion>(`${this.apiUrl}/${id}/tolerancia`, { toleranciaMinutos });
+  }
+
+  cambiarEstado(id: number | string, estado: EstadoAtraccion): Observable<Atraccion> {
+    const params = new HttpParams().set('estado', estado);
+    return this.http.patch<Atraccion>(`${this.apiUrl}/${id}/estado`, null, { params });
   }
 }

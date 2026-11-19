@@ -195,12 +195,14 @@ export class ColaboradoresComponent implements OnInit {
     if (rol === 'ADMINISTRADOR') return 'Administrador';
     if (rol === 'TAQUILLERO') return 'Taquillero';
     if (rol === 'OPERARIO') return 'Operario';
+    if (rol === 'COORDINADOR') return 'Coordinador';
     return rol || 'Sin rol';
   }
 
   getRoleBadgeClass(rol?: string): string {
     if (rol === 'ADMINISTRADOR') return 'bg-violet-50 text-violet-700 border border-violet-200';
     if (rol === 'TAQUILLERO') return 'bg-blue-50 text-blue-700 border border-blue-200';
+    if (rol === 'COORDINADOR') return 'bg-amber-50 text-amber-800 border border-amber-200';
     return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
   }
 

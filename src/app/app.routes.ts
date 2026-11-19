@@ -39,8 +39,14 @@ export const routes: Routes = [
   {
     path: 'operario/seleccion',
     canActivate: [authGuard],
-    data: { roles: ['OPERARIO', 'ADMINISTRADOR'] },
+    data: { roles: ['OPERARIO', 'COORDINADOR', 'ADMINISTRADOR'] },
     loadComponent: () => import('./features/operario/pages/seleccion/seleccion.component').then(m => m.OperarioSeleccionComponent)
+  },
+  {
+    path: 'coordinador',
+    canActivate: [authGuard],
+    data: { roles: ['COORDINADOR', 'ADMINISTRADOR'] },
+    loadComponent: () => import('./features/coordinador/pages/panel/coordinador-panel.component').then(m => m.CoordinadorPanelComponent)
   },
   {
     path: 'admin',
@@ -81,6 +87,10 @@ export const routes: Routes = [
       {
         path: 'auditoria',
         loadComponent: () => import('./features/admin/pages/auditoria/auditoria.component').then(m => m.AuditoriaComponent)
+      },
+      {
+        path: 'novedades',
+        loadComponent: () => import('./features/coordinador/components/reportes-atraccion-panel/reportes-atraccion-panel.component').then(m => m.ReportesAtraccionPanelComponent)
       },
       {
         path: 'configuracion',

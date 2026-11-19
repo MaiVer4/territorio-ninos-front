@@ -192,6 +192,7 @@ export class LoginComponent {
             if (rol === 'ADMINISTRADOR') this.router.navigate(['/admin/dashboard']);
             else if (rol === 'TAQUILLERO') this.router.navigate(['/taquilla/pos']);
             else if (rol === 'OPERARIO') this.router.navigate(['/operario/seleccion']);
+            else if (rol === 'COORDINADOR') this.router.navigate(['/coordinador']);
             else this.router.navigate(['/unauthorized']);
           },
           error: (err) => {

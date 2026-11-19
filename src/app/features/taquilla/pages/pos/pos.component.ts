@@ -762,6 +762,28 @@ export class TaquillaPosComponent implements OnInit {
     const stream$ = this.webSocketService?.conectarDashboardAdmin?.();
     if (!stream$) return;
     stream$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(event => {
+      if (event.tipo === 'ESTADO_ATRACCION_CAMBIADO' && event.estadoAtraccion) {
+        const nuevoEstado = event.estadoAtraccion as Atraccion['estado'];
+        let encontrada = false;
+        this.atracciones.update(lista =>
+          lista.map(a => {
+            if (String(a.id) === String(event.atraccionId)) {
+              encontrada = true;
+              return { ...a, estado: nuevoEstado };
+            }
+            return a;
+          })
+        );
+        if (!encontrada) {
+          this.cargarCatalogoAtracciones();
+        }
+        if (nuevoEstado === 'FUERA_DE_SERVICIO') {
+          this.notificationService?.warn(event.mensaje || 'Una atracción fue marcada Fuera de servicio.');
+        } else if (nuevoEstado === 'ACTIVO') {
+          this.notificationService?.info(event.mensaje || 'Una atracción volvió a estar activa.');
+        }
+        return;
+      }
       this.atracciones.update(lista =>
         lista.map(a => {
           if (String(a.id) === String(event.atraccionId)) {

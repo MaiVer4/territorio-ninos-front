@@ -154,6 +154,20 @@ export class OperacionService implements OnDestroy {
       const estacion = this.estacionActiva();
       if (!mensaje || !estacion?.confirmada) return;
       if (String(mensaje.atraccionId) !== String(estacion.atraccionId)) return;
+      if (mensaje.tipo === 'ESTADO_ATRACCION_CAMBIADO') {
+        if (mensaje.estadoAtraccion === 'FUERA_DE_SERVICIO') {
+          this.notificationService.warn(
+            mensaje.mensaje || 'Esta atracción fue marcada Fuera de Servicio por coordinación. No se permiten nuevos ingresos; los menores actuales pueden finalizar con normalidad.',
+            'Atracción Fuera de Servicio'
+          );
+        } else if (mensaje.estadoAtraccion === 'ACTIVO') {
+          this.notificationService.success(
+            mensaje.mensaje || 'La atracción fue reactivada y vuelve a estar operativa.',
+            'Atracción Reactivada'
+          );
+        }
+        return;
+      }
       const cola = mensaje.colaActualizada as ColaServidorDTO | undefined;
       if (cola && Array.isArray(cola.sesionesActivas)) {
         this.aplicarColaServidor(cola);
@@ -349,6 +363,7 @@ export class OperacionService implements OnDestroy {
       map(({ atracciones, asignaciones }) => {
         const currentUser = this.authService.currentUser();
         const userId = currentUser?.id;
+        const tieneAccesoLibre = currentUser?.rol === 'COORDINADOR' || currentUser?.rol === 'ADMINISTRADOR';
 
         let mapeadas: EstacionTrabajo[] = [];
 
@@ -360,8 +375,9 @@ export class OperacionService implements OnDestroy {
             const esMio = asigAtraccion
               ? String(asigAtraccion.operarioId ?? (asigAtraccion as { usuarioId?: number | string }).usuarioId) === String(userId)
               : false;
-            const ocupadaPorOtro = asigAtraccion ? !esMio : false;
-            const nombreOtro = ocupadaPorOtro ? asigAtraccion?.operarioNombre : undefined;
+            const ocupadaPorOtroReal = asigAtraccion ? !esMio : false;
+            const ocupadaPorOtro = tieneAccesoLibre ? false : ocupadaPorOtroReal;
+            const nombreOtro = ocupadaPorOtroReal ? asigAtraccion?.operarioNombre : undefined;
 
             const esEventoCaidas =
               a.tipo === 'EVENTOS_CAIDAS' ||

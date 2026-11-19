@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { WebSocketService } from '../../../../core/services/websocket.service';
@@ -17,6 +18,7 @@ import { ModoEventoComponent } from '../../components/modo-evento/modo-evento.co
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
+    RouterModule,
     SeleccionAtraccionComponent,
     ScannerQrComponent,
     ResultadoValidacionComponent,
@@ -115,13 +117,22 @@ import { ModoEventoComponent } from '../../components/modo-evento/modo-evento.co
         </div>
 
         <div class="flex items-center gap-3">
+          @if (authService.currentUser()?.rol === 'COORDINADOR') {
+            <a
+              routerLink="/coordinador"
+              data-testid="link-volver-coordinador"
+              class="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg transition">
+              ← Panel Coordinador
+            </a>
+          }
           <div class="flex items-center gap-2">
             <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center ring-1 ring-emerald-300">
               {{ authService.currentUserInitials() }}
             </div>
             <span class="text-xs font-bold text-slate-800 hidden xs:inline">{{ authService.currentUserName() }}</span>
-            <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-              Operario
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              [ngClass]="authService.currentUser()?.rol === 'COORDINADOR' ? 'text-amber-700 bg-amber-50' : 'text-emerald-600 bg-emerald-50'">
+              {{ authService.currentUser()?.rol === 'COORDINADOR' ? 'Coordinador' : 'Operario' }}
             </span>
           </div>
 

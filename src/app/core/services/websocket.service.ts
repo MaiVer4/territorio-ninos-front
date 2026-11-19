@@ -8,10 +8,13 @@ import { Observable, Subject } from 'rxjs';
 import { Client, StompSubscription, IMessage } from '@stomp/stompjs';
 
 export interface OccupancyEvent {
+  tipo?: string;
   atraccionId: number | string;
   ninosActivos: number;
   operarioNombre?: string;
   capacidadMaxima?: number;
+  estadoAtraccion?: string;
+  mensaje?: string;
 }
 
 export interface MensajeEstacionWs {
@@ -26,10 +29,12 @@ export interface MensajeEstacionWs {
     | 'REANUDACION'
     | 'ALERTA_PRE_EXPIRACION'
     | 'TIEMPO_EXPIRADO'
-    | 'SESION_FINALIZADA';
+    | 'SESION_FINALIZADA'
+    | 'ESTADO_ATRACCION_CAMBIADO';
   atraccionId: number | string;
   sesionId?: number | string | null;
   mensaje?: string;
+  estadoAtraccion?: string;
   serverTimestamp?: string | number;
   timestamp?: string | number;
   payload?: unknown;
@@ -326,10 +331,13 @@ export class WebSocketService implements OnDestroy {
           ?? raw.colaActualizada?.sesionesActivas?.[0]?.operarioNombre;
         const capacidadMaxima = raw.capacidadMaxima ?? raw.colaActualizada?.capacidadMaxima;
         this.occupancySubject.next({
+          tipo: raw.tipo,
           atraccionId: raw.atraccionId ?? raw.colaActualizada?.atraccionId ?? 0,
           ninosActivos,
           operarioNombre,
-          capacidadMaxima
+          capacidadMaxima,
+          estadoAtraccion: raw.estadoAtraccion,
+          mensaje: raw.mensaje
         });
       } catch {
         // Ignorar payload malformado

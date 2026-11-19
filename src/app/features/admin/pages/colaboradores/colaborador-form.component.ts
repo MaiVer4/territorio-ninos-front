@@ -145,6 +145,7 @@ export class ColaboradorFormComponent {
 
   roles: { value: RolUsuario; label: string }[] = [
     { value: 'ADMINISTRADOR', label: 'Administrador' },
+    { value: 'COORDINADOR', label: 'Coordinador' },
     { value: 'TAQUILLERO', label: 'Taquillero' },
     { value: 'OPERARIO', label: 'Operario' }
   ];

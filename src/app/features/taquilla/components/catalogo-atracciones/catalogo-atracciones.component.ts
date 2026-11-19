@@ -127,10 +127,11 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                 <div class="absolute top-2.5 right-2.5">
                   @if (a.estado && a.estado !== 'ACTIVO') {
                     <span
-                      data-testid="badge-inactivo"
-                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800/90 text-slate-100 shadow-2xs">
-                      <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                      <span>{{ a.estado === 'MANTENIMIENTO' ? 'Mantenimiento' : 'Inactiva' }}</span>
+                      [attr.data-testid]="a.estado === 'FUERA_DE_SERVICIO' ? 'badge-fuera-de-servicio' : 'badge-inactivo'"
+                      class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-2xs"
+                      [ngClass]="a.estado === 'FUERA_DE_SERVICIO' ? 'bg-rose-700 text-white' : 'bg-slate-800/90 text-slate-100'">
+                      <span class="w-1.5 h-1.5 rounded-full" [ngClass]="a.estado === 'FUERA_DE_SERVICIO' ? 'bg-rose-200' : 'bg-slate-400'"></span>
+                      <span>{{ a.estado === 'FUERA_DE_SERVICIO' ? 'Fuera de servicio' : (a.estado === 'MANTENIMIENTO' ? 'Mantenimiento' : 'Inactiva') }}</span>
                     </span>
                   } @else if (estaLlena(a)) {
                     <span
@@ -269,7 +270,7 @@ import { Atraccion, ModalidadSeleccionada, SeleccionCatalogoPOS } from '../../..
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    <span>{{ bloqueada ? (modalidades.length === 0 ? 'Sin Tarifa' : 'No Disp.') : 'Añadir' }}</span>
+                    <span>{{ bloqueada ? (a.estado === 'FUERA_DE_SERVICIO' ? 'Fuera de Serv.' : (modalidades.length === 0 ? 'Sin Tarifa' : 'No Disp.')) : 'Añadir' }}</span>
                   </button>
                 </div>
               </div>

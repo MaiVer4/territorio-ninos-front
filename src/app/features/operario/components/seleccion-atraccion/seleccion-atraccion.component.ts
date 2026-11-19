@@ -139,6 +139,10 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
                         <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
                           Ocupada por {{ estacion.nombreOtroOperario || 'otro operario' }}
                         </span>
+                      } @else if (estacion.nombreOtroOperario) {
+                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          Apoyo · Op: {{ estacion.nombreOtroOperario }}
+                        </span>
                       } @else if (estacion.esMiEstacion) {
                         <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           Asignada a ti
