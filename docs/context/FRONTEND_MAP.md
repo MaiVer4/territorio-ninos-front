@@ -1,5 +1,5 @@
 # Mapa de Arquitectura y Componentes del Frontend (`territorio-front`)
-> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-19 (commit 52e4406).
+> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-19 (commit 84a4d30).
 
 ## 1. Stack, Convenciones y Reglas de Desarrollo
 - **Stack:** Angular `21.2.0` (100% Standalone Components), Signals (`signal`, `computed`, `effect`), RxJS (`HttpClient`), Tailwind CSS `3.4.19`, Angular Material Icons (`material-symbols-outlined`), STOMP/WebSocket, Vitest `4.0.8`.
@@ -22,7 +22,8 @@
 | `/taquilla/apertura` | `AperturaComponent` | `authGuard` | `TAQUILLERO`, `ADMINISTRADOR` |
 | `/taquilla/pos` | `TaquillaPosComponent` | `authGuard` (+ verificación de caja activa) | `TAQUILLERO`, `ADMINISTRADOR` |
 | `/taquilla/consulta` | `ConsultaTicketsComponent` | `authGuard` | `TAQUILLERO`, `ADMINISTRADOR` |
-| `/operario/seleccion` | `OperarioSeleccionComponent` | `authGuard` | `OPERARIO`, `ADMINISTRADOR` |
+| `/operario/seleccion` | `OperarioSeleccionComponent` | `authGuard` | `OPERARIO`, `COORDINADOR`, `ADMINISTRADOR` |
+| `/coordinador` | `CoordinadorPanelComponent` | `authGuard` | `COORDINADOR`, `ADMINISTRADOR` |
 | `/admin` (Layout padre) | `AdminLayoutComponent` | `authGuard` (`canActivate` + `canActivateChild`) | `ADMINISTRADOR` |
 | `/admin/dashboard` | `AdminDashboardComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
 | `/admin/atracciones` | `AtraccionesComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
@@ -31,6 +32,7 @@
 | `/admin/reportes` | `ReportesComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
 | `/admin/turnos` | `TurnosComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
 | `/admin/auditoria` | `AuditoriaComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
+| `/admin/novedades` | `ReportesAtraccionPanelComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
 | `/admin/configuracion` | `ConfiguracionComponent` | Hereda `authGuard` | `ADMINISTRADOR` |
 
 ### Comportamiento de Guards e Interceptors (`src/app/core/`)
