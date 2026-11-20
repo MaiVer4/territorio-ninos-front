@@ -19,8 +19,8 @@ describe('CoordinadorPanelComponent', () => {
   let wsSubject: Subject<OccupancyEvent>;
 
   const mockAtracciones: Atraccion[] = [
-    { id: 1, nombre: 'Piscina de Pelotas', tipo: 'TEMPORIZADA', estado: 'ACTIVO', capacidadMaxima: 15, ocupacionActiva: 4 },
-    { id: 2, nombre: 'Toro Mecánico', tipo: 'EVENTOS_CAIDAS', estado: 'FUERA_DE_SERVICIO', capacidadMaxima: 1, ocupacionActiva: 0 }
+    { id: 1, nombre: 'Piscina de Pelotas', tipo: 'TEMPORIZADA', estado: 'ACTIVO', capacidadMaxima: 15, ocupacionActiva: 4, tarifaMinuto: 100, duracionMinutosBase: 15 },
+    { id: 2, nombre: 'Toro Mecánico', tipo: 'EVENTOS_CAIDAS', estado: 'FUERA_DE_SERVICIO', capacidadMaxima: 1, ocupacionActiva: 0, tarifaMinuto: 0, duracionMinutosBase: 5 }
   ];
 
   beforeEach(async () => {
