@@ -1,5 +1,5 @@
 # Mapa de Arquitectura y Componentes del Frontend (`territorio-front`)
-> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-19 (commit 190c879).
+> Fuente de verdad: `/home/vera/Downloads/territorio-front/src/app/**`, `package.json`, `angular.json`. Última sincronización: 2026-11-19 (commit d614b5f).
 
 ## 1. Stack, Convenciones y Reglas de Desarrollo
 - **Stack:** Angular `21.2.0` (100% Standalone Components), Signals (`signal`, `computed`, `effect`), RxJS (`HttpClient`), Tailwind CSS `3.4.19`, Angular Material Icons (`material-symbols-outlined`), STOMP/WebSocket, Vitest `4.0.8`.
@@ -84,7 +84,7 @@
     - `consulta-tickets` y `reimpresion-modal`: Búsqueda de boletas emitidas y reimpresión con motivo obligatorio.
 - **`features/operario/`:**
   - `pages/seleccion/seleccion.component.ts` (`OperarioSeleccionComponent`): Contenedor operativo que muestra la estación asignada, el escáner QR y la cola activa; desvincula la estación confirmada al cerrar sesión.
-  - `components/`: `seleccion-atraccion` (espera confirmación del backend antes de emitir `estacionConfirmada`), `scanner-qr` (cámara + entrada manual + autorización de sobreaforo contra backend con señal `autorizandoSupervisor`), `resultado-validacion`, `cola-usuarios` (tarjetas ordenadas por urgencia), `cronometro` (temporizador regresivo con semáforo y pausas), `modo-evento` (contador de caídas/intentos y cronómetro de ronda).
+  - `components/`: `seleccion-atraccion` (espera confirmación del backend antes de emitir `estacionConfirmada`), `scanner-qr` (cámara en vivo con fallback tolerante + fallback de captura con foto nativa móvil para entornos HTTP/insecure context + entrada manual + autorización de sobreaforo contra backend con señal `autorizandoSupervisor`), `resultado-validacion`, `cola-usuarios` (tarjetas ordenadas por urgencia), `cronometro` (temporizador regresivo con semáforo y pausas), `modo-evento` (contador de caídas/intentos y cronómetro de ronda).
 - **`features/admin/`:**
   - `layout/admin-layout`: Sidebar de navegación administrativa, header con usuario actual y `<router-outlet>`.
   - `pages/`: `dashboard` (KPIs y aforo en vivo vía WS), `atracciones` (+ `atraccion-form` unificado con gestión directa de tarifas y modalidades libres, `tarifas-modal`), `asignaciones`, `colaboradores` (+ `colaborador-form`), `turnos` (historial y conciliación), `reportes` (tablas, gráficos y exportación CSV/PDF), `auditoria` (+ `components/ticket-timeline`, integrado con `ReportesAtraccionPanelComponent` en pestaña 'Novedades y Daños' con badge dinámico evitando carga duplicada con `?tab=novedades`, y guarda anti-doble-clic `actualizandoId`/manejo de errores/`reportesVista` `computed` en el panel y exportación CSV), `configuracion` (+ `ticket-preview`).
