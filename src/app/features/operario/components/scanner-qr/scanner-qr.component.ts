@@ -38,6 +38,20 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
           playsinline
           webkit-playsinline></video>
 
+        @if (camaraActiva()) {
+          <!-- Botón Flotante para Alternar Cámara (Trasera / Frontal) -->
+          <button
+            type="button"
+            data-testid="btn-alternar-camara"
+            (click)="alternarCamara()"
+            class="absolute top-3 right-3 z-20 p-2.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-emerald-400 border border-slate-700/80 shadow-md backdrop-blur-xs transition cursor-pointer flex items-center justify-center active:scale-95"
+            [title]="modoCamaraTrasera() ? 'Cambiar a cámara frontal' : 'Cambiar a cámara trasera'">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        }
+
         <!-- Retícula Visual Semitransparente de Encuadre (HU-25.07 / Notion: SCRUM-399) -->
         <div
           data-testid="reticula-encuadre-qr"
@@ -356,6 +370,9 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   autorizandoSupervisor = signal<boolean>(false);
   permisoDenegado = signal<boolean>(false);
   mostrarGuiaPermisos = signal<boolean>(false);
+  modoCamaraTrasera = signal<boolean>(true);
+  dispositivoCamaraActivoId = signal<string | null>(null);
+  hayMultiplesCamaras = signal<boolean>(false);
 
   private codeReader: BrowserMultiFormatReader | null = null;
   private scannerControls: { stop: () => void } | null = null;
@@ -400,18 +417,59 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
       this.codeReader = new BrowserMultiFormatReader();
 
       let stream: MediaStream;
-      try {
-        // 1. Intentar cámara trasera en móvil sin forzar resoluciones rígidas
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
-        });
-      } catch {
-        // 2. Fallback permisivo a cualquier sensor de video disponible
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
+      const trasera = this.modoCamaraTrasera();
+      const targetFacing: 'environment' | 'user' = trasera ? 'environment' : 'user';
+
+      // 1. Si hay un ID explícito fijado (por alternar cámara), intentar con exact deviceId
+      if (this.dispositivoCamaraActivoId()) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: this.dispositivoCamaraActivoId()! } },
+            audio: false
+          });
+        } catch {
+          this.dispositivoCamaraActivoId.set(null);
+          stream = await this.obtenerStreamPorFacingMode(targetFacing);
+        }
+      } else {
+        stream = await this.obtenerStreamPorFacingMode(targetFacing);
+      }
+
+      // 2. Inspección inteligente del sensor: si se pidió trasera pero se abrió la frontal
+      if (navigator.mediaDevices.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(d => d.kind === 'videoinput');
+          this.hayMultiplesCamaras.set(videoDevices.length > 1);
+
+          const currentTrack = stream.getVideoTracks()[0];
+          const currentSettings = currentTrack?.getSettings?.() || {};
+          const currentFacing = currentSettings.facingMode;
+          const currentDeviceId = currentSettings.deviceId;
+
+          if (currentDeviceId) {
+            this.dispositivoCamaraActivoId.set(currentDeviceId);
+          }
+
+          // Si pedimos trasera y el sensor detectado es frontal ('user'), buscar cámara trasera
+          if (trasera && currentFacing === 'user' && videoDevices.length > 1) {
+            const rearDevice = videoDevices.find(d => {
+              const lbl = (d.label || '').toLowerCase();
+              return lbl.includes('back') || lbl.includes('rear') || lbl.includes('traser') || lbl.includes('environment');
+            }) || videoDevices.find(d => d.deviceId !== currentDeviceId);
+
+            if (rearDevice && rearDevice.deviceId !== currentDeviceId) {
+              currentTrack.stop();
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: rearDevice.deviceId } },
+                audio: false
+              });
+              this.dispositivoCamaraActivoId.set(rearDevice.deviceId);
+            }
+          }
+        } catch (errEnumerate) {
+          console.warn('Aviso enumerando dispositivos de cámara:', errEnumerate);
+        }
       }
 
       this.scanningStream = stream;
@@ -446,6 +504,68 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
     } finally {
       this.iniciandoCamara.set(false);
     }
+  }
+
+  private async obtenerStreamPorFacingMode(facing: 'environment' | 'user'): Promise<MediaStream> {
+    // 1. Intento con facingMode exacto (fuerza la cámara trasera en Android Chrome)
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: facing } },
+        audio: false
+      });
+    } catch {
+      // Ignorar si el dispositivo no soporta 'exact' (ej. PC webcam que solo tiene 1 cámara)
+    }
+
+    // 2. Intento con facingMode ideal
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facing } },
+        audio: false
+      });
+    } catch {
+      // Ignorar e ir a fallback
+    }
+
+    // 3. Fallback permisivo a cualquier sensor de video
+    return await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false
+    });
+  }
+
+  async alternarCamara(): Promise<void> {
+    if (this.iniciandoCamara()) return;
+
+    if (navigator.mediaDevices?.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+        if (videoDevices.length > 1) {
+          const currentId = this.dispositivoCamaraActivoId();
+          const currentIndex = videoDevices.findIndex(d => d.deviceId === currentId);
+          const nextIndex = (currentIndex + 1) % videoDevices.length;
+          const nextDevice = videoDevices[nextIndex];
+
+          this.dispositivoCamaraActivoId.set(nextDevice.deviceId);
+          const lbl = (nextDevice.label || '').toLowerCase();
+          const esTrasera = !(lbl.includes('front') || lbl.includes('user') || lbl.includes('delanter'));
+          this.modoCamaraTrasera.set(esTrasera);
+        } else {
+          this.modoCamaraTrasera.update(v => !v);
+          this.dispositivoCamaraActivoId.set(null);
+        }
+      } catch {
+        this.modoCamaraTrasera.update(v => !v);
+        this.dispositivoCamaraActivoId.set(null);
+      }
+    } else {
+      this.modoCamaraTrasera.update(v => !v);
+      this.dispositivoCamaraActivoId.set(null);
+    }
+
+    await this.iniciarCamara();
   }
 
   async reintentarCamara(): Promise<void> {

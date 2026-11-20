@@ -232,4 +232,70 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
     expect(redirSpy).toHaveBeenCalledWith(expect.stringContaining('APPLICATION_DETAILS_SETTINGS'));
     redirSpy.mockRestore();
   });
+
+  it('should prioritize rear camera by default and toggle cameras on alternarCamara', async () => {
+    expect(component.modoCamaraTrasera()).toBe(true);
+
+    const originalMediaDevices = navigator.mediaDevices;
+    const mockGetUserMedia = vi.fn().mockImplementation((constraints: any) => {
+      const devId =
+        constraints?.video?.deviceId?.exact ||
+        (constraints?.video?.facingMode?.exact === 'user' ? 'cam-front-1' : 'cam-rear-1');
+      const facing = devId === 'cam-rear-1' ? 'environment' : 'user';
+      const track = {
+        stop: vi.fn(),
+        getSettings: () => ({ facingMode: facing, deviceId: devId })
+      };
+      return Promise.resolve({
+        getVideoTracks: () => [track],
+        getTracks: () => [track]
+      });
+    });
+    const mockEnumerateDevices = vi.fn().mockResolvedValue([
+      { kind: 'videoinput', deviceId: 'cam-rear-1', label: 'Back Camera 0' },
+      { kind: 'videoinput', deviceId: 'cam-front-1', label: 'Front Camera 1' }
+    ]);
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: {
+        getUserMedia: mockGetUserMedia,
+        enumerateDevices: mockEnumerateDevices
+      },
+      configurable: true,
+      writable: true
+    });
+
+    await component.iniciarCamara();
+    fixture.detectChanges();
+
+    expect(mockGetUserMedia).toHaveBeenCalledWith(
+      expect.objectContaining({
+        video: { facingMode: { exact: 'environment' } }
+      })
+    );
+    expect(component.camaraActiva()).toBe(true);
+    expect(component.hayMultiplesCamaras()).toBe(true);
+    expect(component.dispositivoCamaraActivoId()).toBe('cam-rear-1');
+
+    // Alternar cámara
+    await component.alternarCamara();
+    fixture.detectChanges();
+
+    expect(component.dispositivoCamaraActivoId()).toBe('cam-front-1');
+    expect(component.modoCamaraTrasera()).toBe(false);
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: originalMediaDevices,
+      configurable: true,
+      writable: true
+    });
+  });
+
+  it('should render toggle camera button in DOM when camaraActiva is true', () => {
+    component.camaraActiva.set(true);
+    fixture.detectChanges();
+
+    const btnAlternar = fixture.debugElement.query(By.css('[data-testid="btn-alternar-camara"]'));
+    expect(btnAlternar).toBeTruthy();
+  });
 });
