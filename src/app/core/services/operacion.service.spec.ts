@@ -40,6 +40,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     conectarEstacion: ReturnType<typeof vi.fn>;
     desconectar: ReturnType<typeof vi.fn>;
     obtenerTiempoServidorActual: ReturnType<typeof vi.fn>;
+    ultimoMensajeRecibido: ReturnType<typeof signal>;
   };
   let notificationServiceSpy: {
     success: ReturnType<typeof vi.fn>;
@@ -107,7 +108,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       estadoConexion: signal('CONECTADO'),
       conectarEstacion: vi.fn(),
       desconectar: vi.fn(),
-      obtenerTiempoServidorActual: vi.fn().mockReturnValue(1700000000000)
+      obtenerTiempoServidorActual: vi.fn().mockReturnValue(1700000000000),
+      ultimoMensajeRecibido: signal(null)
     };
 
     notificationServiceSpy = {
@@ -533,5 +535,43 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
 
   it('should clean up timers on ngOnDestroy without throwing errors', () => {
     expect(() => service.ngOnDestroy()).not.toThrow();
+  });
+
+  it('debe reconciliar cola desde WebSocket sin provocar bucle infinito en effect (RNF8)', () => {
+    service.estacionActiva.set({
+      atraccionId: 1,
+      atraccionNombre: 'Laberinto Láser',
+      tipoAtraccion: 'TEMPORIZADA',
+      capacidadMaxima: 10,
+      duracionMinutosBase: 15,
+      operarioId: 10,
+      operarioNombre: 'Operador Test',
+      confirmada: true,
+      fechaConfirmacion: new Date().toISOString()
+    });
+
+    wsServiceSpy.ultimoMensajeRecibido.set({
+      tipo: 'NUEVO_INGRESO',
+      atraccionId: 1,
+      colaActualizada: {
+        atraccionId: 1,
+        sesionesActivas: [
+          {
+            sesionId: 101,
+            ticketUuid: 'TICK-WS-1',
+            menorNombre: 'Sofia',
+            duracionSegundos: 900,
+            segundosRestantes: 900,
+            estadoSesion: 'EN_CURSO'
+          }
+        ]
+      }
+    });
+
+    TestBed.flushEffects();
+
+    expect(service.colaActiva().length).toBe(1);
+    expect(service.colaActiva()[0].idSesion).toBe('101');
+    expect(service.colaActiva()[0].menorNombre).toBe('Sofia');
   });
 });

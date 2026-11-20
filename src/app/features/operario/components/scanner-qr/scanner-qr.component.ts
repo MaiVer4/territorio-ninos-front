@@ -342,6 +342,9 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
     try {
       this.scannerControls = await this.codeReader.decodeFromVideoElement(video, (result) => {
         if (result) {
+          if (this.operacionService.resultadoValidacionActual() || this.operacionService.modalAforoCompletoAbierto()) {
+            return;
+          }
           const text = result.getText();
           const now = Date.now();
           // Prevenir lecturas repetidas en menos de 1.5s del mismo código

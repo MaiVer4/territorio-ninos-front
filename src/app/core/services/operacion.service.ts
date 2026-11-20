@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed, effect, OnDestroy } from '@angular/core';
+import { Injectable, inject, signal, computed, effect, untracked, OnDestroy } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
@@ -59,6 +59,7 @@ export class OperacionService implements OnDestroy {
   private readonly STORAGE_ESTACION_KEY = 'tdn_operario_estacion_activa_v1';
   private readonly salidasTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private sincronizandoOffline = false;
+  private ultimoMensajeWsProcesado: unknown = null;
 
   // Signals Principales
   readonly estacionActiva = signal<EstacionTrabajo | null>(null);
@@ -151,27 +152,34 @@ export class OperacionService implements OnDestroy {
   private iniciarSincronizadorColaServidor(): void {
     effect(() => {
       const mensaje = this.wsService.ultimoMensajeRecibido?.();
-      const estacion = this.estacionActiva();
-      if (!mensaje || !estacion?.confirmada) return;
-      if (String(mensaje.atraccionId) !== String(estacion.atraccionId)) return;
-      if (mensaje.tipo === 'ESTADO_ATRACCION_CAMBIADO') {
-        if (mensaje.estadoAtraccion === 'FUERA_DE_SERVICIO') {
-          this.notificationService.warn(
-            mensaje.mensaje || 'Esta atracción fue marcada Fuera de Servicio por coordinación. No se permiten nuevos ingresos; los menores actuales pueden finalizar con normalidad.',
-            'Atracción Fuera de Servicio'
-          );
-        } else if (mensaje.estadoAtraccion === 'ACTIVO') {
-          this.notificationService.success(
-            mensaje.mensaje || 'La atracción fue reactivada y vuelve a estar operativa.',
-            'Atracción Reactivada'
-          );
+      if (!mensaje || mensaje === this.ultimoMensajeWsProcesado) return;
+
+      untracked(() => {
+        this.ultimoMensajeWsProcesado = mensaje;
+        const estacion = this.estacionActiva();
+        if (!estacion?.confirmada) return;
+        if (String(mensaje.atraccionId) !== String(estacion.atraccionId)) return;
+
+        if (mensaje.tipo === 'ESTADO_ATRACCION_CAMBIADO') {
+          if (mensaje.estadoAtraccion === 'FUERA_DE_SERVICIO') {
+            this.notificationService.warn(
+              mensaje.mensaje || 'Esta atracción fue marcada Fuera de Servicio por coordinación. No se permiten nuevos ingresos; los menores actuales pueden finalizar con normalidad.',
+              'Atracción Fuera de Servicio'
+            );
+          } else if (mensaje.estadoAtraccion === 'ACTIVO') {
+            this.notificationService.success(
+              mensaje.mensaje || 'La atracción fue reactivada y vuelve a estar operativa.',
+              'Atracción Reactivada'
+            );
+          }
+          return;
         }
-        return;
-      }
-      const cola = mensaje.colaActualizada as ColaServidorDTO | undefined;
-      if (cola && Array.isArray(cola.sesionesActivas)) {
-        this.aplicarColaServidor(cola);
-      }
+
+        const cola = mensaje.colaActualizada as ColaServidorDTO | undefined;
+        if (cola && Array.isArray(cola.sesionesActivas)) {
+          this.aplicarColaServidor(cola);
+        }
+      });
     });
   }
 
@@ -192,18 +200,20 @@ export class OperacionService implements OnDestroy {
   }
 
   private aplicarColaServidor(cola: ColaServidorDTO): void {
-    const actual = this.colaActiva();
-    const servidor = (cola.sesionesActivas ?? []).map(dto => {
-      const ticketUuid = String(dto.ticketUuid ?? '');
-      const previa = actual.find(s => s.ticketUuid === ticketUuid || s.idSesion === String(dto.sesionId));
-      return this.mapearSesionServidor(dto, previa);
+    untracked(() => {
+      const actual = this.colaActiva();
+      const servidor = (cola.sesionesActivas ?? []).map(dto => {
+        const ticketUuid = String(dto.ticketUuid ?? '');
+        const previa = actual.find(s => s.ticketUuid === ticketUuid || s.idSesion === String(dto.sesionId));
+        return this.mapearSesionServidor(dto, previa);
+      });
+      const ticketsServidor = new Set(servidor.map(s => s.ticketUuid));
+      // Conservar inicios locales aún no confirmados por el backend
+      const pendientesLocales = actual.filter(
+        s => this.accionesPendientesPorSesionLocal.has(s.idSesion) && !ticketsServidor.has(s.ticketUuid)
+      );
+      this.colaActiva.set([...pendientesLocales, ...servidor]);
     });
-    const ticketsServidor = new Set(servidor.map(s => s.ticketUuid));
-    // Conservar inicios locales aún no confirmados por el backend
-    const pendientesLocales = actual.filter(
-      s => this.accionesPendientesPorSesionLocal.has(s.idSesion) && !ticketsServidor.has(s.ticketUuid)
-    );
-    this.colaActiva.set([...pendientesLocales, ...servidor]);
   }
 
   private mapearSesionServidor(dto: SesionServidorDTO, previa?: SesionJuegoMenor): SesionJuegoMenor {
@@ -245,7 +255,9 @@ export class OperacionService implements OnDestroy {
   private iniciarSincronizadorOffline(): void {
     effect(() => {
       if (this.wsService.estadoConexion() === 'CONECTADO' && this.offlineQueue.hayAccionesPendientes()) {
-        this.sincronizarColaOffline().subscribe();
+        untracked(() => {
+          this.sincronizarColaOffline().subscribe();
+        });
       }
     });
   }
@@ -624,6 +636,7 @@ export class OperacionService implements OnDestroy {
     this.paradaEmergenciaActiva.set(false);
     this.soundService.silenciarTodasLasAlarmas();
     this.wsService.desconectar();
+    this.ultimoMensajeWsProcesado = null;
 
     if (typeof sessionStorage !== 'undefined') {
       try {
