@@ -334,4 +334,17 @@ describe('AuditoriaComponent (HU-38.07..10, HU-41.05..08)', () => {
     fixture.detectChanges();
     expect(component.activeTab()).toBe('novedades');
   });
+
+  it('should not duplicate reporteService.listar call when initialized with tab=novedades', () => {
+    fixture.destroy();
+    reporteAtraccionServiceMock.listar.mockClear();
+    queryParamsSubject.next(convertToParamMap({ tab: 'novedades' }));
+
+    const novedadFixture = TestBed.createComponent(AuditoriaComponent);
+    novedadFixture.detectChanges();
+
+    expect(novedadFixture.componentInstance.activeTab()).toBe('novedades');
+    expect(reporteAtraccionServiceMock.listar).toHaveBeenCalledTimes(1);
+    novedadFixture.destroy();
+  });
 });

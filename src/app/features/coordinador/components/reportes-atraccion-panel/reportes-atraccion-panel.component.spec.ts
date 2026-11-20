@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ReportesAtraccionPanelComponent } from './reportes-atraccion-panel.component';
 import { ReporteAtraccionService } from '../../../../core/services/reporte-atraccion.service';
@@ -187,5 +187,37 @@ describe('ReportesAtraccionPanelComponent', () => {
       'Observaciones Resolución'
     ]);
     expect(args[2].length).toBe(2);
+  });
+
+  it('should prevent double click while actualizarEstado is in flight', () => {
+    const pending$ = new Subject<ReporteAtraccion>();
+    reporteServiceMock.actualizarEstado.mockReturnValue(pending$.asObservable());
+
+    component.cambiarEstadoReporte(mockReportes[0], 'RESUELTO', true);
+    component.cambiarEstadoReporte(mockReportes[0], 'RESUELTO', true);
+
+    expect(reporteServiceMock.actualizarEstado).toHaveBeenCalledTimes(1);
+    expect(component.actualizandoId()).toBe(1);
+
+    pending$.next({ ...mockReportes[0], estado: 'RESUELTO' });
+    pending$.complete();
+
+    expect(component.actualizandoId()).toBeNull();
+  });
+
+  it('should show backend conflict message when reactivation fails with 409', () => {
+    reporteServiceMock.actualizarEstado.mockReturnValue(
+      throwError(() => ({
+        status: 409,
+        error: { detalles: 'Aún tiene 1 reporte(s) pendiente(s) de resolución.' }
+      }))
+    );
+
+    component.cambiarEstadoReporte(mockReportes[0], 'RESUELTO', true);
+
+    expect(notificationServiceMock.error).toHaveBeenCalledWith(
+      'Aún tiene 1 reporte(s) pendiente(s) de resolución.'
+    );
+    expect(component.actualizandoId()).toBeNull();
   });
 });

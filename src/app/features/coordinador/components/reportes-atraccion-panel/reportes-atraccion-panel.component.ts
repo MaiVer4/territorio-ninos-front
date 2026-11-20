@@ -158,27 +158,28 @@ import { exportToCsv } from '../../../../core/utils/csv-exporter';
 
         @if (cargando()) {
           <div class="py-8 text-center text-xs text-slate-400">Cargando reportes...</div>
-        } @else if (reportesFiltrados().length === 0) {
+        } @else if (reportesVista().length === 0) {
           <div class="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <p class="text-xs font-bold text-slate-600">No hay reportes que coincidan con el filtro</p>
           </div>
         } @else {
           <div class="space-y-3">
-            @for (rep of reportesFiltrados(); track rep.id) {
+            @for (item of reportesVista(); track item.rep.id) {
+              @let rep = item.rep;
               <div
                 [attr.data-testid]="'reporte-card-' + rep.id"
                 class="border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:border-slate-300 transition">
                 <div class="space-y-1.5 flex-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <span class="text-sm font-extrabold text-slate-800">{{ rep.atraccionNombre }}</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [ngClass]="claseTipo(rep.tipoReporte)">
-                      {{ etiquetaTipo(rep.tipoReporte) }}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [ngClass]="item.claseTipo">
+                      {{ item.etiquetaTipo }}
                     </span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [ngClass]="claseSeveridad(rep.severidad)">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [ngClass]="item.claseSeveridad">
                       {{ rep.severidad }}
                     </span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [ngClass]="claseEstado(rep.estado)">
-                      {{ etiquetaEstado(rep.estado) }}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" [ngClass]="item.claseEstado">
+                      {{ item.etiquetaEstado }}
                     </span>
                     @if (rep.atraccionDesactivada) {
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
@@ -188,7 +189,7 @@ import { exportToCsv } from '../../../../core/utils/csv-exporter';
                   </div>
                   <p class="text-xs text-slate-700 leading-relaxed">{{ rep.descripcion }}</p>
                   <p class="text-[11px] text-slate-400">
-                    Reportado por <strong class="text-slate-600">{{ rep.usuarioReportaNombre }}</strong> · {{ formatearFecha(rep.fechaReporte) }}
+                    Reportado por <strong class="text-slate-600">{{ rep.usuarioReportaNombre }}</strong> · {{ item.fechaFormateada }}
                   </p>
                   @if (rep.observacionesResolucion) {
                     <p class="text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg">
@@ -205,15 +206,19 @@ import { exportToCsv } from '../../../../core/utils/csv-exporter';
                     @if (rep.estado === 'ABIERTO') {
                       <button
                         type="button"
+                        [attr.data-testid]="'btn-en-proceso-' + rep.id"
+                        [disabled]="actualizandoId() === rep.id"
                         (click)="cambiarEstadoReporte(rep, 'EN_PROCESO', false)"
-                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer">
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed text-amber-800 border border-amber-200 transition cursor-pointer">
                         En proceso
                       </button>
                     }
                     <button
                       type="button"
+                      [attr.data-testid]="'btn-resolver-' + rep.id"
+                      [disabled]="actualizandoId() === rep.id"
                       (click)="cambiarEstadoReporte(rep, 'RESUELTO', rep.atraccionEstadoActual === 'FUERA_DE_SERVICIO')"
-                      class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer">
+                      class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition cursor-pointer">
                       {{ rep.atraccionEstadoActual === 'FUERA_DE_SERVICIO' ? 'Resolver y Reactivar' : 'Marcar Resuelto' }}
                     </button>
                   </div>
@@ -254,6 +259,7 @@ export class ReportesAtraccionPanelComponent implements OnInit {
   readonly reportes = signal<ReporteAtraccion[]>([]);
   readonly cargando = signal<boolean>(false);
   readonly guardando = signal<boolean>(false);
+  readonly actualizandoId = signal<number | null>(null);
 
   // Form signals
   readonly atraccionIdSeleccionada = signal<number | null>(null);
@@ -274,6 +280,18 @@ export class ReportesAtraccionPanelComponent implements OnInit {
       (tip === 'TODOS' || r.tipoReporte === tip)
     );
   });
+
+  readonly reportesVista = computed(() =>
+    this.reportesFiltrados().map(rep => ({
+      rep,
+      fechaFormateada: this.formatearFecha(rep.fechaReporte),
+      etiquetaTipo: this.etiquetaTipo(rep.tipoReporte),
+      claseTipo: this.claseTipo(rep.tipoReporte),
+      claseSeveridad: this.claseSeveridad(rep.severidad),
+      etiquetaEstado: this.etiquetaEstado(rep.estado),
+      claseEstado: this.claseEstado(rep.estado)
+    }))
+  );
 
   ngOnInit(): void {
     this.cargarReportes();
@@ -336,13 +354,18 @@ export class ReportesAtraccionPanelComponent implements OnInit {
   }
 
   cambiarEstadoReporte(rep: ReporteAtraccion, nuevoEstado: EstadoReporteAtraccion, reactivar: boolean): void {
+    if (this.actualizandoId() === rep.id) return;
+    this.actualizandoId.set(rep.id);
     this.reporteService.actualizarEstado(rep.id, {
       estado: nuevoEstado,
       observacionesResolucion: nuevoEstado === 'RESUELTO'
         ? (reactivar ? 'Novedad resuelta y atracción reactivada' : 'Novedad resuelta')
         : 'En atención por equipo técnico/operativo',
       reactivarAtraccion: reactivar
-    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.actualizandoId.set(null))
+    ).subscribe({
       next: actualizado => {
         this.reportes.update(prev => prev.map(item => item.id === rep.id ? actualizado : item));
         this.actualizarConteo();
@@ -353,7 +376,10 @@ export class ReportesAtraccionPanelComponent implements OnInit {
           this.atraccionEstadoModificado.emit();
         }
       },
-      error: () => this.notificationService.error('No se pudo actualizar el estado del reporte.')
+      error: (err) => {
+        const msg = err?.error?.detalles || err?.error?.mensaje || err?.error?.message || 'No se pudo actualizar el estado del reporte.';
+        this.notificationService.error(msg);
+      }
     });
   }
 

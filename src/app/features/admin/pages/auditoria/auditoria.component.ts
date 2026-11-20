@@ -537,7 +537,6 @@ export class AuditoriaComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarIncidentesYPausas();
-    this.cargarConteoNovedades();
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(params => {
@@ -546,6 +545,9 @@ export class AuditoriaComponent implements OnInit {
           this.activeTab.set(tab);
         }
       });
+    if (this.activeTab() !== 'novedades') {
+      this.cargarConteoNovedades();
+    }
   }
 
   cargarConteoNovedades(): void {
@@ -556,7 +558,7 @@ export class AuditoriaComponent implements OnInit {
           const count = (reportes || []).filter(r => r.estado !== 'RESUELTO').length;
           this.novedadesPendientes.set(count);
         },
-        error: () => {}
+        error: err => console.warn('No se pudo cargar el conteo de novedades pendientes:', err)
       });
   }
 
