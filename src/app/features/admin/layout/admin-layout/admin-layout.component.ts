@@ -236,7 +236,6 @@ export class AdminLayoutComponent {
     { path: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/admin/colaboradores', label: 'Usuarios', icon: 'users' },
     { path: '/admin/atracciones', label: 'Atracciones', icon: 'attractions' },
-    { path: '/admin/novedades', label: 'Novedades / Daños', icon: 'audit' },
     { path: '/admin/asignaciones', label: 'Asignaciones', icon: 'assignments' },
     { path: '/admin/reportes', label: 'Reportes de Ventas', icon: 'reports' },
     { path: '/admin/turnos', label: 'Historial de Turnos', icon: 'shifts' },
@@ -247,11 +246,10 @@ export class AdminLayoutComponent {
     const url = this.currentUrl();
     if (url.includes('/admin/colaboradores') || url.includes('/admin/usuarios')) return 'Usuarios';
     if (url.includes('/admin/atracciones')) return 'Atracciones';
-    if (url.includes('/admin/novedades')) return 'Novedades y Reportes de Atracciones';
     if (url.includes('/admin/asignaciones')) return 'Asignaciones de Operarios';
     if (url.includes('/admin/reportes')) return 'Reportes de Ventas';
     if (url.includes('/admin/turnos')) return 'Historial de Turnos';
-    if (url.includes('/admin/auditoria')) return 'Auditoría';
+    if (url.includes('/admin/auditoria') || url.includes('/admin/novedades')) return 'Auditoría';
     if (url.includes('/admin/configuracion')) return 'Configuración';
     return 'Dashboard';
   });

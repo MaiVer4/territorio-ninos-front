@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -90,7 +91,10 @@ export const routes: Routes = [
       },
       {
         path: 'novedades',
-        loadComponent: () => import('./features/coordinador/components/reportes-atraccion-panel/reportes-atraccion-panel.component').then(m => m.ReportesAtraccionPanelComponent)
+        redirectTo: () => {
+          const router = inject(Router);
+          return router.createUrlTree(['/admin/auditoria'], { queryParams: { tab: 'novedades' } });
+        }
       },
       {
         path: 'configuracion',

@@ -13,6 +13,7 @@ import {
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { ReporteAtraccionService } from '../../../../core/services/reporte-atraccion.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { exportToCsv } from '../../../../core/utils/csv-exporter';
 
 @Component({
   selector: 'app-reportes-atraccion-panel',
@@ -140,6 +141,18 @@ import { NotificationService } from '../../../../core/services/notification.serv
               <option value="MANTENIMIENTO_PREVENTIVO">Mantenimiento</option>
               <option value="OTRO">Otro</option>
             </select>
+
+            <button
+              type="button"
+              data-testid="btn-exportar-csv-novedades"
+              (click)="exportarCsv()"
+              [disabled]="reportesFiltrados().length === 0"
+              class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span>Exportar CSV</span>
+            </button>
           </div>
         </div>
 
@@ -232,6 +245,7 @@ export class ReportesAtraccionPanelComponent implements OnInit {
   }
 
   readonly atraccionEstadoModificado = output<void>();
+  readonly conteoPendientesChange = output<number>();
 
   private readonly _atraccionesExternas = signal<Atraccion[] | null>(null);
   private readonly _atraccionesInternas = signal<Atraccion[]>([]);
@@ -278,7 +292,10 @@ export class ReportesAtraccionPanelComponent implements OnInit {
         finalize(() => this.cargando.set(false))
       )
       .subscribe({
-        next: lista => this.reportes.set(lista || []),
+        next: lista => {
+          this.reportes.set(lista || []);
+          this.actualizarConteo();
+        },
         error: () => this.notificationService.error('No se pudieron cargar los reportes de atracciones.')
       });
   }
@@ -304,6 +321,7 @@ export class ReportesAtraccionPanelComponent implements OnInit {
         this.reportes.update(prev => [creado, ...prev]);
         this.descripcion.set('');
         this.desactivarAtraccion.set(false);
+        this.actualizarConteo();
         this.notificationService.success(
           desactivar
             ? 'Reporte registrado y atracción marcada Fuera de servicio.'
@@ -327,6 +345,7 @@ export class ReportesAtraccionPanelComponent implements OnInit {
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: actualizado => {
         this.reportes.update(prev => prev.map(item => item.id === rep.id ? actualizado : item));
+        this.actualizarConteo();
         this.notificationService.success(
           reactivar ? 'Reporte resuelto y atracción reactivada.' : 'Estado del reporte actualizado.'
         );
@@ -336,6 +355,49 @@ export class ReportesAtraccionPanelComponent implements OnInit {
       },
       error: () => this.notificationService.error('No se pudo actualizar el estado del reporte.')
     });
+  }
+
+  private actualizarConteo(): void {
+    const pendientes = this.reportes().filter(r => r.estado !== 'RESUELTO').length;
+    this.conteoPendientesChange.emit(pendientes);
+  }
+
+  exportarCsv(): void {
+    const lista = this.reportesFiltrados();
+    if (lista.length === 0) return;
+
+    const headers = [
+      'ID',
+      'Fecha Reporte',
+      'Atracción',
+      'Tipo Novedad',
+      'Severidad',
+      'Estado',
+      'Fuera de Servicio',
+      'Reportado Por',
+      'Descripción',
+      'Fecha Resolución',
+      'Resuelto Por',
+      'Observaciones Resolución'
+    ];
+
+    const rows = lista.map(r => [
+      r.id,
+      r.fechaReporte ? this.formatearFecha(r.fechaReporte) : '',
+      r.atraccionNombre || '',
+      this.etiquetaTipo(r.tipoReporte),
+      r.severidad || '',
+      this.etiquetaEstado(r.estado),
+      r.atraccionDesactivada ? 'Sí' : 'No',
+      r.usuarioReportaNombre || '',
+      r.descripcion || '',
+      r.fechaResolucion ? this.formatearFecha(r.fechaResolucion) : '—',
+      r.usuarioResuelveNombre || '—',
+      r.observacionesResolucion || '—'
+    ]);
+
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    exportToCsv(`auditoria_novedades_${fechaHoy}`, headers, rows);
   }
 
   etiquetaTipo(t: TipoReporteAtraccion): string {

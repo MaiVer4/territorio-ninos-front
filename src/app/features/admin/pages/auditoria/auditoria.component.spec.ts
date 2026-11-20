@@ -1,11 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter, Router, ActivatedRoute, convertToParamMap } from '@angular/router';
 import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
+import { of, BehaviorSubject } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuditoriaComponent } from './auditoria.component';
 import { AuditoriaService } from '../../../../core/services/auditoria.service';
+import { ReporteAtraccionService } from '../../../../core/services/reporte-atraccion.service';
 import {
   AuditoriaTicket,
   IncidenteOperativo
@@ -88,8 +90,25 @@ describe('AuditoriaComponent (HU-38.07..10, HU-41.05..08)', () => {
   ];
 
   let auditoriaServiceMock: any;
+  let reporteAtraccionServiceMock: any;
+  let routerMock: any;
+  let queryParamsSubject: BehaviorSubject<any>;
 
   beforeEach(async () => {
+    queryParamsSubject = new BehaviorSubject(convertToParamMap({}));
+
+    routerMock = {
+      navigate: vi.fn()
+    };
+
+    reporteAtraccionServiceMock = {
+      listar: vi.fn().mockReturnValue(of([
+        { id: 1, estado: 'ABIERTO' },
+        { id: 2, estado: 'EN_PROCESO' },
+        { id: 3, estado: 'RESUELTO' }
+      ]))
+    };
+
     auditoriaServiceMock = {
       validarFormatoBusqueda: vi.fn((termino: string) => {
         const clean = (termino || '').trim();
@@ -121,7 +140,15 @@ describe('AuditoriaComponent (HU-38.07..10, HU-41.05..08)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: AuditoriaService, useValue: auditoriaServiceMock }
+        { provide: AuditoriaService, useValue: auditoriaServiceMock },
+        { provide: ReporteAtraccionService, useValue: reporteAtraccionServiceMock },
+        { provide: Router, useValue: routerMock },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            queryParamMap: queryParamsSubject.asObservable()
+          }
+        }
       ]
     }).compileComponents();
 
@@ -276,5 +303,35 @@ describe('AuditoriaComponent (HU-38.07..10, HU-41.05..08)', () => {
 
     createObjectUrlSpy.mockRestore();
     revokeObjectUrlSpy.mockRestore();
+  });
+
+  it('should initialize pending reports count and render dynamic badge', () => {
+    expect(reporteAtraccionServiceMock.listar).toHaveBeenCalled();
+    expect(component.novedadesPendientes()).toBe(2); // 2 pending: ABIERTO and EN_PROCESO
+
+    fixture.detectChanges();
+    const badge = fixture.debugElement.query(By.css('[data-testid="badge-novedades-pendientes"]'));
+    expect(badge).toBeTruthy();
+    expect(badge.nativeElement.textContent.trim()).toBe('2');
+  });
+
+  it('should switch to novedades tab and update query params', () => {
+    component.cambiarTab('novedades');
+    expect(component.activeTab()).toBe('novedades');
+    expect(routerMock.navigate).toHaveBeenCalledWith([], {
+      relativeTo: expect.anything(),
+      queryParams: { tab: 'novedades' },
+      queryParamsHandling: 'merge'
+    });
+
+    fixture.detectChanges();
+    const panelNovedades = fixture.debugElement.query(By.css('app-reportes-atraccion-panel'));
+    expect(panelNovedades).toBeTruthy();
+  });
+
+  it('should activate tab according to query params on navigation', () => {
+    queryParamsSubject.next(convertToParamMap({ tab: 'novedades' }));
+    fixture.detectChanges();
+    expect(component.activeTab()).toBe('novedades');
   });
 });

@@ -7,17 +7,20 @@ import {
   inject,
   ChangeDetectionStrategy
 } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { exportToCsv } from '../../../../core/utils/csv-exporter';
 import { AuditoriaService } from '../../../../core/services/auditoria.service';
+import { ReporteAtraccionService } from '../../../../core/services/reporte-atraccion.service';
 import {
   AuditoriaTicket,
   IncidenteOperativo,
   ResumenInactividadDTO
 } from '../../../../core/models/auditoria.model';
 import { TicketTimelineComponent } from '../../components/ticket-timeline/ticket-timeline.component';
+import { ReportesAtraccionPanelComponent } from '../../../coordinador/components/reportes-atraccion-panel/reportes-atraccion-panel.component';
 
 export type AuditSeverity = 'critical' | 'warning' | 'info';
 export type AuditType =
@@ -40,7 +43,7 @@ export interface AuditLog {
 @Component({
   selector: 'app-auditoria',
   standalone: true,
-  imports: [CommonModule, FormsModule, TicketTimelineComponent],
+  imports: [CommonModule, FormsModule, TicketTimelineComponent, ReportesAtraccionPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="w-full space-y-5 font-sans">
@@ -57,30 +60,45 @@ export interface AuditLog {
         </div>
 
         <!-- Pestañas de navegación -->
-        <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/60">
+        <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/60 overflow-x-auto">
           <button
             type="button"
             data-testid="tab-expediente"
-            (click)="activeTab.set('expediente')"
+            (click)="cambiarTab('expediente')"
             [ngClass]="activeTab() === 'expediente' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
-            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer">
+            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer shrink-0">
             Expediente de Boleta
           </button>
           <button
             type="button"
             data-testid="tab-incidentes"
-            (click)="activeTab.set('incidentes')"
+            (click)="cambiarTab('incidentes')"
             [ngClass]="activeTab() === 'incidentes' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
-            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer">
+            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer shrink-0">
             Incidentes y Pausas
           </button>
           <button
             type="button"
             data-testid="tab-logs"
-            (click)="activeTab.set('logs')"
+            (click)="cambiarTab('logs')"
             [ngClass]="activeTab() === 'logs' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
-            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer">
+            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer shrink-0">
             Bitácora de Logs
+          </button>
+          <button
+            type="button"
+            data-testid="tab-novedades"
+            (click)="cambiarTab('novedades')"
+            [ngClass]="activeTab() === 'novedades' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
+            class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5">
+            <span>Novedades y Daños</span>
+            @if (novedadesPendientes() > 0) {
+              <span
+                data-testid="badge-novedades-pendientes"
+                class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white leading-none">
+                {{ novedadesPendientes() }}
+              </span>
+            }
           </button>
         </div>
       </div>
@@ -450,14 +468,26 @@ export interface AuditLog {
           </div>
         </div>
       }
+      <!-- ========================================== -->
+      <!-- PESTAÑA 4: NOVEDADES Y DAÑOS -->
+      <!-- ========================================== -->
+      @if (activeTab() === 'novedades') {
+        <app-reportes-atraccion-panel
+          (conteoPendientesChange)="novedadesPendientes.set($event)">
+        </app-reportes-atraccion-panel>
+      }
     </div>
   `
 })
 export class AuditoriaComponent implements OnInit {
   readonly auditoriaService = inject(AuditoriaService);
+  readonly reporteService = inject(ReporteAtraccionService);
+  readonly router = inject(Router);
+  readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly activeTab = signal<'expediente' | 'incidentes' | 'logs'>('expediente');
+  readonly activeTab = signal<'expediente' | 'incidentes' | 'logs' | 'novedades'>('expediente');
+  readonly novedadesPendientes = signal<number>(0);
 
   // Estado Pestaña 1: Expediente de Boleta
   terminoBusquedaTicket = signal<string>('');
@@ -507,6 +537,36 @@ export class AuditoriaComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarIncidentesYPausas();
+    this.cargarConteoNovedades();
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const tab = params.get('tab');
+        if (tab === 'novedades' || tab === 'incidentes' || tab === 'logs' || tab === 'expediente') {
+          this.activeTab.set(tab);
+        }
+      });
+  }
+
+  cargarConteoNovedades(): void {
+    this.reporteService.listar()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: reportes => {
+          const count = (reportes || []).filter(r => r.estado !== 'RESUELTO').length;
+          this.novedadesPendientes.set(count);
+        },
+        error: () => {}
+      });
+  }
+
+  cambiarTab(tab: 'expediente' | 'incidentes' | 'logs' | 'novedades'): void {
+    this.activeTab.set(tab);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tab === 'expediente' ? null : tab },
+      queryParamsHandling: 'merge'
+    });
   }
 
   cargarIncidentesYPausas(): void {
