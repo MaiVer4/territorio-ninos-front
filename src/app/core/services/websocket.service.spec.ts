@@ -1,9 +1,12 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { WebSocketService, MensajeEstacionWs } from './websocket.service';
 import { NotificationService } from './notification.service';
+import { AuthService } from './auth.service';
 
 describe('WebSocketService (HU-27.07, HU-27.09, HU-35.03..05)', () => {
   let service: WebSocketService;
+  let currentUserSignal: ReturnType<typeof signal<{ id: number; correo: string; rol: string } | null>>;
   let notificationServiceSpy: {
     success: ReturnType<typeof vi.fn>;
     error: ReturnType<typeof vi.fn>;
@@ -11,6 +14,7 @@ describe('WebSocketService (HU-27.07, HU-27.09, HU-35.03..05)', () => {
   };
 
   beforeEach(() => {
+    currentUserSignal = signal({ id: 1, correo: 'admin@tdn.co', rol: 'ADMINISTRADOR' });
     notificationServiceSpy = {
       success: vi.fn(),
       error: vi.fn(),
@@ -20,7 +24,8 @@ describe('WebSocketService (HU-27.07, HU-27.09, HU-35.03..05)', () => {
     TestBed.configureTestingModule({
       providers: [
         WebSocketService,
-        { provide: NotificationService, useValue: notificationServiceSpy }
+        { provide: NotificationService, useValue: notificationServiceSpy },
+        { provide: AuthService, useValue: { currentUser: currentUserSignal, getToken: vi.fn().mockReturnValue('mock-jwt') } }
       ]
     });
 
@@ -98,5 +103,28 @@ describe('WebSocketService (HU-27.07, HU-27.09, HU-35.03..05)', () => {
 
     expect(events.length).toBe(1);
     sub.unsubscribe();
+  });
+
+  it('should reconnect admin dashboard on backoff when dashboardAdminActivo is true without atraccionIdActiva', () => {
+    vi.useFakeTimers();
+    service.conectarDashboardAdmin();
+    service.iniciarReconexionConBackoff();
+    expect(service.estadoConexion()).toBe('RECONECTANDO');
+
+    vi.advanceTimersByTime(2100);
+    expect(service.estadoConexion()).toBe('CONECTADO');
+    expect(service.connected()).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('should disconnect automatically when currentUser signal becomes null', () => {
+    service.conectarEstacion(1);
+    expect(service.estadoConexion()).toBe('CONECTADO');
+
+    currentUserSignal.set(null);
+    TestBed.flushEffects();
+
+    expect(service.estadoConexion()).toBe('SIN_CONEXION');
+    expect(service.connected()).toBe(false);
   });
 });

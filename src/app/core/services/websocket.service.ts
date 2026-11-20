@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, OnDestroy, InjectionToken } from '@angular/core';
+import { Injectable, inject, signal, effect, OnDestroy, InjectionToken } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { EstadoEnlaceOperario } from '../models/operador.model';
 import { NotificationService } from './notification.service';
@@ -82,6 +82,18 @@ export class WebSocketService implements OnDestroy {
 
   constructor() {
     this.iniciarListenersConectividad();
+    if (this.authService?.currentUser) {
+      let sesionPreviaActiva = !!this.authService.currentUser();
+      effect(() => {
+        const usuario = this.authService!.currentUser();
+        if (usuario) {
+          sesionPreviaActiva = true;
+        } else if (sesionPreviaActiva) {
+          sesionPreviaActiva = false;
+          this.desconectar();
+        }
+      });
+    }
   }
 
   ngOnDestroy(): void {
@@ -210,7 +222,7 @@ export class WebSocketService implements OnDestroy {
 
     this.reconexionTimer = setTimeout(() => {
       this.reconexionTimer = null;
-      if (this.atraccionIdActiva && typeof navigator !== 'undefined' && navigator.onLine) {
+      if ((this.atraccionIdActiva || this.dashboardAdminActivo) && typeof navigator !== 'undefined' && navigator.onLine) {
         this.reintentarConexion();
       } else {
         this.estadoConexion.set('SIN_CONEXION');
@@ -367,18 +379,24 @@ export class WebSocketService implements OnDestroy {
   }
 
   private reintentarConexion(): void {
-    if (!this.atraccionIdActiva) return;
+    if (!this.atraccionIdActiva && !this.dashboardAdminActivo) return;
 
     if (this.stompClient) {
       try {
         this.stompClient.deactivate();
-        this.stompClient = null;
       } catch {
         // Ignorar
       }
+      this.stompClient = null;
     }
 
-    this.conectarEstacion(this.atraccionIdActiva);
+    if (this.deshabilitarConexionReal || !this.isWindowAvailable()) {
+      this.estadoConexion.set('CONECTADO');
+      this.connected.set(true);
+      return;
+    }
+
+    this.asegurarClienteStompConectado();
   }
 
   private limpiarReconexionTimer(): void {
@@ -389,7 +407,7 @@ export class WebSocketService implements OnDestroy {
   }
 
   private readonly handleOnline = () => {
-    if (this.atraccionIdActiva) {
+    if (this.atraccionIdActiva || this.dashboardAdminActivo) {
       this.reintentarConexion();
     } else {
       this.estadoConexion.set('CONECTADO');

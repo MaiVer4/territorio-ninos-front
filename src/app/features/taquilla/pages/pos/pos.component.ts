@@ -778,6 +778,16 @@ export class TaquillaPosComponent implements OnInit {
           this.cargarCatalogoAtracciones();
         }
         if (nuevoEstado === 'FUERA_DE_SERVICIO') {
+          const itemsActivos = this.itemsSeleccionados();
+          const removidos = itemsActivos.filter(item => String(item.atraccion?.id) === String(event.atraccionId));
+          if (removidos.length > 0) {
+            this.itemsSeleccionados.update(items =>
+              items.filter(item => String(item.atraccion?.id) !== String(event.atraccionId))
+            );
+            this.notificationService?.warn(
+              `Se retiraron ${removidos.length} ítem(s) de "${removidos[0].atraccion.nombre}" de la orden porque pasó a Fuera de servicio.`
+            );
+          }
           this.notificationService?.warn(event.mensaje || 'Una atracción fue marcada Fuera de servicio.');
         } else if (nuevoEstado === 'ACTIVO') {
           this.notificationService?.info(event.mensaje || 'Una atracción volvió a estar activa.');
