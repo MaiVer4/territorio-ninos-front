@@ -103,4 +103,63 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
     btnOverride.nativeElement.click();
     expect(operacionServiceSpy.autorizarIngresoForzadoSupervisor).toHaveBeenCalledWith('1234');
   });
+
+  it('should render fallback buttons (capture photo and retry live) when camera is inactive', () => {
+    component.camaraActiva.set(false);
+    fixture.detectChanges();
+
+    const btnFoto = fixture.debugElement.query(By.css('[data-testid="btn-capturar-foto-qr"]'));
+    expect(btnFoto).toBeTruthy();
+    expect(btnFoto.nativeElement.textContent).toContain('Tomar Foto del QR');
+
+    const btnReintentar = fixture.debugElement.query(By.css('[data-testid="btn-reintentar-camara"]'));
+    expect(btnReintentar).toBeTruthy();
+
+    const btnFotoContingencia = fixture.debugElement.query(By.css('[data-testid="btn-foto-contingencia"]'));
+    expect(btnFotoContingencia).toBeTruthy();
+  });
+
+  it('should detect insecure HTTP context and set helpful mobile message', async () => {
+    vi.spyOn(component, 'esContextoInseguro').mockReturnValue(true);
+
+    await component.iniciarCamara();
+    fixture.detectChanges();
+
+    expect(component.camaraActiva()).toBe(false);
+    expect(component.mensajeErrorCamara()).toContain('La cámara en vivo requiere HTTPS en móviles');
+  });
+
+  it('should process QR from captured photo file successfully', async () => {
+    const mockFile = new File(['mock content'], 'qr-test.png', { type: 'image/png' });
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+    const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    // Spy on procesarCodigoEscaneado
+    const procesarSpy = vi.spyOn(component, 'procesarCodigoEscaneado').mockImplementation(() => {});
+
+    // Mock BrowserMultiFormatReader.prototype.decodeFromImageUrl
+    const zxing = await import('@zxing/browser');
+    const decodeSpy = vi.spyOn(zxing.BrowserCodeReader.prototype, 'decodeFromImageUrl').mockResolvedValue({
+      getText: () => 'MOCK-UUID-DESDE-FOTO'
+    } as any);
+
+    const mockEvent = {
+      target: {
+        files: [mockFile],
+        value: 'dummy'
+      }
+    } as unknown as Event;
+
+    await component.onFileCaptured(mockEvent);
+
+    expect(createObjectUrlSpy).toHaveBeenCalledWith(mockFile);
+    expect(decodeSpy).toHaveBeenCalledWith('blob:mock-url');
+    expect(procesarSpy).toHaveBeenCalledWith('MOCK-UUID-DESDE-FOTO');
+    expect(soundServiceSpy.reproducirBeepEscaneo).toHaveBeenCalled();
+    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:mock-url');
+
+    decodeSpy.mockRestore();
+    createObjectUrlSpy.mockRestore();
+    revokeObjectUrlSpy.mockRestore();
+  });
 });

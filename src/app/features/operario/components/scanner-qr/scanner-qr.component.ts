@@ -35,7 +35,8 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
           class="w-full h-full object-cover"
           autoplay
           muted
-          playsinline></video>
+          playsinline
+          webkit-playsinline></video>
 
         <!-- Retícula Visual Semitransparente de Encuadre (HU-25.07 / Notion: SCRUM-399) -->
         <div
@@ -59,24 +60,63 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
           </div>
         </div>
 
-        <!-- Mensaje de Estado / Permiso de Cámara -->
+        <!-- Mensaje de Estado / Permiso de Cámara y Fallback Nativo -->
         @if (!camaraActiva()) {
-          <div class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-6 text-center text-white z-10">
-            <svg class="w-12 h-12 text-slate-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-6 text-center text-white z-10 space-y-3">
+            <svg class="w-12 h-12 text-slate-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <p class="text-xs text-slate-300 font-medium mb-3">
+            <p class="text-xs text-slate-300 font-medium max-w-xs leading-relaxed">
               {{ mensajeErrorCamara() || 'Cámara en espera o no disponible.' }}
             </p>
-            <button
-              type="button"
-              (click)="iniciarCamara()"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] cursor-pointer">
-              Reintentar Cámara
-            </button>
+
+            <div class="flex flex-col sm:flex-row items-center gap-2 pt-1 w-full max-w-xs">
+              <!-- Botón Fallback Nativo Móvil (Siempre disponible) -->
+              <button
+                type="button"
+                data-testid="btn-capturar-foto-qr"
+                (click)="fileInput.click()"
+                [disabled]="procesandoFoto()"
+                class="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-xs">
+                @if (procesandoFoto()) {
+                  <span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>Leyendo QR...</span>
+                } @else {
+                  <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Tomar Foto del QR</span>
+                }
+              </button>
+
+              <!-- Botón Reintentar Streaming en Vivo -->
+              <button
+                type="button"
+                data-testid="btn-reintentar-camara"
+                (click)="iniciarCamara()"
+                [disabled]="iniciandoCamara()"
+                class="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2">
+                @if (iniciandoCamara()) {
+                  <span class="inline-block w-3 h-3 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></span>
+                  <span>Iniciando...</span>
+                } @else {
+                  <span>Reintentar en Vivo</span>
+                }
+              </button>
+            </div>
           </div>
         }
+
+        <!-- Input nativo oculto para escaneo por foto móvil (funciona siempre) -->
+        <input
+          #fileInput
+          type="file"
+          accept="image/*"
+          capture="environment"
+          (change)="onFileCaptured($event)"
+          class="hidden" />
 
         <!-- Bloqueo por Aforo Completo (HU-34.05 / Notion: CA-02) -->
         @if (!operacionService.escanerDesbloqueado() && operacionService.aforoCompleto()) {
@@ -103,11 +143,23 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
         }
       </div>
 
-      <!-- Campo de Contingencia para Digitación Manual de UUID (HU-25.05 / Notion: CA-04) -->
-      <div class="w-full mt-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
-        <label for="inputContingencia" class="block text-[11px] font-bold text-slate-600 mb-1.5">
-          Contingencia Manual (Boleto deteriorado o sin cámara):
-        </label>
+      <!-- Campo de Contingencia para Digitación Manual de UUID / Foto Rápida (HU-25.05 / Notion: CA-04) -->
+      <div class="w-full mt-3 bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-2">
+        <div class="flex items-center justify-between">
+          <label for="inputContingencia" class="block text-[11px] font-bold text-slate-600">
+            Contingencia (Boleto deteriorado o sin cámara):
+          </label>
+          <button
+            type="button"
+            data-testid="btn-foto-contingencia"
+            (click)="fileInput.click()"
+            class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            </svg>
+            <span>Foto rápida QR</span>
+          </button>
+        </div>
         <div class="flex items-center gap-2">
           <input
             id="inputContingencia"
@@ -191,10 +243,13 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   codigoManual = '';
   pinSupervisor = '';
   camaraActiva = signal<boolean>(false);
+  iniciandoCamara = signal<boolean>(false);
+  procesandoFoto = signal<boolean>(false);
   mensajeErrorCamara = signal<string | null>(null);
   autorizandoSupervisor = signal<boolean>(false);
 
   private codeReader: BrowserMultiFormatReader | null = null;
+  private scannerControls: { stop: () => void } | null = null;
   private scanningStream: MediaStream | null = null;
   private ultimoCodigoLeido = '';
   private ultimoScanTimestamp = 0;
@@ -207,55 +262,125 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
     this.detenerCamara();
   }
 
-  iniciarCamara(): void {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      this.mensajeErrorCamara.set('Cámara no soportada en este entorno.');
+  esContextoInseguro(): boolean {
+    if (typeof window === 'undefined') return false;
+    if (window.isSecureContext === false) return true;
+    const isHttp = window.location.protocol === 'http:';
+    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    return isHttp && !isLocal;
+  }
+
+  async iniciarCamara(): Promise<void> {
+    this.detenerCamara();
+    this.iniciandoCamara.set(true);
+    this.mensajeErrorCamara.set(null);
+
+    if (this.esContextoInseguro() || typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      this.camaraActiva.set(false);
+      this.iniciandoCamara.set(false);
+      this.mensajeErrorCamara.set(
+        this.esContextoInseguro()
+          ? 'La cámara en vivo requiere HTTPS en móviles. Usa el botón "Tomar Foto del QR" a continuación para escanear.'
+          : 'Cámara en espera o no soportada en este entorno.'
+      );
       return;
     }
 
     try {
       this.codeReader = new BrowserMultiFormatReader();
-      navigator.mediaDevices
-        .getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
-        })
-        .then(stream => {
-          this.scanningStream = stream;
-          const video = this.videoRef()?.nativeElement;
-          if (video) {
-            video.srcObject = stream;
-            video.play().catch(() => {});
-          }
-          this.camaraActiva.set(true);
-          this.mensajeErrorCamara.set(null);
-          this.iniciarDecodificacionContinua();
-        })
-        .catch(err => {
-          this.camaraActiva.set(false);
-          this.mensajeErrorCamara.set(err?.message || 'Acceso a cámara denegado o no disponible.');
+
+      let stream: MediaStream;
+      try {
+        // 1. Intentar cámara trasera en móvil sin forzar resoluciones rígidas
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
         });
-    } catch {
+      } catch {
+        // 2. Fallback permisivo a cualquier sensor de video disponible
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      this.scanningStream = stream;
+      const video = this.videoRef()?.nativeElement;
+      if (video) {
+        video.srcObject = stream;
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        await video.play().catch(e => console.warn('Autoplay video aviso:', e));
+      }
+
+      this.camaraActiva.set(true);
+      this.mensajeErrorCamara.set(null);
+      await this.iniciarDecodificacionContinua();
+    } catch (err: unknown) {
       this.camaraActiva.set(false);
-      this.mensajeErrorCamara.set('Error inicializando lector óptico.');
+      const errorObj = err as { name?: string; message?: string };
+      if (errorObj?.name === 'NotAllowedError' || errorObj?.name === 'PermissionDeniedError') {
+        this.mensajeErrorCamara.set('Permiso de cámara denegado. Habilita los permisos en el candado/ajustes de tu navegador.');
+      } else if (errorObj?.name === 'NotFoundError' || errorObj?.name === 'DevicesNotFoundError') {
+        this.mensajeErrorCamara.set('No se encontró ninguna cámara disponible en este dispositivo.');
+      } else if (errorObj?.name === 'NotReadableError' || errorObj?.name === 'TrackStartError') {
+        this.mensajeErrorCamara.set('La cámara está en uso por otra app o bloqueada por el sistema operativo.');
+      } else {
+        this.mensajeErrorCamara.set(errorObj?.message || 'No fue posible acceder a la cámara del dispositivo.');
+      }
+    } finally {
+      this.iniciandoCamara.set(false);
     }
   }
 
-  private iniciarDecodificacionContinua(): void {
+  private async iniciarDecodificacionContinua(): Promise<void> {
     const video = this.videoRef()?.nativeElement;
     if (!video || !this.codeReader) return;
 
-    this.codeReader.decodeFromVideoElement(video, (result, error) => {
+    try {
+      this.scannerControls = await this.codeReader.decodeFromVideoElement(video, (result) => {
+        if (result) {
+          const text = result.getText();
+          const now = Date.now();
+          // Prevenir lecturas repetidas en menos de 1.5s del mismo código
+          if (text !== this.ultimoCodigoLeido || (now - this.ultimoScanTimestamp > 1500)) {
+            this.ultimoCodigoLeido = text;
+            this.ultimoScanTimestamp = now;
+            this.procesarCodigoEscaneado(text);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Decodificación continua detenida:', e);
+    }
+  }
+
+  async onFileCaptured(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.procesandoFoto.set(true);
+    const url = URL.createObjectURL(file);
+    try {
+      const reader = new BrowserMultiFormatReader();
+      const result = await reader.decodeFromImageUrl(url);
       if (result) {
         const text = result.getText();
-        const now = Date.now();
-        // Prevenir lecturas repetidas en menos de 1.5s del mismo código
-        if (text !== this.ultimoCodigoLeido || (now - this.ultimoScanTimestamp > 1500)) {
-          this.ultimoCodigoLeido = text;
-          this.ultimoScanTimestamp = now;
-          this.procesarCodigoEscaneado(text);
-        }
+        this.procesarCodigoEscaneado(text);
+        this.soundService.reproducirBeepEscaneo();
+      } else {
+        this.mensajeErrorCamara.set('No se detectó un código QR legible en la foto.');
       }
-    }).catch(() => {});
+    } catch {
+      this.mensajeErrorCamara.set('No se detectó un código QR legible en la foto. Intenta con mejor enfoque e iluminación.');
+    } finally {
+      URL.revokeObjectURL(url);
+      input.value = '';
+      this.procesandoFoto.set(false);
+    }
   }
 
   procesarCodigoEscaneado(codigo: string): void {
@@ -307,17 +432,28 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   }
 
   detenerCamara(): void {
-    if (this.codeReader) {
+    if (this.scannerControls) {
       try {
-        (this.codeReader as unknown as { reset?: () => void }).reset?.();
+        this.scannerControls.stop();
       } catch {
         // Ignorar
       }
-      this.codeReader = null;
+      this.scannerControls = null;
     }
+    this.codeReader = null;
     if (this.scanningStream) {
-      this.scanningStream.getTracks().forEach(t => t.stop());
+      this.scanningStream.getTracks().forEach(t => {
+        try {
+          t.stop();
+        } catch {
+          // Ignorar
+        }
+      });
       this.scanningStream = null;
+    }
+    const video = this.videoRef()?.nativeElement;
+    if (video) {
+      video.srcObject = null;
     }
     this.camaraActiva.set(false);
   }
