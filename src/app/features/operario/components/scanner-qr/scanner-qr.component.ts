@@ -108,16 +108,30 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
             </div>
 
             @if (permisoDenegado()) {
-              <button
-                type="button"
-                data-testid="btn-abrir-guia-permisos"
-                (click)="mostrarGuiaPermisos.set(true)"
-                class="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer inline-flex items-center gap-1 pt-1">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>¿Cómo activar el permiso en Android?</span>
-              </button>
+              <div class="flex flex-col gap-1.5 w-full max-w-xs pt-1">
+                <button
+                  type="button"
+                  data-testid="btn-abrir-ajustes-android"
+                  (click)="abrirAjustesDispositivo()"
+                  class="w-full px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5">
+                  <svg class="w-4 h-4 text-slate-950 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Abrir Ajustes de Android</span>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="btn-abrir-guia-permisos"
+                  (click)="mostrarGuiaPermisos.set(true)"
+                  class="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer inline-flex items-center justify-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Ver pasos para activar en Chrome</span>
+                </button>
+              </div>
             }
           </div>
         }
@@ -292,6 +306,18 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
             <div class="space-y-2">
               <button
                 type="button"
+                data-testid="btn-guia-abrir-ajustes"
+                (click)="abrirAjustesDispositivo()"
+                class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Abrir Ajustes de la App</span>
+              </button>
+
+              <button
+                type="button"
                 data-testid="btn-guia-reintentar"
                 (click)="reintentarTrasGuia()"
                 class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5">
@@ -358,12 +384,13 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
     this.iniciandoCamara.set(true);
     this.mensajeErrorCamara.set(null);
 
-    if (this.esContextoInseguro() || typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       this.camaraActiva.set(false);
       this.iniciandoCamara.set(false);
+      this.permisoDenegado.set(true);
       this.mensajeErrorCamara.set(
         this.esContextoInseguro()
-          ? 'La cámara en vivo requiere HTTPS en móviles. Usa el botón "Tomar Foto del QR" a continuación para escanear.'
+          ? 'En Android, Chrome bloquea la cámara sobre HTTP (dirección IP). Abre la app mediante HTTPS (ej. npm run start:ssl) o usa el botón "Tomar Foto del QR".'
           : 'Cámara en espera o no soportada en este entorno.'
       );
       return;
@@ -408,7 +435,7 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
       const errorObj = err as { name?: string; message?: string };
       if (errorObj?.name === 'NotAllowedError' || errorObj?.name === 'PermissionDeniedError') {
         this.permisoDenegado.set(true);
-        this.mensajeErrorCamara.set('Permiso de cámara denegado. Habilita los permisos en el candado/ajustes de tu navegador.');
+        this.mensajeErrorCamara.set('Permiso de cámara denegado. Toca "Abrir Ajustes de Android" o permite el acceso en el candado de la URL.');
       } else if (errorObj?.name === 'NotFoundError' || errorObj?.name === 'DevicesNotFoundError') {
         this.mensajeErrorCamara.set('No se encontró ninguna cámara disponible en este dispositivo.');
       } else if (errorObj?.name === 'NotReadableError' || errorObj?.name === 'TrackStartError') {
@@ -422,23 +449,37 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   }
 
   async reintentarCamara(): Promise<void> {
-    if (typeof navigator !== 'undefined' && 'permissions' in navigator && navigator.permissions?.query) {
-      try {
-        const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
-        if (status.state === 'denied') {
-          this.permisoDenegado.set(true);
-          this.mostrarGuiaPermisos.set(true);
-          this.mensajeErrorCamara.set('El permiso de cámara está bloqueado en tu navegador.');
-          return;
-        }
-      } catch {
-        // Ignorar si el navegador no soporta query de 'camera'
-      }
-    }
-
+    // Disparo directo a iniciarCamara en el hilo del evento click del operario
     await this.iniciarCamara();
     if (this.permisoDenegado()) {
       this.mostrarGuiaPermisos.set(true);
+    }
+  }
+
+  abrirAjustesDispositivo(): void {
+    if (typeof window === 'undefined') return;
+
+    const userAgent = navigator.userAgent || '';
+    let pkg = 'com.android.chrome';
+    if (userAgent.includes('SamsungBrowser')) {
+      pkg = 'com.sec.android.app.sbrowser';
+    } else if (userAgent.includes('Firefox')) {
+      pkg = 'org.mozilla.firefox';
+    } else if (userAgent.includes('MiuiBrowser')) {
+      pkg = 'com.mi.globalbrowser';
+    }
+
+    // Intent estándar de Android para abrir los ajustes de la aplicación actual
+    const intentUrl = `intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:${pkg};end`;
+
+    this.redirigirAjustes(intentUrl);
+  }
+
+  redirigirAjustes(url: string): void {
+    try {
+      window.location.href = url;
+    } catch {
+      // Ignorar si el navegador bloquea la redirección directa por intent
     }
   }
 

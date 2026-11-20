@@ -121,12 +121,25 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
 
   it('should detect insecure HTTP context and set helpful mobile message', async () => {
     vi.spyOn(component, 'esContextoInseguro').mockReturnValue(true);
+    // Mock navigator.mediaDevices as undefined in insecure context
+    const originalMediaDevices = navigator.mediaDevices;
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: undefined,
+      configurable: true,
+      writable: true
+    });
 
     await component.iniciarCamara();
     fixture.detectChanges();
 
     expect(component.camaraActiva()).toBe(false);
-    expect(component.mensajeErrorCamara()).toContain('La cámara en vivo requiere HTTPS en móviles');
+    expect(component.mensajeErrorCamara()).toContain('HTTPS');
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: originalMediaDevices,
+      configurable: true,
+      writable: true
+    });
   });
 
   it('should process QR from captured photo file successfully', async () => {
@@ -187,12 +200,14 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
     expect(component.mostrarGuiaPermisos()).toBe(false);
   });
 
-  it('should trigger reintentarCamara and open guide if permission query reports denied', async () => {
-    const mockPermissions = {
-      query: vi.fn().mockResolvedValue({ state: 'denied' })
-    };
-    Object.defineProperty(navigator, 'permissions', {
-      value: mockPermissions,
+  it('should trigger reintentarCamara and open guide if camera throws NotAllowedError', async () => {
+    const originalMediaDevices = navigator.mediaDevices;
+    const mockGetUserMedia = vi.fn().mockRejectedValue({
+      name: 'NotAllowedError',
+      message: 'Permission denied'
+    });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: mockGetUserMedia },
       configurable: true,
       writable: true
     });
@@ -202,6 +217,19 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
 
     expect(component.permisoDenegado()).toBe(true);
     expect(component.mostrarGuiaPermisos()).toBe(true);
-    expect(component.mensajeErrorCamara()).toContain('bloqueado');
+    expect(component.mensajeErrorCamara()).toContain('denegado');
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: originalMediaDevices,
+      configurable: true,
+      writable: true
+    });
+  });
+
+  it('should execute abrirAjustesDispositivo with android intent', () => {
+    const redirSpy = vi.spyOn(component, 'redirigirAjustes').mockImplementation(() => {});
+    component.abrirAjustesDispositivo();
+    expect(redirSpy).toHaveBeenCalledWith(expect.stringContaining('APPLICATION_DETAILS_SETTINGS'));
+    redirSpy.mockRestore();
   });
 });
