@@ -162,4 +162,46 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
     createObjectUrlSpy.mockRestore();
     revokeObjectUrlSpy.mockRestore();
   });
+
+  it('should show guide modal when camera permission is denied on retry (Android UX)', async () => {
+    component.camaraActiva.set(false);
+    component.permisoDenegado.set(true);
+    fixture.detectChanges();
+
+    const linkGuia = fixture.debugElement.query(By.css('[data-testid="btn-abrir-guia-permisos"]'));
+    expect(linkGuia).toBeTruthy();
+
+    linkGuia.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(component.mostrarGuiaPermisos()).toBe(true);
+    const modalGuia = fixture.debugElement.query(By.css('[data-testid="modal-guia-permisos-camara"]'));
+    expect(modalGuia).toBeTruthy();
+    expect(modalGuia.nativeElement.textContent).toContain('Habilitar Cámara en Android');
+
+    const btnCerrar = fixture.debugElement.query(By.css('[data-testid="btn-guia-cerrar"]'));
+    expect(btnCerrar).toBeTruthy();
+    btnCerrar.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(component.mostrarGuiaPermisos()).toBe(false);
+  });
+
+  it('should trigger reintentarCamara and open guide if permission query reports denied', async () => {
+    const mockPermissions = {
+      query: vi.fn().mockResolvedValue({ state: 'denied' })
+    };
+    Object.defineProperty(navigator, 'permissions', {
+      value: mockPermissions,
+      configurable: true,
+      writable: true
+    });
+
+    await component.reintentarCamara();
+    fixture.detectChanges();
+
+    expect(component.permisoDenegado()).toBe(true);
+    expect(component.mostrarGuiaPermisos()).toBe(true);
+    expect(component.mensajeErrorCamara()).toContain('bloqueado');
+  });
 });

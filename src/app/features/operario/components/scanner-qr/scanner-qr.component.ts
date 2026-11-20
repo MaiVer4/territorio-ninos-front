@@ -95,7 +95,7 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
               <button
                 type="button"
                 data-testid="btn-reintentar-camara"
-                (click)="iniciarCamara()"
+                (click)="reintentarCamara()"
                 [disabled]="iniciandoCamara()"
                 class="w-full px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2">
                 @if (iniciandoCamara()) {
@@ -106,6 +106,19 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
                 }
               </button>
             </div>
+
+            @if (permisoDenegado()) {
+              <button
+                type="button"
+                data-testid="btn-abrir-guia-permisos"
+                (click)="mostrarGuiaPermisos.set(true)"
+                class="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer inline-flex items-center gap-1 pt-1">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>¿Cómo activar el permiso en Android?</span>
+              </button>
+            }
           </div>
         }
 
@@ -228,6 +241,74 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
           </div>
         </div>
       }
+
+      <!-- Modal: Guía Paso a Paso para Habilitar Permisos de Cámara en Android -->
+      @if (mostrarGuiaPermisos()) {
+        <div
+          data-testid="modal-guia-permisos-camara"
+          (click)="onBackdropClick($event)"
+          class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain cursor-pointer">
+          <div
+            (click)="$event.stopPropagation()"
+            class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 text-slate-800 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 cursor-default">
+            
+            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+
+            <h3 class="text-base font-black text-slate-900 text-center mb-1">
+              Habilitar Cámara en Android
+            </h3>
+            <p class="text-xs text-slate-500 text-center mb-4 leading-relaxed">
+              El navegador tiene bloqueado el acceso a la cámara. Sigue estos 3 pasos para activarlo en Chrome:
+            </p>
+
+            <ol class="space-y-2.5 text-xs mb-5">
+              <li class="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                <span class="w-5 h-5 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+                <div>
+                  <strong class="text-slate-800">Toca el candado o ajustes:</strong>
+                  <p class="text-slate-500 text-[11px] mt-0.5">En la barra superior de Chrome (junto a la dirección web), toca el ícono 🔒 o los controles del sitio.</p>
+                </div>
+              </li>
+              <li class="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                <span class="w-5 h-5 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+                <div>
+                  <strong class="text-slate-800">Abre Permisos y Cámara:</strong>
+                  <p class="text-slate-500 text-[11px] mt-0.5">Selecciona "Permisos", entra a "Cámara" y cámbialo a <strong>"Permitir"</strong>.</p>
+                </div>
+              </li>
+              <li class="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                <span class="w-5 h-5 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+                <div>
+                  <strong class="text-slate-800">Toca "Reintentar":</strong>
+                  <p class="text-slate-500 text-[11px] mt-0.5">Toca el botón verde a continuación para activar el escáner de inmediato.</p>
+                </div>
+              </li>
+            </ol>
+
+            <div class="space-y-2">
+              <button
+                type="button"
+                data-testid="btn-guia-reintentar"
+                (click)="reintentarTrasGuia()"
+                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5">
+                <span>¡Listo, ya lo permití! Reintentar</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="btn-guia-cerrar"
+                (click)="cerrarGuiaPermisos()"
+                class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -247,6 +328,8 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   procesandoFoto = signal<boolean>(false);
   mensajeErrorCamara = signal<string | null>(null);
   autorizandoSupervisor = signal<boolean>(false);
+  permisoDenegado = signal<boolean>(false);
+  mostrarGuiaPermisos = signal<boolean>(false);
 
   private codeReader: BrowserMultiFormatReader | null = null;
   private scannerControls: { stop: () => void } | null = null;
@@ -317,11 +400,14 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
 
       this.camaraActiva.set(true);
       this.mensajeErrorCamara.set(null);
+      this.permisoDenegado.set(false);
+      this.mostrarGuiaPermisos.set(false);
       await this.iniciarDecodificacionContinua();
     } catch (err: unknown) {
       this.camaraActiva.set(false);
       const errorObj = err as { name?: string; message?: string };
       if (errorObj?.name === 'NotAllowedError' || errorObj?.name === 'PermissionDeniedError') {
+        this.permisoDenegado.set(true);
         this.mensajeErrorCamara.set('Permiso de cámara denegado. Habilita los permisos en el candado/ajustes de tu navegador.');
       } else if (errorObj?.name === 'NotFoundError' || errorObj?.name === 'DevicesNotFoundError') {
         this.mensajeErrorCamara.set('No se encontró ninguna cámara disponible en este dispositivo.');
@@ -333,6 +419,36 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
     } finally {
       this.iniciandoCamara.set(false);
     }
+  }
+
+  async reintentarCamara(): Promise<void> {
+    if (typeof navigator !== 'undefined' && 'permissions' in navigator && navigator.permissions?.query) {
+      try {
+        const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
+        if (status.state === 'denied') {
+          this.permisoDenegado.set(true);
+          this.mostrarGuiaPermisos.set(true);
+          this.mensajeErrorCamara.set('El permiso de cámara está bloqueado en tu navegador.');
+          return;
+        }
+      } catch {
+        // Ignorar si el navegador no soporta query de 'camera'
+      }
+    }
+
+    await this.iniciarCamara();
+    if (this.permisoDenegado()) {
+      this.mostrarGuiaPermisos.set(true);
+    }
+  }
+
+  async reintentarTrasGuia(): Promise<void> {
+    this.mostrarGuiaPermisos.set(false);
+    await this.iniciarCamara();
+  }
+
+  cerrarGuiaPermisos(): void {
+    this.mostrarGuiaPermisos.set(false);
   }
 
   private async iniciarDecodificacionContinua(): Promise<void> {
@@ -399,6 +515,9 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown.escape')
   onEscapeKey(): void {
+    if (this.mostrarGuiaPermisos()) {
+      this.cerrarGuiaPermisos();
+    }
     if (this.operacionService.modalAforoCompletoAbierto()) {
       this.operacionService.cerrarModalAforoCompleto();
     }
@@ -406,6 +525,9 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
 
   onBackdropClick(event: MouseEvent): void {
     if (event.target === event.currentTarget) {
+      if (this.mostrarGuiaPermisos()) {
+        this.cerrarGuiaPermisos();
+      }
       this.operacionService.cerrarModalAforoCompleto();
     }
   }
