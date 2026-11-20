@@ -173,8 +173,11 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       nombreOtroOperario: 'Otro Operario'
     };
 
-    service.confirmarEstacionTrabajo(estacionOcupada);
+    let confirmada: boolean | undefined;
+    service.confirmarEstacionTrabajo(estacionOcupada).subscribe(res => (confirmada = res));
 
+    expect(confirmada).toBe(false);
+    httpMock.expectNone(r => r.url.includes('/operacion/vincular'));
     expect(service.estacionActiva()?.confirmada).toBeFalsy();
     expect(notificationServiceSpy.error).toHaveBeenCalledWith(
       expect.stringContaining('ya está atendida por Otro Operario')
@@ -196,12 +199,46 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       estadoEnlace: 'CONECTADO'
     };
 
-    service.confirmarEstacionTrabajo(estacion);
+    let confirmada: boolean | undefined;
+    service.confirmarEstacionTrabajo(estacion).subscribe(res => (confirmada = res));
+    const reqVinc = httpMock.expectOne(r => r.url.includes('/operacion/vincular'));
+    expect(reqVinc.request.method).toBe('POST');
+    reqVinc.flush({ asignacionId: 1 });
 
+    expect(confirmada).toBe(true);
     expect(service.estacionActiva()?.confirmada).toBe(true);
     expect(service.escanerDesbloqueado()).toBe(true);
     expect(wsServiceSpy.conectarEstacion).toHaveBeenCalledWith(1);
     expect(notificationServiceSpy.success).toHaveBeenCalled();
+  });
+
+  it('should reject confirming station and refresh availability when backend responds with 409 Conflict', () => {
+    const estacion: EstacionTrabajo = {
+      idAsignacion: 1,
+      atraccionId: 2,
+      atraccionNombre: 'Piscina de Pelotas',
+      tipoAtraccion: 'TEMPORIZADA',
+      capacidadMaxima: 20,
+      ocupacionActual: 0,
+      duracionMinutosBase: 20,
+      operarioId: 10,
+      operarioNombre: 'Operador Test',
+      confirmada: false,
+      estadoEnlace: 'CONECTADO'
+    };
+
+    let confirmada: boolean | undefined;
+    service.confirmarEstacionTrabajo(estacion).subscribe(res => (confirmada = res));
+    const reqVinc = httpMock.expectOne(r => r.url.includes('/operacion/vincular'));
+    reqVinc.flush({ detalles: 'La atracción ya tiene asignado al operario Pedro.' }, { status: 409, statusText: 'Conflict' });
+
+    expect(confirmada).toBe(false);
+    expect(service.estacionActiva()?.confirmada).toBeFalsy();
+    expect(notificationServiceSpy.error).toHaveBeenCalledWith(
+      expect.stringContaining('Pedro'),
+      'Estación no disponible'
+    );
+    expect(atraccionServiceSpy.getActivas).toHaveBeenCalled();
   });
 
   it('should validate QR and allow entrance of child (HU-25, HU-26.07..09)', () => {
@@ -217,7 +254,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       operarioNombre: 'Op',
       confirmada: true,
       estadoEnlace: 'CONECTADO'
-    });
+    }).subscribe();
+    httpMock.expectOne(r => r.url.includes('/operacion/vincular')).flush({});
 
     let resultado: ResultadoValidacionQr | undefined;
     service.validarTicketQr('BOL-VALIDO-123').subscribe(val => {
@@ -318,7 +356,7 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(service.colaActiva()[0].enPausa).toBe(false);
   });
 
-  it('should handle capacity limits, block scanner and permit supervisor override (HU-34.04..06)', () => {
+  it('should handle capacity limits, block scanner and permit supervisor override verified by backend (HU-34.04..06)', () => {
     service.confirmarEstacionTrabajo({
       idAsignacion: 1,
       atraccionId: 1,
@@ -331,7 +369,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       operarioNombre: 'Op',
       confirmada: true,
       estadoEnlace: 'CONECTADO'
-    });
+    }).subscribe();
+    httpMock.expectOne(r => r.url.includes('/operacion/vincular')).flush({});
 
     service.permitirIngresoMenor({ aprobado: true, uuid: '1', mensajeExplicativo: 'ok', duracionMinutos: 15 });
     const reqSesion1 = httpMock.expectOne(r => r.url.includes('/operacion/iniciar-sesion'));
@@ -346,13 +385,25 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(service.nivelSaturacionAforo()).toBe('LLENO');
     expect(service.escanerDesbloqueado()).toBe(false);
 
-    // Supervisor override
-    expect(service.autorizarIngresoForzadoSupervisor('')).toBe(false);
-    expect(service.autorizarIngresoForzadoSupervisor('wrong-pin')).toBe(false);
-    const autorizado = service.autorizarIngresoForzadoSupervisor('1234');
+    // Empty PIN rejected locally without calling backend
+    let resVacio: boolean | undefined;
+    service.autorizarIngresoForzadoSupervisor('').subscribe(v => (resVacio = v));
+    expect(resVacio).toBe(false);
+
+    // Invalid PIN rejected by backend (no hardcoded '1234' bypass)
+    let resInvalido: boolean | undefined;
+    service.autorizarIngresoForzadoSupervisor('1234').subscribe(v => (resInvalido = v));
+    const reqInvalid = httpMock.expectOne(r => r.url.includes('/operacion/autorizar-sobreaforo'));
+    reqInvalid.flush({ detalles: 'PIN inválido' }, { status: 403, statusText: 'Forbidden' });
+    expect(resInvalido).toBe(false);
+    expect(service.escanerDesbloqueado()).toBe(false);
+
+    // Valid supervisor credential verified by backend unlocks scanner
+    let autorizado: boolean | undefined;
+    service.autorizarIngresoForzadoSupervisor('SupervisorSecret99').subscribe(v => (autorizado = v));
     const reqOverride = httpMock.expectOne(r => r.url.includes('/operacion/autorizar-sobreaforo'));
     expect(reqOverride.request.method).toBe('POST');
-    reqOverride.flush(null);
+    reqOverride.flush(null, { status: 204, statusText: 'No Content' });
 
     expect(autorizado).toBe(true);
     expect(service.escanerDesbloqueado()).toBe(true);
@@ -371,7 +422,8 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
       operarioNombre: 'Op',
       confirmada: true,
       estadoEnlace: 'CONECTADO'
-    });
+    }).subscribe();
+    httpMock.expectOne(r => r.url.includes('/operacion/vincular')).flush({});
 
     let resultado: ResultadoValidacionQr | undefined;
     service.validarTicketQr('BOL-INEXISTENTE-999').subscribe(val => {
@@ -387,6 +439,37 @@ describe('OperacionService (HU-24, HU-26, HU-28, HU-29, HU-32, HU-34)', () => {
     expect(resultado).toBeDefined();
     expect(resultado!.aprobado).toBe(false);
     expect(resultado!.causaRechazo).toBe('BOLETO_NO_ENCONTRADO');
+  });
+
+  it('should fail closed when /escanear returns 500 or network error (status 0)', () => {
+    service.estacionActiva.set({
+      idAsignacion: 1,
+      atraccionId: 1,
+      atraccionNombre: 'Inflable',
+      tipoAtraccion: 'TEMPORIZADA',
+      capacidadMaxima: 5,
+      ocupacionActual: 0,
+      duracionMinutosBase: 15,
+      operarioId: 10,
+      operarioNombre: 'Op',
+      confirmada: true,
+      estadoEnlace: 'CONECTADO'
+    });
+
+    let res500: ResultadoValidacionQr | undefined;
+    service.validarTicketQr('BOL-CUALQUIERA-1').subscribe(val => (res500 = val));
+    httpMock.expectOne(r => r.url.includes('/operacion/escanear')).flush(
+      'Internal Server Error',
+      { status: 500, statusText: 'Server Error' }
+    );
+    expect(res500?.aprobado).toBe(false);
+    expect(res500?.causaRechazo).toBe('ERROR_SERVIDOR');
+
+    let resRed: ResultadoValidacionQr | undefined;
+    service.validarTicketQr('BOL-CUALQUIERA-2').subscribe(val => (resRed = val));
+    httpMock.expectOne(r => r.url.includes('/operacion/escanear')).error(new ProgressEvent('error'));
+    expect(resRed?.aprobado).toBe(false);
+    expect(resRed?.causaRechazo).toBe('SIN_CONEXION');
   });
 
   it('should confirm child exit with animation flag and free capacity (HU-32.06..08)', async () => {

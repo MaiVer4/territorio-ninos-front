@@ -167,6 +167,23 @@ export class OperarioSeleccionComponent implements OnInit {
   }
 
   logout(): void {
+    const confirmada = this.operacionService.estacionActiva()?.confirmada;
+    if (confirmada && typeof this.operacionService.desvincularEstacionActiva === 'function') {
+      this.operacionService
+        .desvincularEstacionActiva()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.operacionService.limpiarEstacionLocal?.();
+            this.authService.logout();
+          },
+          error: () => {
+            this.operacionService.limpiarEstacionLocal?.();
+            this.authService.logout();
+          }
+        });
+      return;
+    }
     this.operacionService.limpiarEstacionLocal?.();
     this.authService.logout();
   }

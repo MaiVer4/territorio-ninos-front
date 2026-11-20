@@ -33,7 +33,7 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
       capacidadMaxima: signal(12),
       ocupacionActual: signal(3),
       validarTicketQr: vi.fn().mockReturnValue(of({ aprobado: true, uuid: 'TEST-123' })),
-      autorizarIngresoForzadoSupervisor: vi.fn().mockReturnValue(true),
+      autorizarIngresoForzadoSupervisor: vi.fn().mockReturnValue(of(true)),
       cerrarModalAforoCompleto: vi.fn()
     };
 

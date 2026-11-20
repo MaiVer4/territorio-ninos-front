@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { WebSocketService } from '../../../../core/services/websocket.service';
@@ -185,13 +186,13 @@ import { EstacionTrabajo } from '../../../../core/models/operador.model';
             <button
               type="button"
               data-testid="btn-confirmar-estacion"
-              [disabled]="activa.ocupadaPorOtroOperario"
+              [disabled]="activa.ocupadaPorOtroOperario || confirmando()"
               (click)="confirmarEstacion(activa)"
               class="w-full min-h-[50px] bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-extrabold text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span>Confirmar Estación e Iniciar Labores</span>
+              <span>{{ confirmando() ? 'Vinculando estación...' : 'Confirmar Estación e Iniciar Labores' }}</span>
             </button>
           }
         </div>
@@ -204,6 +205,8 @@ export class SeleccionAtraccionComponent {
   wsService = inject(WebSocketService);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly confirmando = signal<boolean>(false);
+
   estacionConfirmada = output<EstacionTrabajo>();
 
   seleccionarEstacion(estacion: EstacionTrabajo): void {
@@ -211,8 +214,19 @@ export class SeleccionAtraccionComponent {
   }
 
   confirmarEstacion(estacion: EstacionTrabajo): void {
-    this.operacionService.confirmarEstacionTrabajo(estacion);
-    this.estacionConfirmada.emit(estacion);
+    if (this.confirmando()) return;
+    this.confirmando.set(true);
+    this.operacionService
+      .confirmarEstacionTrabajo(estacion)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.confirmando.set(false))
+      )
+      .subscribe(confirmada => {
+        if (confirmada) {
+          this.estacionConfirmada.emit(estacion);
+        }
+      });
   }
 
   desvincularEstacion(): void {

@@ -50,7 +50,7 @@ describe('SeleccionAtraccionComponent (HU-24.07, HU-24.08, HU-34.04)', () => {
       capacidadMaxima: signal(12),
       nivelSaturacionAforo: signal('BAJO'),
       paradaEmergenciaActiva: signal(false),
-      confirmarEstacionTrabajo: vi.fn(),
+      confirmarEstacionTrabajo: vi.fn().mockReturnValue(of(true)),
       desvincularEstacionActiva: vi.fn().mockReturnValue(of(true)),
       paradaEmergencia: vi.fn(),
       reanudarParadaEmergencia: vi.fn()

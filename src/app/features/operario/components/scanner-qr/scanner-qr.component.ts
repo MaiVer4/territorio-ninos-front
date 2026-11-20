@@ -12,6 +12,7 @@ import {
   HostListener
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BrowserMultiFormatReader } from '@zxing/browser';
@@ -166,9 +167,10 @@ import { SoundNotificationService } from '../../../../core/services/sound-notifi
               <button
                 type="button"
                 data-testid="btn-ingreso-forzado-supervisor"
+                [disabled]="autorizandoSupervisor()"
                 (click)="autorizarSupervisor()"
-                class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] shadow-xs cursor-pointer">
-                Permitir Ingreso
+                class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs rounded-xl transition-transform duration-150 ease-out enabled:active:scale-[0.96] shadow-xs cursor-pointer">
+                {{ autorizandoSupervisor() ? 'Verificando...' : 'Permitir Ingreso' }}
               </button>
             </div>
           </div>
@@ -190,6 +192,7 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   pinSupervisor = '';
   camaraActiva = signal<boolean>(false);
   mensajeErrorCamara = signal<string | null>(null);
+  autorizandoSupervisor = signal<boolean>(false);
 
   private codeReader: BrowserMultiFormatReader | null = null;
   private scanningStream: MediaStream | null = null;
@@ -288,10 +291,19 @@ export class ScannerQrComponent implements OnInit, OnDestroy {
   }
 
   autorizarSupervisor(): void {
-    const ok = this.operacionService.autorizarIngresoForzadoSupervisor(this.pinSupervisor);
-    if (ok) {
-      this.pinSupervisor = '';
-    }
+    if (this.autorizandoSupervisor()) return;
+    this.autorizandoSupervisor.set(true);
+    this.operacionService
+      .autorizarIngresoForzadoSupervisor(this.pinSupervisor)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.autorizandoSupervisor.set(false))
+      )
+      .subscribe(ok => {
+        if (ok) {
+          this.pinSupervisor = '';
+        }
+      });
   }
 
   detenerCamara(): void {

@@ -175,8 +175,16 @@ describe('OperarioSeleccionComponent (Módulo 4 Integration)', () => {
     expect(alerta.nativeElement.textContent).toContain('Parada de Emergencia Activa');
   });
 
-  it('should call logout on button click', () => {
+  it('should unbind confirmed station before calling authService.logout', () => {
     component.logout();
-    expect(authServiceSpy.logout).toHaveBeenCalled();
+    expect(operacionServiceSpy.desvincularEstacionActiva).toHaveBeenCalledTimes(1);
+    expect(authServiceSpy.logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call logout directly when no station is confirmed', () => {
+    operacionServiceSpy.estacionActiva.set({ ...mockEstacion, confirmada: false });
+    component.logout();
+    expect(operacionServiceSpy.desvincularEstacionActiva).not.toHaveBeenCalled();
+    expect(authServiceSpy.logout).toHaveBeenCalledTimes(1);
   });
 });
