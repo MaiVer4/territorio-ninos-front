@@ -13,6 +13,7 @@ import { Router } from '@angular/router';
 import { TiendaService } from '../../../../core/services/tienda.service';
 import {
   CompraOnlineRequest,
+  CatalogoAtraccionOnline,
   ItemCompraOnlineDTO
 } from '../../../../core/models/tienda.model';
 import {
@@ -151,6 +152,32 @@ import {
               }
             </div>
 
+            <!-- Sugerencias de Venta Cruzada (Cross-Selling) -->
+            @if (atraccionesSugeridas().length > 0) {
+              <div class="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200/60 space-y-2">
+                <div class="flex items-center gap-1.5 text-amber-950 font-black text-xs">
+                  <span>✨</span>
+                  <span>Otros padres también combinaron con:</span>
+                </div>
+                <div class="space-y-1.5">
+                  @for (sug of atraccionesSugeridas(); track sug.id) {
+                    <div class="flex items-center justify-between p-2 rounded-xl bg-white/95 border border-amber-200/60 text-xs shadow-2xs">
+                      <div class="truncate mr-2">
+                        <span class="font-extrabold text-slate-900 block truncate">{{ sug.nombre }}</span>
+                        <span class="text-[10px] text-slate-500 font-medium">Desde \${{ calcularPrecioDesde(sug) | number }} COP</span>
+                      </div>
+                      <button
+                        type="button"
+                        (click)="configurarAtraccion.emit(sug)"
+                        class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] shrink-0 transition-colors enabled:active:scale-[0.96]">
+                        + Agregar
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
             <!-- Formulario de Checkout Invitado (Acudiente) -->
             <div class="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-3.5">
               <div class="flex items-center gap-2">
@@ -288,9 +315,31 @@ export class CarritoDrawerComponent {
   private router = inject(Router);
 
   @Output() close = new EventEmitter<void>();
+  @Output() configurarAtraccion = new EventEmitter<CatalogoAtraccionOnline>();
 
   readonly mostrarPasarela = signal<boolean>(false);
   readonly guardandoCompra = signal<boolean>(false);
+
+  readonly atraccionesSugeridas = computed(() => {
+    const idsEnCesta = new Set(this.tiendaService.carrito().map((it) => it.atraccionId));
+    return this.tiendaService.catalogo()
+      .filter((atr) => !idsEnCesta.has(atr.id))
+      .slice(0, 2);
+  });
+
+  calcularPrecioDesde(atr: CatalogoAtraccionOnline): number {
+    if (atr.tipoAtraccion === 'TEMPORIZADA') {
+      if (atr.tarifasTiempo?.length) {
+        return Math.min(...atr.tarifasTiempo.map((t) => t.precio));
+      }
+      return (atr.tarifaMinuto || 1000) * (atr.duracionRecomendadaMinutos || 15);
+    } else {
+      if (atr.tarifasEvento?.length) {
+        return Math.min(...atr.tarifasEvento.map((t) => t.precio));
+      }
+      return 5000;
+    }
+  }
 
   documentoAdulto = '';
   nombreAdulto = '';

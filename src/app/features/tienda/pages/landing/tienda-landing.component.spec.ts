@@ -32,6 +32,7 @@ describe('TiendaLandingComponent', () => {
   ];
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [TiendaLandingComponent],
       providers: [
@@ -52,25 +53,23 @@ describe('TiendaLandingComponent', () => {
     httpTesting.verify();
   });
 
-  it('debe crearse y solicitar el catálogo de atracciones al iniciar', () => {
+  function inicializarConCatalogo() {
     fixture.detectChanges();
-
     const req = httpTesting.expectOne((r) => r.url.endsWith('/tienda/catalogo'));
     expect(req.request.method).toBe('GET');
     req.flush(mockCatalogo);
-
     fixture.detectChanges();
+  }
+
+  it('debe crearse y solicitar el catálogo de atracciones al iniciar', () => {
+    inicializarConCatalogo();
     expect(component).toBeTruthy();
     expect(tiendaService.catalogo().length).toBe(1);
     expect(tiendaService.catalogo()[0].nombre).toBe('Inflable Gigante');
   });
 
   it('debe abrir el modal de configuración de boleta al seleccionar una atracción', () => {
-    fixture.detectChanges();
-    const req = httpTesting.expectOne((r) => r.url.endsWith('/tienda/catalogo'));
-    req.flush(mockCatalogo);
-    fixture.detectChanges();
-
+    inicializarConCatalogo();
     expect(component.atraccionSeleccionada()).toBeNull();
     component.abrirModalAtraccion(mockCatalogo[0]);
     expect(component.atraccionSeleccionada()).toEqual(mockCatalogo[0]);
@@ -79,5 +78,37 @@ describe('TiendaLandingComponent', () => {
   it('debe calcular correctamente el precio desde para la atracción', () => {
     const precio = component.calcularPrecioDesde(mockCatalogo[0]);
     expect(precio).toBe(6000);
+  });
+
+  it('debe filtrar atracciones por categoría y edad', () => {
+    inicializarConCatalogo();
+
+    component.filtroActivo.set('TODAS');
+    expect(component.atraccionesFiltradas().length).toBe(1);
+
+    component.filtroActivo.set('CAIDAS');
+    expect(component.atraccionesFiltradas().length).toBe(0);
+
+    component.filtroActivo.set('TIEMPO');
+    expect(component.atraccionesFiltradas().length).toBe(1);
+  });
+
+  it('debe abrir modal de normas y permitir pasar a compra directa', () => {
+    inicializarConCatalogo();
+
+    expect(component.atraccionNormas()).toBeNull();
+    component.abrirModalNormas(mockCatalogo[0]);
+    expect(component.atraccionNormas()).toEqual(mockCatalogo[0]);
+
+    component.onComprarDesdeNormas();
+    expect(component.atraccionSeleccionada()).toEqual(mockCatalogo[0]);
+  });
+
+  it('debe alternar el estado de apertura de una pregunta frecuente', () => {
+    expect(component.faqs()[0].abierto).toBe(false);
+    component.toggleFaq(0);
+    expect(component.faqs()[0].abierto).toBe(true);
+    component.toggleFaq(0);
+    expect(component.faqs()[0].abierto).toBe(false);
   });
 });
