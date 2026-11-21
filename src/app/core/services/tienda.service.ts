@@ -138,7 +138,8 @@ export class TiendaService {
     return this.http.post<CompraOnlineResponse>(`${this.baseUrl}/comprar`, req).pipe(
       tap((res) => {
         this.ordenReciente.set(res);
-        this.guardarBoletosEnStorage(res.boletas, res);
+        const boletas = res.tickets || res.boletas || [];
+        this.guardarBoletosEnStorage(boletas, res);
         this.limpiarCarrito();
         this.cerrarCarrito();
       })
@@ -149,7 +150,10 @@ export class TiendaService {
    * Consulta los boletos vigentes del día por documento o email del acudiente
    */
   consultarBoletos(identificador: string): Observable<TicketOnline[]> {
-    const params = new HttpParams().set('identificador', identificador.trim());
+    const val = identificador.trim();
+    const params = new HttpParams()
+      .set('documento', val)
+      .set('identificador', val);
     return this.http.get<TicketOnline[]>(`${this.baseUrl}/mis-boletos`, { params }).pipe(
       tap((boletos) => {
         if (boletos && boletos.length > 0) {

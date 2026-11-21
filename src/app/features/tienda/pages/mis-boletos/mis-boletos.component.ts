@@ -144,17 +144,17 @@ interface TicketConQr extends TicketOnline {
                         {{ ticket.estadoTicket === 'PAGADO' ? 'Listo para ingresar' : ticket.estadoTicket }}
                       </span>
                       <h4 class="text-lg font-black text-slate-900 leading-tight">
-                        {{ ticket.nombreAtraccion }}
+                        {{ ticket.atraccionNombre || ticket.nombreAtraccion }}
                       </h4>
                       <p class="text-xs font-semibold text-slate-600 mt-0.5">
-                        Menor: <span class="text-emerald-700 font-bold">{{ ticket.nombreMenor }}</span>
+                        Menor: <span class="text-emerald-700 font-bold">{{ ticket.menorNombre || ticket.nombreMenor }}</span>
                       </p>
                     </div>
 
                     <div class="text-right">
                       <span class="text-[10px] uppercase font-bold text-slate-400 block">Modalidad</span>
                       <span class="text-xs font-extrabold text-slate-800">
-                        {{ ticket.tipoTarifa === 'TIEMPO' ? (ticket.duracionMinutos + ' min') : (ticket.intentosTotales + ' caídas') }}
+                        {{ ticket.tipoTarifa === 'TIEMPO' ? ((ticket.duracionMinutos || ticket.modalidadTexto || '15') + ' min') : ((ticket.intentosTotales || ticket.modalidadTexto || '3') + ' caídas') }}
                       </span>
                     </div>
                   </div>
@@ -169,7 +169,7 @@ interface TicketConQr extends TicketOnline {
                         title="Toca para ampliar el QR">
                         <img
                           [src]="ticket.qrDataUrl"
-                          [alt]="'Código QR boleta ' + ticket.codigoCorto"
+                          [alt]="'Código QR boleta ' + (ticket.codigoCorto || ticket.uuidCodigo)"
                           class="w-44 h-44 object-contain rounded-lg" />
                       </button>
                     } @else {
@@ -180,7 +180,7 @@ interface TicketConQr extends TicketOnline {
 
                     <div class="text-center">
                       <span class="text-[11px] font-mono font-bold tracking-widest text-slate-700 block">
-                        {{ ticket.codigoCorto }}
+                        {{ ticket.codigoCorto || ('TDN-' + ticket.uuidCodigo.substring(0, 8).toUpperCase()) }}
                       </span>
                       <span class="text-[10px] text-slate-400">
                         Toca el QR para ampliar en pantalla completa
@@ -224,7 +224,7 @@ interface TicketConQr extends TicketOnline {
             <div class="flex items-center justify-between pb-2 border-b border-slate-100">
               <div class="text-left">
                 <span class="text-xs font-bold text-emerald-600 block">Territorio de Niños</span>
-                <h4 class="text-base font-black text-slate-900">{{ ticketAmpliado()?.nombreAtraccion }}</h4>
+                <h4 class="text-base font-black text-slate-900">{{ ticketAmpliado()?.atraccionNombre || ticketAmpliado()?.nombreAtraccion }}</h4>
               </div>
               <button
                 type="button"
@@ -235,19 +235,19 @@ interface TicketConQr extends TicketOnline {
             </div>
 
             <p class="text-xs font-semibold text-slate-700">
-              Niño(a): <strong class="text-slate-900">{{ ticketAmpliado()?.nombreMenor }}</strong>
+              Niño(a): <strong class="text-slate-900">{{ ticketAmpliado()?.menorNombre || ticketAmpliado()?.nombreMenor }}</strong>
             </p>
 
             <!-- Imagen QR Gigante en Alto Brillo -->
             <div class="p-4 bg-white rounded-2xl border-2 border-slate-900 flex justify-center">
               <img
                 [src]="ticketAmpliado()?.qrDataUrl"
-                [alt]="'QR ' + ticketAmpliado()?.codigoCorto"
+                [alt]="'QR ' + (ticketAmpliado()?.codigoCorto || ticketAmpliado()?.uuidCodigo)"
                 class="w-64 h-64 object-contain" />
             </div>
 
             <p class="font-mono font-black text-base text-slate-900 tracking-wider">
-              {{ ticketAmpliado()?.codigoCorto }}
+              {{ ticketAmpliado()?.codigoCorto || ('TDN-' + ticketAmpliado()?.uuidCodigo?.substring(0, 8)?.toUpperCase()) }}
             </p>
 
             <button

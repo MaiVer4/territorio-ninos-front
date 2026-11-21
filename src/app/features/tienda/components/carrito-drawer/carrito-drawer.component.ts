@@ -320,6 +320,10 @@ export class CarritoDrawerComponent {
     this.mostrarPasarela.set(false);
     this.guardandoCompra.set(true);
 
+    const partesNombre = this.nombreAdulto.trim().split(' ');
+    const nombres = partesNombre.length > 1 ? partesNombre.slice(0, -1).join(' ') : this.nombreAdulto.trim();
+    const apellidos = partesNombre.length > 1 ? partesNombre.slice(-1).join(' ') : '-';
+
     const itemsDto: ItemCompraOnlineDTO[] = this.tiendaService.carrito().map((it) => ({
       atraccionId: it.atraccionId,
       tipoTarifa: it.tipoTarifa,
@@ -329,14 +333,21 @@ export class CarritoDrawerComponent {
       cantidad: it.cantidad,
       nombreMenor: it.nombreMenor,
       edadMenor: it.edadMenor,
+      menorNombre: it.nombreMenor,
+      menorEdad: it.edadMenor,
       documentoMenor: it.documentoMenor || null
     }));
 
     const req: CompraOnlineRequest = {
+      documento: this.documentoAdulto.trim(),
       documentoAdulto: this.documentoAdulto.trim(),
+      nombres: nombres,
       nombreAdulto: this.nombreAdulto.trim(),
-      telefonoAdulto: this.telefonoAdulto.trim() || null,
-      correoAdulto: this.correoAdulto.trim() || null,
+      apellidos: apellidos,
+      telefono: this.telefonoAdulto.trim() || '3001234567',
+      telefonoAdulto: this.telefonoAdulto.trim() || '3001234567',
+      correo: this.correoAdulto.trim() || 'cliente@parque.com',
+      correoAdulto: this.correoAdulto.trim() || 'cliente@parque.com',
       metodoPago: resultado.metodo,
       codigoReferenciaPago: resultado.codigoReferencia,
       items: itemsDto,

@@ -54,13 +54,20 @@ export interface ItemCompraOnlineDTO {
   cantidad: number;
   nombreMenor: string;
   edadMenor: number;
+  menorNombre?: string;
+  menorEdad?: number;
   documentoMenor?: string | null;
 }
 
 export interface CompraOnlineRequest {
+  documento?: string;
   documentoAdulto: string;
+  nombres?: string;
   nombreAdulto: string;
+  apellidos?: string;
+  telefono?: string;
   telefonoAdulto?: string | null;
+  correo?: string;
   correoAdulto?: string | null;
   metodoPago: string;
   codigoReferenciaPago?: string | null;
@@ -70,30 +77,43 @@ export interface CompraOnlineRequest {
 
 export interface TicketOnline {
   uuidCodigo: string;
-  codigoCorto: string;
-  nombreAtraccion: string;
-  tipoAtraccion: string;
+  codigoCorto?: string;
+  atraccionId?: number;
+  atraccionNombre?: string;
+  nombreAtraccion?: string;
+  tipoAtraccion?: string;
   tipoTarifa: string;
+  modalidadTexto?: string;
   duracionMinutos?: number | null;
   intentosTotales?: number | null;
   intentosRestantes?: number | null;
-  nombreMenor: string;
+  menorNombre?: string;
+  nombreMenor?: string;
+  menorEdad?: number;
+  edadMenor?: number;
+  precioUnitario?: number;
   estadoTicket: string;
   fechaEmision: string;
   horaIngresoEstimada?: string | null;
+  qrData?: string;
 }
 
 export interface CompraOnlineResponse {
   ventaId: number;
   codigoOrden: string;
-  fechaVenta: string;
-  montoTotal: number;
+  fechaCompra?: string;
+  fechaVenta?: string;
+  montoTotal?: number;
+  total?: number;
   subtotal: number;
   impuestos: number;
   metodoPago: string;
-  canalVenta: string;
-  clienteNombre: string;
+  canalVenta?: string;
+  clienteNombre?: string;
+  clienteNombreCompleto?: string;
   clienteDocumento: string;
-  boletas: TicketOnline[];
-  mensaje: string;
+  clienteCorreo?: string;
+  boletas?: TicketOnline[];
+  tickets?: TicketOnline[];
+  mensaje?: string;
 }
