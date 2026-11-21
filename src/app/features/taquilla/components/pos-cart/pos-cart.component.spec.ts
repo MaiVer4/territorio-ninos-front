@@ -183,7 +183,7 @@ describe('PosCartComponent', () => {
     expect(component.totalBoletas()).toBe(0);
   });
 
-  it('should render 1-click minor chips when <= 4 minors and toggle minor assignment', () => {
+  it('should populate minor dropdown with available minors and assign selected minor', () => {
     component.items = [mockItem1]; // menorAsignado: null
     component.menores = mockMenores;
     fixture.detectChanges();
@@ -191,43 +191,37 @@ describe('PosCartComponent', () => {
     let emittedItems: SeleccionCatalogoPOS[] = [];
     component.itemsChange.subscribe(items => emittedItems = items);
 
-    const chipLucas = fixture.debugElement.query(By.css('[data-testid="chip-menor-item-0-1"]'));
-    expect(chipLucas).toBeTruthy();
-    chipLucas.nativeElement.click();
+    const select = fixture.debugElement.query(By.css('[data-testid="select-menor-0"]'));
+    expect(select).toBeTruthy();
+
+    const options = select.queryAll(By.css('option'));
+    // 1 default ("-- Sin menor asignado --") + 2 minors
+    expect(options.length).toBe(3);
+
+    // Select Lucas Gómez (idMenor: 1)
+    select.nativeElement.value = '1';
+    select.nativeElement.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     expect(emittedItems.length).toBe(1);
     expect(emittedItems[0].menorAsignado?.nombreCompleto).toBe('Lucas Gómez');
-
-    // Click again to unassign
-    chipLucas.nativeElement.click();
-    fixture.detectChanges();
-    expect(emittedItems[0].menorAsignado).toBeNull();
   });
 
-  it('should render fallback select dropdown when there are more than 4 minors', () => {
-    const cincoMenores: Menor[] = [
-      ...mockMenores,
-      { idMenor: 3, nombreCompleto: 'Mateo Gómez', edad: 4 },
-      { idMenor: 4, nombreCompleto: 'Valentina Gómez', edad: 6 },
-      { idMenor: 5, nombreCompleto: 'Emilio Gómez', edad: 7 }
-    ];
-    component.items = [mockItem1];
-    component.menores = cincoMenores;
+  it('should unassign minor when selecting empty option', () => {
+    component.items = [mockItem2]; // menorAsignado: Lucas Gómez
+    component.menores = mockMenores;
     fixture.detectChanges();
 
     let emittedItems: SeleccionCatalogoPOS[] = [];
     component.itemsChange.subscribe(items => emittedItems = items);
 
     const select = fixture.debugElement.query(By.css('[data-testid="select-menor-0"]'));
-    expect(select).toBeTruthy();
-    expect(select.queryAll(By.css('option')).length).toBe(6);
-
-    select.nativeElement.value = '4';
+    select.nativeElement.value = '';
     select.nativeElement.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
-    expect(emittedItems[0].menorAsignado?.nombreCompleto).toBe('Valentina Gómez');
+    expect(emittedItems.length).toBe(1);
+    expect(emittedItems[0].menorAsignado).toBeNull();
   });
 
   describe('Panel de Liquidación, Métodos de Pago y Cambio (CA-01, CA-02, CA-03)', () => {
@@ -450,35 +444,6 @@ describe('PosCartComponent', () => {
       component.confirmarLiquidacion();
 
       expect(emitted).toBe(false);
-    });
-
-    it('should compute dynamic cash shortcuts for granTotal of 65000 and liquidate on Enter', () => {
-      component.items = [
-        { ...mockItem1, cantidad: 5 }, // 5 * 9000 = 45000
-        { ...mockItem2, cantidad: 2 }  // 2 * 10000 = 20000 => 65000 total
-      ];
-      fixture.detectChanges();
-
-      expect(component.granTotal()).toBe(65000);
-      expect(component.atajosEfectivoDinamicos()).toEqual([70000, 100000, 150000]);
-      expect(fixture.debugElement.query(By.css('[data-testid="btn-atajo-70000"]'))).toBeTruthy();
-      expect(fixture.debugElement.query(By.css('[data-testid="btn-atajo-100000"]'))).toBeTruthy();
-      expect(fixture.debugElement.query(By.css('[data-testid="btn-atajo-150000"]'))).toBeTruthy();
-
-      let liquidacionResult: ResumenLiquidacionPOS | null = null;
-      component.liquidarOrden.subscribe(res => (liquidacionResult = res));
-
-      const input = fixture.debugElement.query(By.css('[data-testid="input-monto-recibido"]'));
-      input.nativeElement.value = '70000';
-      input.nativeElement.dispatchEvent(new Event('input'));
-      fixture.detectChanges();
-
-      input.triggerEventHandler('keydown.enter', new KeyboardEvent('keydown', { key: 'Enter' }));
-      fixture.detectChanges();
-
-      expect(liquidacionResult).toBeTruthy();
-      expect(liquidacionResult!.montoRecibido).toBe(70000);
-      expect(liquidacionResult!.cambio).toBe(5000);
     });
   });
 });

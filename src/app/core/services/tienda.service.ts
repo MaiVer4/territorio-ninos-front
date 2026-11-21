@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, map, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   CatalogoAtraccionOnline,
@@ -61,7 +61,31 @@ export class TiendaService {
   obtenerCatalogo(): Observable<CatalogoAtraccionOnline[]> {
     this.cargandoCatalogo.set(true);
     this.errorCatalogo.set(null);
-    return this.http.get<CatalogoAtraccionOnline[]>(`${this.baseUrl}/catalogo`).pipe(
+    return this.http.get<any[]>(`${this.baseUrl}/catalogo`).pipe(
+      map((items) =>
+        (items || []).map((raw) => {
+          const tipo = raw.tipo || raw.tipoAtraccion || 'TEMPORIZADA';
+          const tarifasT = (raw.tarifasTiempo || []).slice().sort((a: any, b: any) => a.duracionMinutos - b.duracionMinutos);
+          const tarifasE = (raw.tarifasEvento || []).slice().sort((a: any, b: any) => a.intentos - b.intentos);
+          return {
+            id: raw.id,
+            nombre: raw.nombre,
+            descripcion: raw.descripcion,
+            tipoAtraccion: tipo,
+            tipo: tipo,
+            estado: raw.estado || 'ACTIVO',
+            disponibleParaCompra: raw.disponibleParaCompra !== false,
+            cuposLibres: raw.cuposLibres ?? raw.capacidadMaxima ?? 10,
+            capacidadMaxima: raw.capacidadMaxima ?? 10,
+            edadMinima: raw.edadMinima ?? 1,
+            edadMaxima: raw.edadMaxima ?? 12,
+            tarifaMinuto: raw.tarifaMinuto,
+            duracionRecomendadaMinutos: raw.duracionMinutosBase || raw.duracionRecomendadaMinutos || 15,
+            tarifasTiempo: tarifasT,
+            tarifasEvento: tarifasE
+          } as CatalogoAtraccionOnline;
+        })
+      ),
       tap({
         next: (items) => {
           this.catalogo.set(items);

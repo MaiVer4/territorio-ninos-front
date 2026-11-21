@@ -64,6 +64,21 @@ import {
         <!-- Cuerpo / Formulario -->
         <div class="py-4 space-y-5 text-sm">
 
+          @if (atraccion && ((atraccion.cuposLibres ?? 1) <= 0 || !!atraccion.horaProximoIngreso)) {
+            <div
+              data-testid="modal-alerta-aforo-lleno"
+              class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+              <span class="text-base leading-none">⏰</span>
+              <div>
+                <p class="font-extrabold">Aforo completo en este momento</p>
+                <p class="text-[11px] text-amber-800 mt-0.5">
+                  Puedes adquirir tu boleta ahora. Ingreso aproximado:
+                  <strong>{{ atraccion.ingresoTexto || 'PRÓXIMO TURNO' }}</strong>
+                </p>
+              </div>
+            </div>
+          }
+
           <!-- 1. Selección de Modalidad / Tarifa -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
@@ -323,7 +338,9 @@ export class ModalidadModalComponent {
       subtotal: this.totalCalculado(),
       nombreMenor: this.nombreMenor().trim(),
       edadMenor: Number(this.edadMenor()),
-      documentoMenor: this.documentoMenor().trim() || null
+      documentoMenor: this.documentoMenor().trim() || null,
+      horaIngresoEstimada: this.atraccion.horaProximoIngreso ?? null,
+      ingresoTexto: this.atraccion.ingresoTexto ?? null
     };
 
     this.addToCart.emit(item);

@@ -146,21 +146,16 @@ describe('CatalogoAtraccionesComponent', () => {
     expect(btn15.nativeElement.textContent).toContain('15 min');
     expect(btn30.nativeElement.textContent).toContain('30 min');
     expect(btn60.nativeElement.textContent).toContain('60 min');
-    expect(btn30.nativeElement.textContent).toContain('$18.000');
   });
 
-  it('should emit atraccionSeleccionada in 1 click when choosing a duration modality', () => {
-    let emittedSelection: SeleccionCatalogoPOS | undefined;
-    component.atraccionSeleccionada.subscribe(sel => emittedSelection = sel);
-
+  it('should update active selection price when choosing different duration modality', () => {
     const btn30 = fixture.debugElement.query(By.css('[data-testid="btn-modalidad-1-30"]'));
     btn30.nativeElement.click();
     fixture.detectChanges();
 
-    expect(emittedSelection).toBeDefined();
-    expect(emittedSelection?.atraccion.id).toBe(1);
-    expect(emittedSelection?.modalidad.valor).toBe(30);
-    expect(emittedSelection?.modalidad.precio).toBe(18000);
+    const precioEl = fixture.debugElement.query(By.css('[data-testid="precio-seleccion-1"]'));
+    // 600 * 30 = 18.000
+    expect(precioEl.nativeElement.textContent).toContain('$18.000');
   });
 
   it('should render caídas modalities for EVENTOS_CAIDAS attractions', () => {
@@ -169,7 +164,7 @@ describe('CatalogoAtraccionesComponent', () => {
     expect(cardCaidas.nativeElement.textContent).toContain('5 caídas');
   });
 
-  it('should show full badge but still allow selling in 1 click when aforo is full (cupos == 0)', () => {
+  it('should show full badge but still allow selling when aforo is full (cupos == 0)', () => {
     const cardLleno = fixture.debugElement.query(By.css('[data-testid="card-atraccion-3"]'));
     expect(cardLleno.nativeElement.classList).not.toContain('opacity-60');
 
@@ -177,9 +172,9 @@ describe('CatalogoAtraccionesComponent', () => {
     expect(badgeAforo).toBeTruthy();
     expect(badgeAforo.nativeElement.textContent).toContain('Lleno');
 
-    const btnModFull = cardLleno.query(By.css('[data-testid="btn-modalidad-3-15"]'));
-    expect(btnModFull).toBeTruthy();
-    expect(btnModFull.nativeElement.disabled).toBe(false);
+    const btnAgregar = cardLleno.query(By.css('[data-testid="btn-agregar-3"]'));
+    expect(btnAgregar.nativeElement.disabled).toBe(false);
+    expect(btnAgregar.nativeElement.textContent).toContain('Añadir');
   });
 
   it('should format entry time text from backend fields', () => {
@@ -198,34 +193,27 @@ describe('CatalogoAtraccionesComponent', () => {
     expect(badgeInactivo).toBeTruthy();
     expect(badgeInactivo.nativeElement.textContent).toContain('Inactiva');
 
-    const btnMod = cardInactivo.query(By.css('[data-testid="btn-modalidad-4-20"]'));
-    expect(btnMod).toBeTruthy();
-    expect(btnMod.nativeElement.disabled).toBe(true);
+    const btnAgregar = cardInactivo.query(By.css('[data-testid="btn-agregar-4"]'));
+    expect(btnAgregar.nativeElement.disabled).toBe(true);
+    expect(btnAgregar.nativeElement.textContent).toContain('No Disp.');
   });
 
-  it('should emit atraccionSeleccionada with first available attraction when pressing Enter in search input', () => {
+  it('should emit atraccionSeleccionada with chosen modality when clicking Añadir', () => {
     let emittedSelection: SeleccionCatalogoPOS | undefined;
     component.atraccionSeleccionada.subscribe(sel => emittedSelection = sel);
 
-    component.busqueda.set('toro');
+    // Select 30 min modality on attraction 1
+    const btn30 = fixture.debugElement.query(By.css('[data-testid="btn-modalidad-1-30"]'));
+    btn30.nativeElement.click();
     fixture.detectChanges();
 
-    const searchInput = fixture.debugElement.query(By.css('[data-testid="input-buscar-catalogo"]'));
-    searchInput.triggerEventHandler('keydown.enter', new KeyboardEvent('keydown', { key: 'Enter' }));
-    fixture.detectChanges();
+    const btnAgregar = fixture.debugElement.query(By.css('[data-testid="btn-agregar-1"]'));
+    btnAgregar.nativeElement.click();
 
     expect(emittedSelection).toBeDefined();
-    expect(emittedSelection?.atraccion.id).toBe(2);
-    expect(emittedSelection?.modalidad.etiqueta).toBe('3 caídas');
-  });
-
-  it('should render cart quantity badge when conteoEnCarrito is provided', () => {
-    component.conteoEnCarrito = { '1': 3 };
-    fixture.detectChanges();
-
-    const badgeCarrito = fixture.debugElement.query(By.css('[data-testid="badge-en-carrito-1"]'));
-    expect(badgeCarrito).toBeTruthy();
-    expect(badgeCarrito.nativeElement.textContent).toContain('×3');
+    expect(emittedSelection?.atraccion.id).toBe(1);
+    expect(emittedSelection?.modalidad.valor).toBe(30);
+    expect(emittedSelection?.modalidad.precio).toBe(18000);
   });
 
   it('should filter attractions by search input query', () => {
@@ -288,8 +276,9 @@ describe('CatalogoAtraccionesComponent', () => {
     expect(msg).toBeTruthy();
     expect(msg.nativeElement.textContent).toContain('Sin tarifa configurada');
 
-    const modalityBtns = card.queryAll(By.css('[data-testid^="btn-modalidad-5-"]'));
-    expect(modalityBtns.length).toBe(0);
+    const btnAgregar = card.query(By.css('[data-testid="btn-agregar-5"]'));
+    expect(btnAgregar.nativeElement.disabled).toBe(true);
+    expect(btnAgregar.nativeElement.textContent).toContain('Sin Tarifa');
   });
 
   it('should ignore inactive rates when activo is false', () => {

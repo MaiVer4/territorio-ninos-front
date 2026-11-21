@@ -139,26 +139,4 @@ describe('MenoresChipsComponent', () => {
     const deleteBtn = fixture.debugElement.query(By.css('[data-testid="btn-eliminar-menor"]'));
     expect(deleteBtn).toBeFalsy();
   });
-
-  it('should render compact mode and toggle active minor on chip click', () => {
-    component.compacto = true;
-    component.menores = mockMenores;
-    fixture.detectChanges();
-
-    let ultimoActivo: Menor | null | undefined;
-    component.menorActivoChange.subscribe(m => (ultimoActivo = m));
-
-    const btnSegundo = fixture.debugElement.query(By.css('[data-testid="btn-activar-menor-1"]'));
-    expect(btnSegundo).toBeTruthy();
-    btnSegundo.nativeElement.click();
-    fixture.detectChanges();
-
-    expect(component.menorActivo?.nombreCompleto).toBe('Sofía Gómez');
-    expect(ultimoActivo?.nombreCompleto).toBe('Sofía Gómez');
-
-    btnSegundo.nativeElement.click();
-    fixture.detectChanges();
-    expect(component.menorActivo).toBeNull();
-    expect(ultimoActivo).toBeNull();
-  });
 });

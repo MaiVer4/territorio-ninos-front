@@ -114,6 +114,11 @@ import {
                       <p class="text-[11px] text-slate-500 mt-0.5">
                         {{ item.tipoTarifa === 'TIEMPO' ? (item.duracionMinutos + ' minutos de juego') : (item.intentos + ' caídas / intentos') }}
                       </p>
+                      @if (item.ingresoTexto && item.ingresoTexto.toUpperCase() !== 'AHORA') {
+                        <p class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
+                          ⏰ Ingreso aprox.: {{ item.ingresoTexto }}
+                        </p>
+                      }
                     </div>
 
                     <button

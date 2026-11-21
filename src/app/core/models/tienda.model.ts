@@ -17,12 +17,18 @@ export interface CatalogoAtraccionOnline {
   nombre: string;
   descripcion: string;
   tipoAtraccion: 'TEMPORIZADA' | 'EVENTOS_CAIDAS' | string;
+  tipo?: 'TEMPORIZADA' | 'EVENTOS_CAIDAS' | string;
+  estado?: string;
+  disponibleParaCompra?: boolean;
   cuposLibres: number;
+  ocupacionActual?: number;
   capacidadMaxima: number;
   edadMinima: number;
   edadMaxima: number;
   tarifaMinuto?: number | null;
   duracionRecomendadaMinutos?: number | null;
+  horaProximoIngreso?: string | null;
+  ingresoTexto?: string | null;
   tarifasTiempo: TarifaTiempoItem[];
   tarifasEvento: TarifaEventoItem[];
 }
@@ -43,6 +49,8 @@ export interface ItemCarritoOnline {
   nombreMenor: string;
   edadMenor: number;
   documentoMenor?: string | null;
+  horaIngresoEstimada?: string | null;
+  ingresoTexto?: string | null;
 }
 
 export interface ItemCompraOnlineDTO {
@@ -95,6 +103,7 @@ export interface TicketOnline {
   estadoTicket: string;
   fechaEmision: string;
   horaIngresoEstimada?: string | null;
+  ingresoTexto?: string | null;
   qrData?: string;
 }
 

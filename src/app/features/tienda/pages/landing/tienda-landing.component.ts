@@ -48,10 +48,6 @@ interface FaqItem {
           </div>
           <div class="hidden md:flex items-center gap-4 text-[11px] text-white/90">
             <span>💳 Pagos 100% seguros con Nequi, PSE y Tarjetas</span>
-            <span class="opacity-40">|</span>
-            <a href="https://wa.me/573001234567" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-1 font-bold">
-              <span>💬 WhatsApp Atención: +57 (300) 123-4567</span>
-            </a>
           </div>
         </div>
       </aside>
@@ -144,12 +140,6 @@ interface FaqItem {
             
             <!-- Columna Izquierda: Copy Persuasivo y Llamado a la Acción -->
             <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
-              
-              <!-- Badge de Propuesta de Valor -->
-              <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-emerald-200 shadow-xs text-xs font-black text-emerald-800">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 motion-safe:animate-pulse"></span>
-                <span>🎟️ ENTRADA DIGITAL PRIORITARIA • 100% GARANTIZADO</span>
-              </div>
 
               <!-- Titular Principal con Font Display -->
               <h1 class="font-display text-4xl sm:text-6xl lg:text-[68px] font-black text-slate-950 tracking-tight leading-[1.06]">
@@ -308,7 +298,7 @@ interface FaqItem {
         </div>
       </section>
 
-      <!-- 4. Vitrina E-Commerce de Atracciones (Tarjetas de Experiencia Premium) -->
+      <!-- 4. Vitrina E-Commerce de Atracciones (Atracciones Reales con Precios, Tiempos y Categoría) -->
       <section id="atracciones" class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-14 sm:py-20 relative">
         
         <!-- Encabezado de Sección y Píldoras de Filtro -->
@@ -322,7 +312,7 @@ interface FaqItem {
                 Elige la Aventura de Hoy
               </h2>
               <p class="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                Boletas individuales válidas durante toda la jornada. Consulta aforo en vivo y edades recomendadas.
+                Boletas individuales válidas durante toda la jornada. Consulta tarifas por tiempo o por caídas y cupos disponibles en vivo.
               </p>
             </div>
 
@@ -352,29 +342,9 @@ interface FaqItem {
 
             <button
               type="button"
-              (click)="filtroActivo.set('PEQUENOS')"
-              [class]="filtroActivo() === 'PEQUENOS'
-                ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/25'
-                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 font-bold'"
-              class="px-5 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-150 active:scale-95">
-              👶 Pequeños (1 a 4 años)
-            </button>
-
-            <button
-              type="button"
-              (click)="filtroActivo.set('GRANDES')"
-              [class]="filtroActivo() === 'GRANDES'
-                ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-600/25'
-                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 font-bold'"
-              class="px-5 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-150 active:scale-95">
-              🚀 Grandes (5 a 12 años)
-            </button>
-
-            <button
-              type="button"
               (click)="filtroActivo.set('TIEMPO')"
               [class]="filtroActivo() === 'TIEMPO'
-                ? 'bg-purple-600 text-white font-black shadow-md shadow-purple-600/25'
+                ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-600/25'
                 : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 font-bold'"
               class="px-5 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-150 active:scale-95">
               ⏱️ Por Tiempo
@@ -389,13 +359,33 @@ interface FaqItem {
               class="px-5 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-150 active:scale-95">
               🎯 Por Caídas / Retos
             </button>
+
+            <button
+              type="button"
+              (click)="filtroActivo.set('PEQUENOS')"
+              [class]="filtroActivo() === 'PEQUENOS'
+                ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/25'
+                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 font-bold'"
+              class="px-5 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-150 active:scale-95">
+              👶 Pequeños (1 a 4 años)
+            </button>
+
+            <button
+              type="button"
+              (click)="filtroActivo.set('GRANDES')"
+              [class]="filtroActivo() === 'GRANDES'
+                ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/25'
+                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 font-bold'"
+              class="px-5 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-150 active:scale-95">
+              🚀 Grandes (5 a 12 años)
+            </button>
           </div>
         </div>
 
         <!-- Estado de Carga -->
         @if (tiendaService.cargandoCatalogo()) {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            @for (i of [1, 2, 3]; track i) {
               <div class="rounded-[32px] p-6 bg-white border border-slate-100 shadow-sm animate-pulse space-y-4">
                 <div class="h-48 bg-slate-200 rounded-2xl w-full"></div>
                 <div class="h-6 bg-slate-200 rounded-xl w-3/4"></div>
@@ -409,7 +399,7 @@ interface FaqItem {
             <span class="text-4xl">🔍</span>
             <h3 class="font-display text-lg font-black text-slate-900">No hay atracciones para este filtro</h3>
             <p class="text-xs text-slate-500">
-              Prueba seleccionando otra categoría o restablece los filtros para ver todo el parque.
+              Prueba seleccionando otra categoría o restablece los filtros para ver todo el catálogo.
             </p>
             <button
               type="button"
@@ -419,7 +409,7 @@ interface FaqItem {
             </button>
           </div>
         } @else {
-          <!-- Grilla de Tarjetas E-Commerce de Experiencia (Amusement Park Product Cards) -->
+          <!-- Grilla de Tarjetas E-Commerce de Experiencia (Atracciones Reales) -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             @for (atr of atraccionesFiltradas(); track atr.id) {
               <div
@@ -439,13 +429,13 @@ interface FaqItem {
 
                     <!-- Badges Flotantes Superiores en Cristal (Glassmorphism) -->
                     <div class="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2 pointer-events-none">
-                      <!-- Badge Categoría -->
+                      <!-- Badge Categoría Correcta (Por Tiempo vs Por Caídas) -->
                       <span
-                        [class]="atr.tipoAtraccion === 'TEMPORIZADA'
+                        [class]="isPorTiempo(atr)
                           ? 'bg-blue-600/90 text-white'
                           : 'bg-amber-500/95 text-slate-950'"
                         class="px-3.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider backdrop-blur-md shadow-md">
-                        {{ atr.tipoAtraccion === 'TEMPORIZADA' ? '⏱️ Por Tiempo' : '🎯 Por Caídas' }}
+                        {{ isPorTiempo(atr) ? '⏱️ Por Tiempo' : '🎯 Por Caídas' }}
                       </span>
 
                       <!-- Badge Aforo en Vivo -->
@@ -455,15 +445,15 @@ interface FaqItem {
                           <span>{{ atr.cuposLibres }} cupos</span>
                         </span>
                       } @else {
-                        <span class="px-3 py-1.5 rounded-full text-[11px] font-black bg-amber-500/90 text-white backdrop-blur-md shadow-md">
-                          Entrada diferida
+                        <span class="px-3 py-1.5 rounded-full text-[11px] font-black bg-amber-500/95 text-slate-950 backdrop-blur-md shadow-md">
+                          Lleno · {{ textoIngresoCatalogo(atr) }}
                         </span>
                       }
                     </div>
 
                     <!-- Badges Flotantes Inferiores sobre Imagen -->
                     <div class="absolute bottom-3.5 left-4 right-4 flex items-end justify-between gap-2 pointer-events-none">
-                      <!-- Nombre de la Atracción -->
+                      <!-- Nombre de la Atracción Real -->
                       <div class="max-w-[65%]">
                         <span class="text-[9px] uppercase font-black tracking-widest text-emerald-300 block mb-0.5">
                           Atracción Oficial
@@ -473,7 +463,7 @@ interface FaqItem {
                         </h3>
                       </div>
 
-                      <!-- Chip de Precio Flotante en Cristal -->
+                      <!-- Chip de Precio Base Flotante en Cristal -->
                       <div class="px-3.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md text-slate-950 font-black shadow-lg text-right flex items-baseline gap-1">
                         <span class="text-[9px] uppercase font-extrabold text-slate-500">Desde</span>
                         <span class="text-sm font-black font-mono text-emerald-700">
@@ -483,10 +473,10 @@ interface FaqItem {
                     </div>
                   </div>
 
-                  <!-- Cuerpo de la Tarjeta E-Commerce -->
+                  <!-- Cuerpo de la Tarjeta: Detalles, Categoría, Tiempos y Precios -->
                   <div class="p-6 space-y-4">
                     
-                    <!-- Chips de Especificaciones (Edad y Aforo) -->
+                    <!-- Chips de Especificaciones (Edad, Aforo y Categoría) -->
                     <div class="flex flex-wrap items-center gap-2 text-xs font-extrabold text-slate-600">
                       <span class="inline-flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-full">
                         <span>👶</span>
@@ -497,6 +487,12 @@ interface FaqItem {
                         <span>👥</span>
                         <span>Máx. {{ atr.capacidadMaxima }} niños</span>
                       </span>
+
+                      <span
+                        [class]="isPorTiempo(atr) ? 'bg-blue-50 text-blue-700 border-blue-200/60' : 'bg-amber-50 text-amber-800 border-amber-200/60'"
+                        class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-[11px] font-black">
+                        <span>{{ isPorTiempo(atr) ? '⏱️ Modalidad Tiempo' : '🎯 Modalidad Caídas' }}</span>
+                      </span>
                     </div>
 
                     <!-- Descripción de la Experiencia -->
@@ -504,13 +500,66 @@ interface FaqItem {
                       {{ atr.descripcion || 'Zona interactiva diseñada bajo estrictos protocolos de diversión y seguridad infantil.' }}
                     </p>
 
-                    <!-- Caja Resumen de Opciones -->
-                    <div class="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-100 flex items-center justify-between text-xs">
-                      <span class="font-bold text-slate-500">Variedad de juego:</span>
-                      <span class="font-black text-emerald-800">
-                        {{ atr.tipoAtraccion === 'TEMPORIZADA' ? (atr.tarifasTiempo.length + ' opciones de tiempo') : (atr.tarifasEvento.length + ' paquetes de caídas') }}
-                      </span>
+                    <!-- TABLA DE PRECIOS Y TIEMPOS REALES -->
+                    <div class="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-100 space-y-2">
+                      <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        <span>{{ isPorTiempo(atr) ? 'Tiempos Disponibles' : 'Paquetes de Caídas' }}</span>
+                        <span>Precio Boleta</span>
+                      </div>
+
+                      <div class="space-y-1.5">
+                        @if (isPorTiempo(atr)) {
+                          @if (atr.tarifasTiempo.length > 0) {
+                            @for (tarifa of atr.tarifasTiempo; track tarifa.id) {
+                              <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                                <span class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  ⏱️ {{ tarifa.duracionMinutos }} minutos
+                                </span>
+                                <span class="font-display font-black text-emerald-700 text-xs font-mono">
+                                  \${{ tarifa.precio | number }} <span class="text-[9px] text-slate-400 font-sans">COP</span>
+                                </span>
+                              </div>
+                            }
+                          } @else {
+                            <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                              <span class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                ⏱️ {{ atr.duracionRecomendadaMinutos || 15 }} minutos
+                              </span>
+                              <span class="font-display font-black text-emerald-700 text-xs font-mono">
+                                \${{ calcularPrecioDesde(atr) | number }} <span class="text-[9px] text-slate-400 font-sans">COP</span>
+                              </span>
+                            </div>
+                          }
+                        } @else {
+                          @if (atr.tarifasEvento.length > 0) {
+                            @for (tarifa of atr.tarifasEvento; track tarifa.id) {
+                              <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                                <span class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                  🎯 {{ tarifa.intentos }} caídas
+                                </span>
+                                <span class="font-display font-black text-amber-700 text-xs font-mono">
+                                  \${{ tarifa.precio | number }} <span class="text-[9px] text-slate-400 font-sans">COP</span>
+                                </span>
+                              </div>
+                            }
+                          } @else {
+                            <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                              <span class="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                🎯 1 caída / intento
+                              </span>
+                              <span class="font-display font-black text-amber-700 text-xs font-mono">
+                                \${{ calcularPrecioDesde(atr) | number }} <span class="text-[9px] text-slate-400 font-sans">COP</span>
+                              </span>
+                            </div>
+                          }
+                        }
+                      </div>
                     </div>
+
                   </div>
                 </div>
 
@@ -975,10 +1024,15 @@ export class TiendaLandingComponent implements OnInit {
     }
   ]);
 
-  readonly totalAtracciones = computed(() => this.tiendaService.catalogo().length);
+  // Solo mostramos atracciones reales activas y disponibles para venta en el parque
+  readonly atraccionesReales = computed(() => {
+    return this.tiendaService.catalogo().filter((a) => a.estado === 'ACTIVO' && a.disponibleParaCompra !== false);
+  });
+
+  readonly totalAtracciones = computed(() => this.atraccionesReales().length);
 
   readonly atraccionesFiltradas = computed(() => {
-    const list = this.tiendaService.catalogo();
+    const list = this.atraccionesReales();
     const filtro = this.filtroActivo();
 
     switch (filtro) {
@@ -987,9 +1041,9 @@ export class TiendaLandingComponent implements OnInit {
       case 'GRANDES':
         return list.filter((a) => (a.edadMaxima ?? 99) >= 6);
       case 'TIEMPO':
-        return list.filter((a) => a.tipoAtraccion === 'TEMPORIZADA');
+        return list.filter((a) => this.isPorTiempo(a));
       case 'CAIDAS':
-        return list.filter((a) => a.tipoAtraccion === 'EVENTOS_CAIDAS');
+        return list.filter((a) => this.isPorCaidas(a));
       case 'TODAS':
       default:
         return list;
@@ -1002,6 +1056,16 @@ export class TiendaLandingComponent implements OnInit {
 
   recargarCatalogo(): void {
     this.tiendaService.obtenerCatalogo().subscribe();
+  }
+
+  isPorTiempo(atr: CatalogoAtraccionOnline): boolean {
+    const tipo = atr.tipoAtraccion || atr.tipo;
+    return tipo === 'TEMPORIZADA' || (atr.tarifasTiempo?.length > 0 && (!atr.tarifasEvento || atr.tarifasEvento.length === 0));
+  }
+
+  isPorCaidas(atr: CatalogoAtraccionOnline): boolean {
+    const tipo = atr.tipoAtraccion || atr.tipo;
+    return tipo === 'EVENTOS_CAIDAS' || (atr.tarifasEvento?.length > 0 && (!atr.tarifasTiempo || atr.tarifasTiempo.length === 0));
   }
 
   abrirModalAtraccion(atr: CatalogoAtraccionOnline): void {
@@ -1034,8 +1098,20 @@ export class TiendaLandingComponent implements OnInit {
     );
   }
 
+  textoIngresoCatalogo(atr: CatalogoAtraccionOnline): string {
+    const texto = (atr.ingresoTexto || '').trim();
+    if (texto && texto.toUpperCase() !== 'AHORA') {
+      return texto;
+    }
+    if (atr.horaProximoIngreso) {
+      const m = String(atr.horaProximoIngreso).match(/T(\d{2}:\d{2})/);
+      if (m) return `${m[1]} (aprox.)`;
+    }
+    return 'Próximo turno';
+  }
+
   calcularPrecioDesde(atr: CatalogoAtraccionOnline): number {
-    if (atr.tipoAtraccion === 'TEMPORIZADA') {
+    if (this.isPorTiempo(atr)) {
       if (atr.tarifasTiempo?.length) {
         return Math.min(...atr.tarifasTiempo.map((t) => t.precio));
       }

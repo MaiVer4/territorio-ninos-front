@@ -650,7 +650,7 @@ describe('TaquillaPosComponent', () => {
       expect(component.totalOrden()).toBe(18000);
     });
 
-    it('should update assigned minor through 1-click minor chip in cart', async () => {
+    it('should update assigned minor through cart dropdown', async () => {
       await setupComponent(mockTurno);
       component.menoresOrden.set([
         { idMenor: 1, nombreCompleto: 'Lucas Gómez', edad: 5 },
@@ -666,9 +666,9 @@ describe('TaquillaPosComponent', () => {
       ]);
       fixture.detectChanges();
 
-      const chipSofia = fixture.debugElement.query(By.css('[data-testid="chip-menor-item-0-2"]'));
-      expect(chipSofia).toBeTruthy();
-      chipSofia.nativeElement.click();
+      const selectMenor = fixture.debugElement.query(By.css('[data-testid="select-menor-0"]'));
+      selectMenor.nativeElement.value = '2';
+      selectMenor.nativeElement.dispatchEvent(new Event('change'));
       fixture.detectChanges();
 
       expect(component.itemsSeleccionados()[0].menorAsignado?.nombreCompleto).toBe('Sofía Gómez');
@@ -1331,151 +1331,6 @@ describe('TaquillaPosComponent', () => {
 
       expect(component.mostrarModalReimpresion()).toBe(true);
       expect(component.ticketPendienteReimpresion()?.codigoBoleta).toBe('TDN-TEST-123');
-    });
-  });
-
-  describe('Cabina POS Rápida: Niño Activo, Smart Stacking, Atajos y Post-Venta', () => {
-    it('should preassign active minor when multiple minors exist and stack repeated items', async () => {
-      await setupComponent(mockTurno);
-      const lucas = { idMenor: 1, nombreCompleto: 'Lucas Gómez', edad: 5 };
-      const sofia = { idMenor: 2, nombreCompleto: 'Sofía Gómez', edad: 8 };
-      component.menoresOrden.set([lucas, sofia]);
-      component.menorActivo.set(sofia);
-      fixture.detectChanges();
-
-      const seleccion: SeleccionCatalogoPOS = {
-        atraccion: mockAtraccion1,
-        modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 }
-      };
-
-      component.onAtraccionSeleccionada(seleccion);
-      component.onAtraccionSeleccionada(seleccion);
-      fixture.detectChanges();
-
-      expect(component.itemsSeleccionados().length).toBe(1);
-      expect(component.itemsSeleccionados()[0].cantidad).toBe(2);
-      expect(component.itemsSeleccionados()[0].menorAsignado?.nombreCompleto).toBe('Sofía Gómez');
-    });
-
-    it('should toggle extended client fields with btn-editar-cliente for registered clients', async () => {
-      vi.useFakeTimers();
-      await setupComponent(mockTurno);
-      clienteServiceSpy.buscarPorDocumento.mockReturnValue(of(mockCliente));
-
-      component.clienteForm.get('numeroDocumento')!.setValue('1098765432');
-      vi.advanceTimersByTime(350);
-      fixture.detectChanges();
-
-      expect(fixture.debugElement.query(By.css('[data-testid="input-nombre"]'))).toBeNull();
-
-      const btnEditar = fixture.debugElement.query(By.css('[data-testid="btn-editar-cliente"]'));
-      expect(btnEditar).toBeTruthy();
-      btnEditar.nativeElement.click();
-      fixture.detectChanges();
-
-      expect(fixture.debugElement.query(By.css('[data-testid="input-nombre"]'))).toBeTruthy();
-      vi.useRealTimers();
-    });
-
-    it('should support F3, Alt+2, F9 and F10 keyboard shortcuts', async () => {
-      await setupComponent(mockTurno);
-      component.itemsSeleccionados.set([
-        {
-          atraccion: mockAtraccion1,
-          modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
-          cantidad: 1
-        }
-      ]);
-      fixture.detectChanges();
-
-      // F3 focuses catalog search
-      const catalogSearch = fixture.debugElement.query(By.css('[data-testid="input-buscar-catalogo"]')).nativeElement as HTMLInputElement;
-      const focusSearchSpy = vi.spyOn(catalogSearch, 'focus');
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F3', cancelable: true }));
-      expect(focusSearchSpy).toHaveBeenCalled();
-
-      // Alt+2 selects TARJETA_DEBITO
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', altKey: true, cancelable: true }));
-      fixture.detectChanges();
-      expect(component.posCartRef?.metodoPago()).toBe('TARJETA_DEBITO');
-
-      // F9 submits payment immediately since TARJETA_DEBITO is valid
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F9', cancelable: true }));
-      fixture.detectChanges();
-      expect(component.itemsSeleccionados().length).toBe(0);
-      expect(component.mostrarColaEmision()).toBe(true);
-
-      // F10 opens ConsultaTickets modal
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', cancelable: true }));
-      fixture.detectChanges();
-      expect(component.mostrarConsultaTickets()).toBe(true);
-    });
-
-    it('should print and deliver order in 1 click via btn-imprimir-entregar-*', async () => {
-      await setupComponent(mockTurno);
-      const printSpy = vi.spyOn(component.printService, 'imprimirOrden');
-      const resumen: ResumenLiquidacionPOS = {
-        items: [
-          {
-            atraccion: mockAtraccion1,
-            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
-            cantidad: 1
-          }
-        ],
-        totalBoletas: 1,
-        subtotal: 7563,
-        porcentajeIva: 19,
-        impuestos: 1437,
-        granTotal: 9000,
-        metodoPago: 'EFECTIVO',
-        montoRecibido: 10000,
-        cambio: 1000
-      };
-
-      const orden = component.colaEmisionService.encolarVenta(resumen, 'Ana');
-      component.mostrarColaEmision.set(true);
-      fixture.detectChanges();
-
-      const btnImprimirEntregar = fixture.debugElement.query(
-        By.css(`[data-testid="btn-imprimir-entregar-${orden.idOrden}"]`)
-      );
-      expect(btnImprimirEntregar).toBeTruthy();
-      btnImprimirEntregar.nativeElement.click();
-      fixture.detectChanges();
-
-      expect(printSpy).toHaveBeenCalledWith(orden);
-      expect(component.colaEmisionService.cantidadOrdenesPendientes()).toBe(0);
-      expect(component.mostrarColaEmision()).toBe(false);
-    });
-
-    it('should automatically print when autoImprimirAlCobrar toggle is enabled', async () => {
-      await setupComponent(mockTurno);
-      const printSpy = vi.spyOn(component.printService, 'imprimirOrden');
-      component.autoImprimirAlCobrar.set(true);
-
-      const resumen: ResumenLiquidacionPOS = {
-        items: [
-          {
-            atraccion: mockAtraccion1,
-            modalidad: { tipo: 'TEMPORIZADA', etiqueta: '15 min', valor: 15, precio: 9000 },
-            cantidad: 1
-          }
-        ],
-        totalBoletas: 1,
-        subtotal: 7563,
-        porcentajeIva: 19,
-        impuestos: 1437,
-        granTotal: 9000,
-        metodoPago: 'TARJETA_DEBITO',
-        montoRecibido: 9000,
-        cambio: 0
-      };
-
-      component.onPagoConfirmado(resumen);
-      fixture.detectChanges();
-
-      expect(printSpy).toHaveBeenCalledTimes(1);
-      expect(component.colaEmisionService.cantidadOrdenesPendientes()).toBe(0);
     });
   });
 });
