@@ -187,4 +187,51 @@ describe('OperarioSeleccionComponent (Módulo 4 Integration)', () => {
     expect(operacionServiceSpy.desvincularEstacionActiva).not.toHaveBeenCalled();
     expect(authServiceSpy.logout).toHaveBeenCalledTimes(1);
   });
+
+  it('should default mobile tab to ESCANER and switch to COLA when clicking bottom nav tab', () => {
+    expect(component.vistaMovilActiva()).toBe('ESCANER');
+    const tabEscanear = fixture.debugElement.query(By.css('[data-testid="tab-movil-escanear"]'));
+    const tabCola = fixture.debugElement.query(By.css('[data-testid="tab-movil-cola"]'));
+    expect(tabEscanear.nativeElement.getAttribute('aria-selected')).toBe('true');
+    expect(tabCola.nativeElement.getAttribute('aria-selected')).toBe('false');
+
+    tabCola.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(component.vistaMovilActiva()).toBe('COLA');
+    expect(tabCola.nativeElement.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('should show urgent strip on ESCANER when a session is expired and navigate to COLA on click', () => {
+    operacionServiceSpy.colaOrdenadaPorUrgencia.set([
+      {
+        idSesion: 'ses-urg-1',
+        ticketUuid: 'UUID-URG-1',
+        codigoBoleta: 'BOL-999',
+        atraccionId: 10,
+        tipoAtraccion: 'TEMPORIZADA',
+        menorNombre: 'Sofía',
+        acudienteNombre: 'Laura',
+        horaInicio: '',
+        horaFin: '',
+        duracionTotalSegundos: 900,
+        segundosRestantes: 0,
+        segundosExcedidos: 12,
+        estadoSemaforo: 'ROJO',
+        enPausa: false,
+        saliendo: false
+      }
+    ]);
+    fixture.detectChanges();
+
+    const strip = fixture.debugElement.query(By.css('[data-testid="strip-alerta-urgente"]'));
+    expect(strip).toBeTruthy();
+    expect(strip.nativeElement.textContent).toContain('Sofía');
+
+    strip.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(component.vistaMovilActiva()).toBe('COLA');
+    expect(fixture.debugElement.query(By.css('[data-testid="strip-alerta-urgente"]'))).toBeNull();
+  });
 });

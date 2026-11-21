@@ -28,34 +28,34 @@ export interface InfoCronometroTick {
   template: `
     <div
       data-testid="cronometro-container"
-      class="font-mono font-black tracking-tight inline-flex items-center gap-1">
-      
+      class="font-mono tabular-nums font-black tracking-tight text-2xl leading-none inline-flex items-center">
+
       @if (enPausa) {
-        <!-- Modo Pausado: Congelado con badge -->
+        <!-- Modo Pausado: Congelado -->
         <span
           data-testid="cronometro-display"
-          class="text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">
+          class="text-blue-800 bg-blue-100 border border-blue-200 px-2.5 py-1.5 rounded-xl">
           {{ displayTexto() }}
         </span>
       } @else if (estaAgotado()) {
-        <!-- Modo Tiempo Agotado: Rojo con contador progresivo de exceso (HU-31.05) -->
+        <!-- Modo Tiempo Agotado: Rojo sólido de alto contraste con exceso -->
         <span
           data-testid="cronometro-display"
-          class="text-red-700 bg-red-100 px-2 py-0.5 rounded-md motion-safe:animate-pulse">
+          class="bg-red-600 text-white px-2.5 py-1.5 rounded-xl shadow-xs">
           +{{ displayTexto() }}
         </span>
       } @else if (estaPreExpiracion()) {
-        <!-- Modo Pre-Expiración: Amarillo advertencia con parpadeo suave (HU-30.03, HU-30.04) -->
+        <!-- Modo Pre-Expiración: Ámbar de alta legibilidad -->
         <span
           data-testid="cronometro-display"
-          class="text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md motion-safe:animate-pulse">
+          class="text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-1.5 rounded-xl">
           {{ displayTexto() }}
         </span>
       } @else {
-        <!-- Modo Normal: Verde estándar -->
+        <!-- Modo Normal: Esmeralda legible -->
         <span
           data-testid="cronometro-display"
-          class="text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md">
+          class="text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl">
           {{ displayTexto() }}
         </span>
       }

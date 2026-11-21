@@ -91,4 +91,22 @@ describe('ModoEventoComponent (HU-33.05..08, Toro Mecánico)', () => {
     btnSalida.nativeElement.click();
     expect(operacionServiceSpy.confirmarSalidaMenor).toHaveBeenCalledWith('ses-toro-1');
   });
+
+  it('should render dynamic attempt badges when intentosMaximos is 5', () => {
+    operacionServiceSpy.colaActiva.set([
+      {
+        ...mockSesionToro,
+        idSesion: 'ses-toro-5',
+        intentosMaximos: 5,
+        intentosRealizados: 2
+      }
+    ]);
+    fixture.detectChanges();
+
+    for (let i = 1; i <= 5; i++) {
+      const badge = fixture.debugElement.query(By.css(`[data-testid="badge-intento-ses-toro-5-${i}"]`));
+      expect(badge).toBeTruthy();
+      expect(badge.nativeElement.textContent).toContain(`${i} de 5`);
+    }
+  });
 });

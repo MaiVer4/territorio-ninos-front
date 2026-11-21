@@ -95,12 +95,48 @@ describe('SeleccionAtraccionComponent (HU-24.07, HU-24.08, HU-34.04)', () => {
     expect(operacionServiceSpy.confirmarEstacionTrabajo).toHaveBeenCalledWith(mockEstacion);
   });
 
-  it('should call desvincularEstacionActiva when clicking unbind button', () => {
+  it('should call desvincularEstacionActiva when opening menu sheet and clicking unbind button', () => {
+    const menuBtn = fixture.debugElement.query(By.css('[data-testid="btn-menu-estacion"]'));
+    expect(menuBtn).toBeTruthy();
+    menuBtn.nativeElement.click();
+    fixture.detectChanges();
+
     const unbindBtn = fixture.debugElement.query(By.css('[data-testid="btn-desvincular-estacion"]'));
     expect(unbindBtn).toBeTruthy();
 
     unbindBtn.nativeElement.click();
     expect(operacionServiceSpy.desvincularEstacionActiva).toHaveBeenCalled();
+  });
+
+  it('should require 2-step confirmation before triggering emergency stop', () => {
+    operacionServiceSpy.estacionActiva.set({ ...mockEstacion, confirmada: true });
+    fixture.detectChanges();
+
+    const menuBtn = fixture.debugElement.query(By.css('[data-testid="btn-menu-estacion"]'));
+    menuBtn.nativeElement.click();
+    fixture.detectChanges();
+
+    const stopBtn = fixture.debugElement.query(By.css('[data-testid="btn-parada-emergencia"]'));
+    expect(stopBtn).toBeTruthy();
+    stopBtn.nativeElement.click();
+    fixture.detectChanges();
+
+    const confirmPanel = fixture.debugElement.query(By.css('[data-testid="panel-confirmar-parada"]'));
+    expect(confirmPanel).toBeTruthy();
+    expect(operacionServiceSpy.paradaEmergencia).not.toHaveBeenCalled();
+
+    const confirmStopBtn = fixture.debugElement.query(By.css('[data-testid="btn-confirmar-parada-emergencia"]'));
+    expect(confirmStopBtn).toBeTruthy();
+    confirmStopBtn.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(operacionServiceSpy.paradaEmergencia).toHaveBeenCalledTimes(1);
+  });
+
+  it('should render station selection items as accessible button elements', () => {
+    const stationBtn = fixture.debugElement.query(By.css('[data-testid="btn-seleccionar-estacion-10"]'));
+    expect(stationBtn).toBeTruthy();
+    expect(stationBtn.nativeElement.tagName).toBe('BUTTON');
   });
 
   it('should disable confirm button when active station is occupied by another operator', () => {

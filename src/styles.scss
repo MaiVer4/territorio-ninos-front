@@ -90,6 +90,72 @@ select,
 }
 
 /* ==========================================================================
+   Primitivas UI / Tactile Polish (Operario Mobile-First / better-ui)
+   ========================================================================== */
+:root {
+  --shadow-border:
+    0px 0px 0px 1px oklch(0 0 0 / 0.06),
+    0px 1px 2px -1px oklch(0 0 0 / 0.06),
+    0px 2px 4px 0px oklch(0 0 0 / 0.04);
+  --shadow-border-hover:
+    0px 0px 0px 1px oklch(0 0 0 / 0.09),
+    0px 1px 2px -1px oklch(0 0 0 / 0.08),
+    0px 2px 4px 0px oklch(0 0 0 / 0.06);
+}
+
+@layer components {
+  .surface-card {
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-border);
+  }
+}
+
+.op-icon path,
+.op-icon circle,
+.op-icon rect,
+.op-icon line,
+.op-icon polyline,
+.op-icon polygon {
+  vector-effect: non-scaling-stroke;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-sheet-safe {
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@keyframes op-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes op-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+}
+
+.op-backdrop-enter {
+  animation: op-fade-in 150ms ease-out both;
+}
+
+.op-sheet-enter {
+  animation: op-fade-in 200ms ease-out both;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .op-sheet-enter {
+    animation: op-sheet-in 300ms ease-out both;
+  }
+}
+
+/* ==========================================================================
    Estilos de Impresión Térmica y Ocultamiento de UI (SCRUM-378 / HU-21.07)
    ========================================================================== */
 .only-print {

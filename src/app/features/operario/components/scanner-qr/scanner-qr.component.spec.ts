@@ -58,25 +58,43 @@ describe('ScannerQrComponent (HU-25.04..07, HU-34.05, HU-34.06)', () => {
     component.detenerCamara();
   });
 
-  it('should create and render optical reticle and manual contingency field (HU-25.05, HU-25.07)', () => {
+  it('should create and render optical reticle and open manual contingency sheet on click (HU-25.05, HU-25.07)', () => {
     expect(component).toBeTruthy();
     const reticula = fixture.debugElement.query(By.css('[data-testid="reticula-encuadre-qr"]'));
     expect(reticula).toBeTruthy();
+
+    expect(fixture.debugElement.query(By.css('[data-testid="input-contingencia-uuid"]'))).toBeNull();
+
+    const btnAbrirManual = fixture.debugElement.query(By.css('[data-testid="btn-abrir-contingencia-manual"]'));
+    expect(btnAbrirManual).toBeTruthy();
+    btnAbrirManual.nativeElement.click();
+    fixture.detectChanges();
 
     const inputManual = fixture.debugElement.query(By.css('[data-testid="input-contingencia-uuid"]'));
     expect(inputManual).toBeTruthy();
   });
 
-  it('should process manual UUID when typed and clicked (HU-25.05)', () => {
-    component.codigoManual = 'UUID-MANUAL-789';
+  it('should process manual UUID when typed and clicked and close the contingency sheet (HU-25.05)', () => {
+    const btnAbrirManual = fixture.debugElement.query(By.css('[data-testid="btn-abrir-contingencia-manual"]'));
+    btnAbrirManual.nativeElement.click();
+    fixture.detectChanges();
+
+    const inputManual = fixture.debugElement.query(By.css('[data-testid="input-contingencia-uuid"]'));
+    inputManual.nativeElement.value = 'UUID-MANUAL-789';
+    inputManual.nativeElement.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
     const btnValidar = fixture.debugElement.query(By.css('[data-testid="btn-validar-uuid-manual"]'));
     expect(btnValidar).toBeTruthy();
+    expect(btnValidar.nativeElement.disabled).toBe(false);
 
     btnValidar.nativeElement.click();
+    fixture.detectChanges();
+
     expect(operacionServiceSpy.validarTicketQr).toHaveBeenCalledWith('UUID-MANUAL-789');
     expect(component.codigoManual).toBe('');
+    expect(component.mostrarContingenciaManual()).toBe(false);
+    expect(fixture.debugElement.query(By.css('[data-testid="modal-contingencia-manual"]'))).toBeNull();
   });
 
   it('should render capacity warning overlay and supervisor trigger when aforo is full (HU-34.05)', () => {

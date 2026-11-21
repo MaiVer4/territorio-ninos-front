@@ -109,11 +109,19 @@ export const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: 'login',
+    loadComponent: () => import('./features/tienda/pages/landing/tienda-landing.component').then(m => m.TiendaLandingComponent)
+  },
+  {
+    path: 'tienda',
+    redirectTo: '',
     pathMatch: 'full'
   },
   {
+    path: 'mis-boletos',
+    loadComponent: () => import('./features/tienda/pages/mis-boletos/mis-boletos.component').then(m => m.MisBoletosComponent)
+  },
+  {
     path: '**',
-    redirectTo: 'login'
+    redirectTo: ''
   }
 ];

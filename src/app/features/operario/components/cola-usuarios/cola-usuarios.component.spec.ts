@@ -113,22 +113,33 @@ describe('ColaUsuariosComponent (HU-28, HU-29, HU-30, HU-31, HU-32)', () => {
     expect(operacionServiceSpy.confirmarSalidaMenor).toHaveBeenCalledWith('ses-1');
   });
 
-  it('should show silence button when time is expired and call soundService.silenciarAlarma (HU-31.06)', () => {
+  it('should show silence and exit buttons together when time is expired and filter urgents (HU-31.06)', () => {
     const sesionExpirada: SesionJuegoMenor = {
       ...mockSesion,
       idSesion: 'ses-exp',
+      menorNombre: 'Mateo Ruiz',
       segundosRestantes: 0,
       estadoSemaforo: 'ROJO',
       alarmaSilenciada: false
     };
 
-    operacionServiceSpy.colaOrdenadaPorUrgencia.set([sesionExpirada]);
+    operacionServiceSpy.colaOrdenadaPorUrgencia.set([mockSesion, sesionExpirada]);
     fixture.detectChanges();
 
     const btnSilenciar = fixture.debugElement.query(By.css('[data-testid="btn-silenciar-alarma-ses-exp"]'));
+    const btnSalidaExp = fixture.debugElement.query(By.css('[data-testid="btn-confirmar-salida-ses-exp"]'));
     expect(btnSilenciar).toBeTruthy();
+    expect(btnSalidaExp).toBeTruthy();
 
     btnSilenciar.nativeElement.click();
     expect(soundServiceSpy.silenciarAlarma).toHaveBeenCalledWith('ses-exp');
+
+    const btnFiltroUrgentes = fixture.debugElement.query(By.css('[data-testid="filtro-cola-urgentes"]'));
+    expect(btnFiltroUrgentes).toBeTruthy();
+    btnFiltroUrgentes.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.css('[data-testid="tarjeta-menor-ses-exp"]'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('[data-testid="tarjeta-menor-ses-1"]'))).toBeNull();
   });
 });

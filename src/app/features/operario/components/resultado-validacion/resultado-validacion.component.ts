@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output, HostListener } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { OperacionService } from '../../../../core/services/operacion.service';
 import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models/operador.model';
@@ -13,30 +13,33 @@ import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models
       <div
         data-testid="modal-resultado-validacion"
         (click)="onBackdropClick($event)"
-        class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto overscroll-contain cursor-pointer">
-        
+        class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 op-backdrop-enter cursor-pointer">
+
         <div
-          class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full overflow-hidden shadow-2xl border-2 animate-in fade-in motion-safe:zoom-in-95 duration-150 cursor-default"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titulo-resultado-validacion"
+          class="bg-white rounded-t-[28px] sm:rounded-[28px] max-w-md w-full max-h-[92dvh] overflow-y-auto overscroll-contain shadow-2xl border-2 op-sheet-enter cursor-default"
           (click)="$event.stopPropagation()"
           [ngClass]="res.aprobado ? 'border-emerald-500 shadow-emerald-500/20' : 'border-red-600 shadow-red-600/25'">
-          
+
           <!-- Franja Superior de Estado de Alto Contraste (HU-26.07 / RNF3) -->
           <div
-            class="p-6 text-center text-white flex flex-col items-center justify-center"
+            class="p-5 sm:p-6 text-center text-white flex flex-col items-center justify-center"
             [ngClass]="res.aprobado ? 'bg-emerald-600' : 'bg-red-600'">
-            
+
+            <div class="w-10 h-1 rounded-full bg-white/40 mb-3 sm:hidden" aria-hidden="true"></div>
+
             <div
-              class="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 text-white ring-4 ring-white/30"
+              class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 text-white border border-white/25 ring-4 ring-white/20"
               [ngClass]="res.aprobado ? 'bg-emerald-700' : 'bg-red-700'">
               @if (res.aprobado) {
-                <!-- Ícono Aprobado / Checkmark -->
-                <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                <svg class="w-8 h-8 op-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                 </svg>
               } @else {
-                <!-- Ícono Rechazado / X -->
-                <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                <svg class="w-8 h-8 op-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               }
             </div>
@@ -46,26 +49,26 @@ import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models
               class="text-xs uppercase tracking-widest font-black px-3 py-1 rounded-full bg-black/25">
               {{ res.aprobado ? 'BOLETO APROBADO' : 'ACCESO RECHAZADO' }}
             </span>
-            <h2 class="text-xl sm:text-2xl font-black mt-2 leading-tight">
+            <h2 id="titulo-resultado-validacion" class="text-xl sm:text-2xl font-black mt-2 leading-tight">
               {{ res.aprobado ? 'Acceso Autorizado' : 'Ingreso Bloqueado' }}
             </h2>
           </div>
 
-          <!-- Cuerpo de Información y Metadatos -->
-          <div class="p-6 space-y-4">
+          <!-- Cuerpo de Información y Acciones Táctiles -->
+          <div class="p-4 pb-sheet-safe space-y-3.5">
             <!-- Mensaje Explicativo de Rechazo (HU-26.08 / Notion: CA-02, CA-03, CA-04) -->
             @if (!res.aprobado) {
               <div
                 data-testid="causa-rechazo-mensaje"
-                class="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
-                <p class="text-xs font-black text-red-700 uppercase tracking-wide mb-1">
+                class="bg-red-50 border border-red-200 rounded-xl p-3.5 text-center">
+                <p class="text-[11px] font-black text-red-700 uppercase tracking-wide mb-1">
                   Motivo de Denegación:
                 </p>
                 <p class="text-sm font-extrabold text-red-900 leading-snug">
                   {{ res.mensajeExplicativo }}
                 </p>
                 @if (res.causaRechazo) {
-                  <span class="inline-block mt-2 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-200 text-red-800">
+                  <span class="inline-block mt-2 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-red-200 text-red-900">
                     COD: {{ res.causaRechazo }}
                   </span>
                 }
@@ -73,44 +76,48 @@ import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models
             }
 
             <!-- Detalle del Menor y de la Entrada -->
-            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2 text-xs">
-              <div class="flex justify-between items-center pb-1.5 border-b border-slate-200">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+              <div class="flex justify-between items-center gap-2 pb-1.5 border-b border-slate-200">
                 <span class="text-slate-500 font-semibold">Boleto:</span>
-                <span class="font-mono font-bold text-slate-800">{{ res.codigoBoleta || res.uuid }}</span>
+                <span class="font-mono font-bold text-slate-900 truncate">{{ res.codigoBoleta || res.uuid }}</span>
               </div>
               @if (res.menorNombre) {
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center gap-2">
                   <span class="text-slate-500 font-semibold">Menor:</span>
-                  <span class="font-bold text-slate-900">{{ res.menorNombre }} {{ res.menorEdad ? '(' + res.menorEdad + ' años)' : '' }}</span>
+                  <span class="font-bold text-slate-900 text-right">
+                    {{ res.menorNombre }} {{ res.menorEdad ? '(' + res.menorEdad + ' años)' : '' }}
+                  </span>
                 </div>
               }
               @if (res.acudienteNombre) {
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center gap-2">
                   <span class="text-slate-500 font-semibold">Acudiente:</span>
-                  <span class="font-medium text-slate-700">{{ res.acudienteNombre }}</span>
+                  <span class="font-medium text-slate-700 text-right">{{ res.acudienteNombre }}</span>
                 </div>
               }
-              <div class="flex justify-between items-center">
+              <div class="flex justify-between items-center gap-2">
                 <span class="text-slate-500 font-semibold">Atracción:</span>
-                <span class="font-bold text-slate-800">{{ res.atraccionNombre || operacionService.estacionActiva()?.atraccionNombre }}</span>
+                <span class="font-bold text-slate-800 text-right">
+                  {{ res.atraccionNombre || operacionService.estacionActiva()?.atraccionNombre }}
+                </span>
               </div>
-              <div class="flex justify-between items-center">
+              <div class="flex justify-between items-center gap-2">
                 <span class="text-slate-500 font-semibold">Modalidad:</span>
-                <span class="font-extrabold text-emerald-700">
+                <span class="font-extrabold text-emerald-700 tabular-nums">
                   {{ res.tipoAtraccion === 'EVENTOS_CAIDAS' ? (res.caidasPermitidas || 3) + ' Caídas' : (res.duracionMinutos || 15) + ' Minutos' }}
                 </span>
               </div>
             </div>
 
-            <!-- Acciones Táctiles (HU-26.09 / Notion: SCRUM-406) -->
-            <div class="pt-2 flex flex-col gap-2.5">
+            <!-- Acciones Táctiles en Zona del Pulgar (HU-26.09 / Notion: SCRUM-406) -->
+            <div class="pt-1 flex flex-col gap-2.5">
               @if (res.aprobado) {
                 <button
                   type="button"
                   data-testid="btn-permitir-ingreso"
                   (click)="permitirIngreso(res)"
-                  class="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-base rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
-                  <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  class="w-full min-h-[56px] ps-4 pe-5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-base rounded-xl shadow-lg shadow-emerald-600/25 transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] flex items-center justify-center gap-2 cursor-pointer">
+                  <svg class="w-5 h-5 op-icon shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                   </svg>
                   <span>Permitir Ingreso</span>
@@ -121,7 +128,7 @@ import { ResultadoValidacionQr, SesionJuegoMenor } from '../../../../core/models
                 type="button"
                 data-testid="btn-cerrar-resultado-validacion"
                 (click)="cerrar()"
-                class="w-full min-h-[44px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold text-xs rounded-2xl transition cursor-pointer">
+                class="w-full min-h-[48px] px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer">
                 {{ res.aprobado ? 'Cancelar / No ingresó' : 'Entendido / Cerrar' }}
               </button>
             </div>

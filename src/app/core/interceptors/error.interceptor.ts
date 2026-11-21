@@ -11,15 +11,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Si el backend responde 401 y no es petición de autenticación (login/logout)
-      const isAuthUrl = req.url.includes('/auth/login') || req.url.includes('/auth/logout');
-      if (error.status === 401 && !isAuthUrl) {
+      // Si el backend responde 401 y no es petición de autenticación o tienda pública
+      const isPublicUrl = req.url.includes('/auth/login') || req.url.includes('/auth/logout') || req.url.includes('/tienda/');
+      if (error.status === 401 && !isPublicUrl) {
         // Cierre preventivo forzado inmediato sin disparar llamada HTTP circular
         authService.logout(true);
       } else if (error.status === 403) {
         const mensaje = error.error?.detalles || error.error?.mensaje || 'Acceso denegado: No tienes permisos suficientes para realizar esta acción.';
         notificationService?.error(mensaje);
-      } else if (error.status >= 400 && error.status < 500 && !isAuthUrl) {
+      } else if (error.status >= 400 && error.status < 500 && !isPublicUrl) {
         const mensaje = error.error?.detalles || error.error?.mensaje || error.error?.message;
         if (mensaje && typeof mensaje === 'string') {
           notificationService?.error(mensaje);
