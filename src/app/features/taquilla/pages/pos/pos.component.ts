@@ -1,8 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, OnInit, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  HostListener,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, filter, switchMap, finalize, catchError } from 'rxjs/operators';
+import { catchError, debounceTime, distinctUntilChanged, filter, finalize, switchMap } from 'rxjs/operators';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CajaService } from '../../../../core/services/caja.service';
@@ -10,8 +21,14 @@ import { ClienteService } from '../../../../core/services/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ResultadoArqueoDTO, TurnoResponseDTO } from '../../../../core/models/caja.model';
 import { Cliente, Menor } from '../../../../core/models/cliente.model';
-import { Atraccion, AtraccionCatalogoVenta, OrdenEmisionFisica, ResumenLiquidacionPOS, SeleccionCatalogoPOS } from '../../../../core/models/atraccion.model';
-import { Ticket } from '../../../../core/models/ticket.model';
+import {
+  Atraccion,
+  AtraccionCatalogoVenta,
+  OrdenEmisionFisica,
+  ResumenLiquidacionPOS,
+  SeleccionCatalogoPOS
+} from '../../../../core/models/atraccion.model';
+import { CodigoMotivoReimpresion, Ticket } from '../../../../core/models/ticket.model';
 import { AtraccionService } from '../../../../core/services/atraccion.service';
 import { PosAudioService } from '../../../../core/services/pos-audio.service';
 import { ColaEmisionService } from '../../../../core/services/cola-emision.service';
@@ -29,7 +46,6 @@ import { PrintService } from '../../../../core/services/print.service';
 import { TicketReimpresionService } from '../../../../core/services/ticket-reimpresion.service';
 import { ConfiguracionService } from '../../../../core/services/configuracion.service';
 import { WebSocketService } from '../../../../core/services/websocket.service';
-import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
 
 @Component({
   selector: 'app-taquilla-pos',
@@ -49,7 +65,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
     TicketPrintTemplateComponent
   ],
   template: `
-    <div class="min-h-screen bg-slate-50 font-sans flex flex-col relative pb-16">
+    <div class="min-h-screen lg:h-screen lg:overflow-hidden bg-slate-100 font-sans flex flex-col relative">
       <!-- Modal Bloqueante de Apertura si no hay turno activo -->
       @if (mostrarModalApertura()) {
         <app-apertura-caja-modal (turnoIniciado)="onTurnoIniciado($event)"></app-apertura-caja-modal>
@@ -86,7 +102,7 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
           aria-modal="true"
           data-no-print="true"
           data-testid="modal-consulta-tickets">
-          <div class="w-full max-w-6xl my-auto animate-in fade-in motion-safe:zoom-in-95 duration-150 cursor-default" (click)="$event.stopPropagation()">
+          <div class="w-full max-w-6xl my-auto op-sheet-enter cursor-default" (click)="$event.stopPropagation()">
             <app-consulta-tickets
               [modoModal]="true"
               (reimprimirTicket)="abrirModalReimpresionBoleta($event)"
@@ -96,29 +112,57 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
         </div>
       }
 
-      <!-- Cabecera del POS -->
-      <header class="no-print h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs z-10">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
+      <!-- Cabecera Compacta de Cabina POS -->
+      <header class="no-print h-12 shrink-0 bg-slate-950 text-white border-b border-white/10 px-4 flex items-center justify-between gap-3 z-20">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-[11px] shrink-0">
             TDN
           </div>
-          <div>
-            <h1 class="text-sm font-bold text-slate-800">Taquilla POS • Ventas y Boletas</h1>
-            <p class="text-[11px] text-slate-400">Territorio de Niños</p>
-          </div>
+          <h1 class="text-xs sm:text-sm font-extrabold text-white truncate">
+            Taquilla POS
+          </h1>
+
+          @if (turnoActual(); as turno) {
+            <div class="hidden md:flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-600/60 px-2.5 py-0.5 rounded-full text-[11px] text-emerald-200 shrink-0">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span class="font-bold">Turno #{{ turno.idTurno }}</span>
+              <span class="opacity-50">·</span>
+              <span class="font-mono tabular-nums">Base \${{ turno.montoInicial.toLocaleString('es-CO') }}</span>
+            </div>
+          }
         </div>
 
-        <div class="flex items-center gap-2.5 sm:gap-3">
-          <!-- Atajos de Teclado Operativos (HU-15.12) -->
-          <div class="hidden md:flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <!-- Atajos Operativos Rápidos -->
+          <div class="hidden xl:flex items-center gap-1 text-[10px] font-bold text-slate-300">
             <button
               type="button"
               data-testid="shortcut-badge-f2"
               (click)="enfocarBuscarCliente()"
-              title="Atajo F2: Buscar / Identificar Cliente"
-              class="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer">
-              <kbd class="px-1 py-0.2 bg-white rounded border border-slate-300 font-mono text-[10px] font-bold shadow-2xs">F2</kbd>
-              <span class="hidden xl:inline">Cliente</span>
+              title="F2: Cédula cliente"
+              class="inline-flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/15 rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+              <kbd class="px-1 bg-slate-800 border border-white/15 rounded font-mono text-[10px]">F2</kbd>
+              <span>Cliente</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="shortcut-badge-f3"
+              (click)="catalogoRef?.enfocarBuscador()"
+              title="F3: Buscar atracción"
+              class="inline-flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/15 rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+              <kbd class="px-1 bg-slate-800 border border-white/15 rounded font-mono text-[10px]">F3</kbd>
+              <span>Buscar</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="shortcut-badge-f9"
+              (click)="posCartRef?.intentarCobrarConAtajo()"
+              title="F9: Cobrar orden"
+              class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+              <kbd class="px-1 bg-emerald-800 border border-emerald-400/40 rounded font-mono text-[10px]">F9</kbd>
+              <span>Cobrar</span>
             </button>
 
             @if (!turnoActual()) {
@@ -126,71 +170,63 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                 type="button"
                 data-testid="shortcut-badge-f4"
                 (click)="abrirCajaShortcut()"
-                title="Atajo F4: Apertura de Caja"
-                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition cursor-pointer">
-                <kbd class="px-1 py-0.2 bg-white rounded border border-blue-200 font-mono text-[10px] font-bold shadow-2xs">F4</kbd>
-                <span class="hidden xl:inline">Abrir Caja</span>
+                title="F4: Apertura de Caja"
+                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+                <kbd class="px-1 bg-blue-800 border border-blue-400/40 rounded font-mono text-[10px]">F4</kbd>
+                <span>Abrir</span>
               </button>
-            }
-
-            @if (turnoActual()) {
+            } @else {
               <button
                 type="button"
                 data-testid="shortcut-badge-f8"
                 (click)="arqueoCajaShortcut()"
-                title="Atajo F8: Arqueo / Cierre de Caja"
-                class="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer">
-                <kbd class="px-1 py-0.2 bg-white rounded border border-slate-300 font-mono text-[10px] font-bold shadow-2xs">F8</kbd>
-                <span class="hidden xl:inline">Arqueo</span>
+                title="F8: Arqueo / Cierre de Caja"
+                class="inline-flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/15 rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+                <kbd class="px-1 bg-slate-800 border border-white/15 rounded font-mono text-[10px]">F8</kbd>
+                <span>Arqueo</span>
               </button>
             }
           </div>
 
-          @if (turnoActual(); as turno) {
-            <div class="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl text-xs text-emerald-800">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span class="font-bold">Turno #{{ turno.idTurno }}</span>
-              <span class="text-emerald-400">•</span>
-              <span>Base: <strong>\${{ turno.montoInicial.toLocaleString('es-CO') }}</strong></span>
-            </div>
-
+          @if (turnoActual()) {
             <button
               type="button"
               (click)="iniciarArqueo()"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs">
-              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              class="flex items-center gap-1.5 ps-2.5 pe-3 py-1 bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold rounded-lg transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer">
+              <svg class="w-3.5 h-3.5 op-icon text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              <span>Arqueo / Cerrar Caja</span>
+              <span class="hidden sm:inline">Arqueo / Cerrar</span>
             </button>
           }
 
-          <!-- Botón de Acceso Rápido: Reimprimir Última Boleta (HU-22.07 / SCRUM-383) -->
+          <!-- Botón Reimprimir Última Boleta (HU-22.07 / SCRUM-383) -->
           @if (turnoActual() && colaEmisionService.ultimaBoletaEmitida()) {
             <button
               type="button"
               data-testid="btn-reimprimir-ultima-boleta"
               (click)="abrirModalReimpresionUltimaBoleta()"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+              class="inline-flex items-center gap-1.5 ps-2.5 pe-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-extrabold transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer"
               title="Reimprimir última boleta emitida en el turno">
-              <span>🖨️</span>
-              <span class="hidden sm:inline">Reimprimir última boleta</span>
-              <span class="sm:hidden">Reimprimir</span>
+              <svg class="w-3.5 h-3.5 op-icon shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              <span class="hidden sm:inline">Reimprimir última</span>
             </button>
           }
 
-          <!-- Botón de Consulta de Boletas y Estado de Tickets (HU-23.04 / SCRUM-386) -->
+          <!-- Botón Consultar Boletas (F10) -->
           <button
             type="button"
             data-testid="btn-abrir-consulta-tickets"
             (click)="mostrarConsultaTickets.set(true)"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
-            title="Consultar boletas por cédula o UUID">
-            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            class="inline-flex items-center gap-1.5 ps-2.5 pe-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer"
+            title="Consultar boletas por cédula o UUID (F10)">
+            <svg class="w-3.5 h-3.5 op-icon shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <span class="hidden sm:inline">Consultar Boletas</span>
-            <span class="sm:hidden">Consultar</span>
+            <span class="hidden sm:inline">Consultar</span>
+            <kbd class="hidden xl:inline px-1 bg-blue-800 border border-blue-400/40 rounded font-mono text-[10px]">F10</kbd>
           </button>
 
           @if (colaEmisionService.cantidadOrdenesPendientes() > 0) {
@@ -198,74 +234,25 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
               type="button"
               data-testid="badge-cola-emision"
               (click)="toggleColaEmision()"
-              class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 rounded-lg text-xs font-extrabold transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer tabular-nums"
               title="Cola de Emisión Física">
-              <span>🎟️</span>
+              <svg class="w-3.5 h-3.5 op-icon shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
               <span>Emisión: {{ colaEmisionService.cantidadOrdenesPendientes() }}</span>
             </button>
           }
         </div>
       </header>
 
-      <!-- Barra Superior de Identificación del Cliente -->
-      <section class="no-print bg-white border-b border-slate-200 px-6 py-3.5 shadow-2xs">
-        <div class="max-w-7xl mx-auto">
-          <!-- Encabezado de la barra con estado y botón de limpiar -->
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <span class="text-xs font-bold text-slate-700 tracking-wide uppercase">Identificación del Cliente</span>
-
-              <!-- Badges de Estado -->
-              @if (buscandoCliente()) {
-                <span data-testid="badge-buscando" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
-                  <svg data-testid="spinner-buscando" class="animate-spin w-3 h-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Buscando...</span>
-                </span>
-              } @else if (clienteSeleccionado()) {
-                <span data-testid="badge-cliente-registrado" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  <span>Cliente Registrado</span>
-                  @if (clienteSeleccionado()?.menores?.length) {
-                    <span class="text-emerald-600 font-normal">({{ clienteSeleccionado()!.menores!.length }} menor{{ clienteSeleccionado()!.menores!.length === 1 ? '' : 'es' }})</span>
-                  }
-                </span>
-              } @else if (esClienteNuevo()) {
-                <span data-testid="badge-nuevo-cliente" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                  <span>Nuevo Cliente</span>
-                </span>
-              }
-            </div>
-
-            <!-- Botón Limpiar -->
-            <button
-              type="button"
-              data-testid="btn-limpiar"
-              (click)="limpiarCliente()"
-              class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer">
-              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Limpiar</span>
-            </button>
-          </div>
-
-          <!-- Formulario Reactivo de Cliente -->
-          <form [formGroup]="clienteForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <!-- Documento -->
-            <div>
-              <label for="numeroDocumento" class="block text-[11px] font-bold text-slate-600 mb-1">
-                Documento / Cédula <span class="text-rose-500">*</span>
-              </label>
-              <div class="relative">
+      <!-- Barra Compacta de Cliente + Niño Activo (1 línea por defecto; colapsa campos extra si ya existe) -->
+      <section class="no-print shrink-0 bg-white border-b border-slate-200 px-4 py-2 z-20 relative">
+        <div class="max-w-full flex flex-col gap-2">
+          <!-- Fila Principal de 1 Línea -->
+          <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              <!-- Input Cédula (F2) -->
+              <div class="relative w-44 sm:w-52 shrink-0" [formGroup]="clienteForm">
                 <input
                   #documentoInput
                   id="numeroDocumento"
@@ -273,366 +260,385 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
                   type="text"
                   inputmode="numeric"
                   formControlName="numeroDocumento"
-                  placeholder="Doc. (mín. 5 dígitos)"
-                  class="w-full px-3 py-1.5 pr-8 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
+                  (keydown.enter)="onEnterDocumento()"
+                  placeholder="Cédula cliente (F2)"
+                  class="w-full pl-3 pr-8 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-[background-color,border-color] duration-150 ease-out text-slate-900 font-semibold placeholder-slate-400" />
                 <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
                   @if (buscandoCliente()) {
-                    <svg class="animate-spin w-3.5 h-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg class="motion-safe:animate-spin w-3.5 h-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   } @else {
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="w-3.5 h-3.5 op-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   }
                 </div>
               </div>
+
+              <!-- Badge de Estado + Resumen Cliente -->
+              @if (buscandoCliente()) {
+                <span data-testid="badge-buscando" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span>Buscando...</span>
+                </span>
+              } @else if (clienteSeleccionado(); as cli) {
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span data-testid="badge-cliente-registrado" class="inline-flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>Cliente Registrado · {{ cli.nombreCompleto }}</span>
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="btn-editar-cliente"
+                    (click)="editarClienteExpandido.update(v => !v)"
+                    class="text-[11px] underline text-emerald-700 hover:text-emerald-950 font-bold cursor-pointer">
+                    {{ editarClienteExpandido() ? 'Ocultar' : 'Editar' }}
+                  </button>
+                </div>
+              } @else if (esClienteNuevo()) {
+                <span data-testid="badge-nuevo-cliente" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span>Nuevo Cliente</span>
+                </span>
+              } @else {
+                <button
+                  type="button"
+                  data-testid="btn-editar-cliente"
+                  (click)="editarClienteExpandido.update(v => !v)"
+                  class="text-[11px] font-semibold text-slate-500 hover:text-slate-800 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors duration-150 ease-out cursor-pointer">
+                  {{ editarClienteExpandido() ? 'Ocultar datos' : '+ Datos cliente' }}
+                </button>
+              }
+
+              <div class="hidden sm:block h-5 w-px bg-slate-200 mx-0.5"></div>
+
+              <!-- Chips de Niños + Selector Niño Activo en 1 Línea -->
+              <app-menores-chips
+                [compacto]="true"
+                [menores]="menoresOrden()"
+                [menorActivo]="menorActivo()"
+                (menoresChange)="onMenoresOrdenChange($event)"
+                (menorActivoChange)="menorActivo.set($event)">
+              </app-menores-chips>
             </div>
 
-            <!-- Nombre Completo -->
-            <div>
-              <label for="nombreCompleto" class="block text-[11px] font-bold text-slate-600 mb-1">
-                Nombre Completo <span class="text-rose-500">*</span>
-              </label>
-              <input
-                id="nombreCompleto"
-                data-testid="input-nombre"
-                type="text"
-                formControlName="nombreCompleto"
-                placeholder="Nombre del cliente"
-                class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
-            </div>
-
-            <!-- Teléfono -->
-            <div>
-              <label for="telefono" class="block text-[11px] font-bold text-slate-600 mb-1">
-                Teléfono <span class="text-rose-500">*</span>
-              </label>
-              <input
-                id="telefono"
-                data-testid="input-telefono"
-                type="tel"
-                inputmode="tel"
-                formControlName="telefono"
-                placeholder="Ej: 3001234567"
-                class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
-            </div>
-
-            <!-- Correo Electrónico -->
-            <div>
-              <label for="correo" class="block text-[11px] font-bold text-slate-600 mb-1">
-                Correo Electrónico
-              </label>
-              <input
-                id="correo"
-                data-testid="input-correo"
-                type="email"
-                formControlName="correo"
-                placeholder="correo@ejemplo.com"
-                class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-slate-800 font-medium placeholder-slate-400" />
-            </div>
-          </form>
-
-          <!-- Menores Asociados a la Orden (HU-15.11) -->
-          <div class="mt-4 pt-3 border-t border-slate-100">
-            <app-menores-chips
-              [menores]="menoresOrden()"
-              (menoresChange)="onMenoresOrdenChange($event)">
-            </app-menores-chips>
+            <!-- Botón Limpiar -->
+            <button
+              type="button"
+              data-testid="btn-limpiar"
+              (click)="limpiarCliente()"
+              class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors duration-150 ease-out cursor-pointer shrink-0">
+              <svg class="w-3.5 h-3.5 op-icon text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Limpiar</span>
+            </button>
           </div>
+
+          <!-- Fila 2 Colapsable: Solo visible cuando es Cliente Nuevo o se pulsa Editar -->
+          @if (mostrarFormularioClienteExtendido()) {
+            <form [formGroup]="clienteForm" class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1.5 border-t border-slate-100">
+              <div>
+                <label for="nombreCompleto" class="block text-[10px] font-bold text-slate-600 mb-0.5">
+                  Nombre Completo <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  #nombreInput
+                  id="nombreCompleto"
+                  data-testid="input-nombre"
+                  type="text"
+                  formControlName="nombreCompleto"
+                  (keydown.enter)="onEnterNombre()"
+                  placeholder="Nombre del cliente"
+                  class="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 font-medium placeholder-slate-400" />
+              </div>
+
+              <div>
+                <label for="telefono" class="block text-[10px] font-bold text-slate-600 mb-0.5">
+                  Teléfono <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  #telefonoInput
+                  id="telefono"
+                  data-testid="input-telefono"
+                  type="tel"
+                  inputmode="tel"
+                  formControlName="telefono"
+                  (keydown.enter)="onEnterTelefono()"
+                  placeholder="Ej: 3001234567"
+                  class="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 font-medium placeholder-slate-400" />
+              </div>
+
+              <div>
+                <label for="correo" class="block text-[10px] font-bold text-slate-600 mb-0.5">
+                  Correo Electrónico (opc.)
+                </label>
+                <input
+                  id="correo"
+                  data-testid="input-correo"
+                  type="email"
+                  formControlName="correo"
+                  (keydown.enter)="onEnterTelefono()"
+                  placeholder="correo@ejemplo.com"
+                  class="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 font-medium placeholder-slate-400" />
+              </div>
+            </form>
+          }
         </div>
       </section>
 
-      <!-- Contenido Principal: Catálogo y Orden -->
-      <main class="no-print flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          <!-- Columna Izquierda: Catálogo Interactivo de Atracciones -->
-          <div class="lg:col-span-2 space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-extrabold text-slate-800">Catálogo de Atracciones</h2>
-                <p class="text-xs text-slate-400">Selecciona modalidad y añade atracciones a la orden del cliente</p>
-              </div>
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
-                {{ atracciones().length }} atracciones
-              </span>
-            </div>
+      <!-- Cabina Split: Catálogo Izquierda + Checkout Anclado Derecha -->
+      <main class="no-print flex-1 min-h-0 flex flex-col lg:flex-row lg:overflow-hidden">
+        <!-- Columna Izquierda: Catálogo de 1 Clic con Scroll Independiente -->
+        <div class="flex-1 min-h-0 lg:overflow-y-auto overscroll-contain p-3 lg:p-4">
+          <app-catalogo-atracciones
+            [atracciones]="atracciones()"
+            [cargando]="cargandoAtracciones()"
+            [conteoEnCarrito]="conteoAtraccionesEnCarrito()"
+            (atraccionSeleccionada)="onAtraccionSeleccionada($event)">
+          </app-catalogo-atracciones>
+        </div>
 
-            <app-catalogo-atracciones
-              [atracciones]="atracciones()"
-              [cargando]="cargandoAtracciones()"
-              (atraccionSeleccionada)="onAtraccionSeleccionada($event)">
-            </app-catalogo-atracciones>
-          </div>
-
-          <!-- Columna Derecha: Pre-Orden y Estado de Estación -->
-          <div class="space-y-4">
-            <!-- Panel del Carrito Sincronizado (CA-04) -->
-            <app-pos-cart
-              [items]="itemsSeleccionados()"
-              [menores]="menoresOrden()"
-              (itemsChange)="itemsSeleccionados.set($event)"
-              (liquidarOrden)="onLiquidarOrden($event)">
-            </app-pos-cart>
-
-            <!-- Panel de Cola de Emisión Física -->
-            @if (mostrarColaEmision() || colaEmisionService.cantidadOrdenesPendientes() > 0) {
-              <div
-                data-testid="panel-cola-emision"
-                class="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 text-xs space-y-3 animate-in fade-in">
-                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div class="flex items-center gap-2">
-                    <span class="text-base">🖨️</span>
-                    <div>
-                      <h3 class="font-bold text-slate-800">Cola de Emisión Física</h3>
-                      <p class="text-[10px] text-slate-400">
-                        {{ colaEmisionService.totalBoletasPendientes() }} boleta(s) por despachar
-                      </p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-1.5">
-                    <!-- Selector de Ancho de Rollo Térmico (80mm / 58mm) -->
-                    <div class="flex items-center bg-slate-100 p-0.5 rounded-lg text-[10px]" data-testid="selector-ancho-papel-pos">
-                      <button
-                        type="button"
-                        data-testid="btn-ancho-80mm"
-                        (click)="cambiarAnchoPapelPos(80)"
-                        [class]="printService.anchoPapelMm() === 80 ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'"
-                        class="px-1.5 py-0.5 rounded cursor-pointer transition">
-                        80mm
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="btn-ancho-58mm"
-                        (click)="cambiarAnchoPapelPos(58)"
-                        [class]="printService.anchoPapelMm() === 58 ? 'bg-white font-bold text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-700'"
-                        class="px-1.5 py-0.5 rounded cursor-pointer transition">
-                        58mm
-                      </button>
-                    </div>
-
-                    @if (colaEmisionService.ordenes().some(o => o.estado === 'EMITIDA')) {
-                      <button
-                        type="button"
-                        data-testid="btn-limpiar-emitidas"
-                        (click)="colaEmisionService.limpiarEmitidas()"
-                        class="text-[10px] text-slate-400 hover:text-slate-600 font-semibold cursor-pointer px-1.5 py-0.5 rounded">
-                        Limpiar emitidas
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      data-testid="btn-cerrar-cola-emision"
-                      (click)="mostrarColaEmision.set(false)"
-                      class="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg">
-                      ✕
-                    </button>
+        <!-- Columna Derecha: Post-Venta Inmediata + Carrito Anclado -->
+        <aside class="w-full lg:w-[400px] xl:w-[430px] shrink-0 bg-white lg:border-l border-t lg:border-t-0 border-slate-200 flex flex-col min-h-0 lg:h-full">
+          <!-- Panel Post-Venta / Cola de Emisión Física en la parte superior -->
+          @if (mostrarColaEmision() || colaEmisionService.cantidadOrdenesPendientes() > 0) {
+            <div
+              data-testid="panel-cola-emision"
+              class="shrink-0 border-b border-amber-200 bg-amber-50/70 p-3 text-xs space-y-2.5 max-h-[45vh] overflow-y-auto overscroll-contain">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <svg class="w-4 h-4 op-icon text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  <div class="min-w-0">
+                    <h3 class="font-extrabold text-slate-900 truncate">Cola de Emisión Física</h3>
+                    <p class="text-[10px] text-amber-800 tabular-nums">
+                      {{ colaEmisionService.totalBoletasPendientes() }} boleta(s) por despachar
+                    </p>
                   </div>
                 </div>
 
-                @if (colaEmisionService.ordenesPendientes().length === 0) {
-                  <div class="text-center py-4 text-slate-400 text-[11px]" data-testid="cola-emision-vacia">
-                    <p class="font-medium text-slate-600">No hay boletas pendientes de emisión.</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Las ventas finalizadas aparecerán aquí para entrega física.</p>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <div class="flex items-center bg-white border border-amber-200 p-0.5 rounded-lg text-[10px]" data-testid="selector-ancho-papel-pos">
+                    <button
+                      type="button"
+                      data-testid="btn-ancho-80mm"
+                      (click)="cambiarAnchoPapelPos(80)"
+                      [class]="printService.anchoPapelMm() === 80 ? 'bg-amber-100 font-bold text-slate-900' : 'text-slate-500 hover:text-slate-700'"
+                      class="px-1.5 py-0.5 rounded cursor-pointer transition-colors duration-150 ease-out">
+                      80mm
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="btn-ancho-58mm"
+                      (click)="cambiarAnchoPapelPos(58)"
+                      [class]="printService.anchoPapelMm() === 58 ? 'bg-amber-100 font-bold text-slate-900' : 'text-slate-500 hover:text-slate-700'"
+                      class="px-1.5 py-0.5 rounded cursor-pointer transition-colors duration-150 ease-out">
+                      58mm
+                    </button>
                   </div>
-                } @else {
-                  <div class="space-y-2.5 max-h-64 overflow-y-auto overscroll-contain pr-1">
-                    @for (orden of colaEmisionService.ordenesPendientes(); track orden.idOrden) {
-                      <div
-                        [attr.data-testid]="'orden-emision-' + orden.idOrden"
-                        class="p-2.5 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2">
-                        <div class="flex items-center justify-between">
-                          <div>
-                            <span class="font-bold text-slate-800 text-xs">{{ orden.clienteNombre }}</span>
-                            <span class="text-[10px] text-slate-500 font-mono block">#{{ orden.idOrden }}</span>
-                          </div>
-                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/70 text-amber-900 uppercase">
-                            {{ orden.boletas.length }} boleta(s)
-                          </span>
-                        </div>
 
-                        <div class="space-y-1 bg-white/80 p-2 rounded-lg border border-amber-100 text-[11px]">
-                          @for (boleta of orden.boletas; track boleta.codigoBoleta; let bIndex = $index) {
-                            <div
-                              [attr.data-testid]="'ticket-generado-' + bIndex"
-                              (click)="seleccionarBoletaCarrusel(orden.idOrden, bIndex)"
-                              class="flex items-center justify-between text-slate-700 py-0.5 cursor-pointer hover:bg-amber-100/60 rounded px-1 transition"
-                              title="Ver en carrusel de boletas">
-                              <div class="truncate max-w-[160px]">
-                                <span class="truncate font-medium block">
-                                  {{ boleta.atraccionNombre }} ({{ boleta.modalidadEtiqueta }})
-                                </span>
-                                <span class="text-[9px] font-mono text-slate-400 block">
-                                  {{ boleta.codigoBoleta }}
-                                </span>
+                  @if (colaEmisionService.ordenes().some(o => o.estado === 'EMITIDA')) {
+                    <button
+                      type="button"
+                      data-testid="btn-limpiar-emitidas"
+                      (click)="colaEmisionService.limpiarEmitidas()"
+                      class="text-[10px] text-slate-600 hover:text-slate-900 font-semibold cursor-pointer px-1.5 py-0.5 rounded">
+                      Limpiar
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    data-testid="btn-cerrar-cola-emision"
+                    (click)="mostrarColaEmision.set(false)"
+                    class="text-slate-500 hover:text-slate-800 cursor-pointer p-1 rounded-lg">
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              @if (colaEmisionService.ordenesPendientes().length === 0) {
+                <div class="text-center py-2 text-slate-500 text-[11px]" data-testid="cola-emision-vacia">
+                  <p class="font-medium text-slate-700">No hay boletas pendientes de emisión.</p>
+                </div>
+              } @else {
+                <div class="space-y-2">
+                  @for (orden of colaEmisionService.ordenesPendientes(); track orden.idOrden) {
+                    <div
+                      [attr.data-testid]="'orden-emision-' + orden.idOrden"
+                      class="p-2.5 bg-white border border-amber-200 rounded-xl space-y-2 shadow-2xs">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                          <span class="font-bold text-slate-900 text-xs truncate block">{{ orden.clienteNombre }}</span>
+                          <span class="text-[10px] text-slate-400 font-mono">#{{ orden.idOrden }}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 uppercase shrink-0 tabular-nums">
+                          {{ orden.boletas.length }} boleta(s)
+                        </span>
+                      </div>
+
+                      <!-- Acción Directa 1-Clic: Imprimir y Entregar -->
+                      <div class="flex items-center justify-between gap-1.5 pt-0.5">
+                        <span class="font-mono tabular-nums font-extrabold text-slate-800 text-xs">
+                          \${{ orden.granTotal.toLocaleString('es-CO') }}
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            [attr.data-testid]="'btn-imprimir-entregar-' + orden.idOrden"
+                            (click)="imprimirYEntregarOrden(orden)"
+                            class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] rounded-lg transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer">
+                            Imprimir y Entregar
+                          </button>
+                          <button
+                            type="button"
+                            [attr.data-testid]="'btn-imprimir-orden-' + orden.idOrden"
+                            (click)="reimprimirOrdenFisica(orden)"
+                            class="px-2 py-1 bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] rounded-lg transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer"
+                            title="Solo imprimir tirilla">
+                            Imprimir
+                          </button>
+                          <button
+                            type="button"
+                            [attr.data-testid]="'btn-emitir-orden-' + orden.idOrden"
+                            (click)="emitirOrdenFisica(orden.idOrden)"
+                            class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg transition-[transform,background-color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer">
+                            Entregar
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Listado resumido y Carrusel QR -->
+                      <div class="space-y-1 bg-slate-50 p-2 rounded-lg border border-slate-100 text-[11px]">
+                        @for (boleta of orden.boletas; track boleta.codigoBoleta; let bIndex = $index) {
+                          <div
+                            [attr.data-testid]="'ticket-generado-' + bIndex"
+                            (click)="seleccionarBoletaCarrusel(orden.idOrden, bIndex)"
+                            class="flex items-center justify-between text-slate-700 py-0.5 cursor-pointer hover:bg-amber-100/60 rounded px-1 transition-colors duration-150 ease-out"
+                            title="Ver en carrusel de boletas">
+                            <div class="truncate max-w-[170px]">
+                              <span class="truncate font-medium block">
+                                {{ boleta.atraccionNombre }} ({{ boleta.modalidadEtiqueta }})
+                              </span>
+                              <span class="text-[9px] font-mono text-slate-400 block">
+                                {{ boleta.codigoBoleta }}
+                              </span>
+                            </div>
+                            <div class="text-right shrink-0">
+                              <span class="text-slate-600 text-[10px] block font-medium">
+                                {{ boleta.menorNombre }}
+                              </span>
+                              <span class="text-[9px] font-mono tabular-nums text-slate-400">
+                                \${{ boleta.precioUnitario.toLocaleString('es-CO') }}
+                              </span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      @if (orden.boletas.length > 0) {
+                        <div
+                          [attr.data-testid]="'carrusel-qr-orden-' + orden.idOrden"
+                          class="bg-slate-50 rounded-xl border border-slate-200 p-2 space-y-1.5">
+                          <div class="flex items-center justify-between text-[11px] pb-1 border-b border-slate-200">
+                            <span class="font-bold text-slate-700" data-testid="carrusel-contador-boletas">
+                              Boleta {{ obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length) + 1 }} de {{ orden.boletas.length }}
+                            </span>
+                            <div class="flex items-center gap-1">
+                              <button
+                                type="button"
+                                data-testid="btn-carrusel-prev"
+                                (click)="boletaAnteriorCarrusel(orden)"
+                                [disabled]="orden.boletas.length <= 1"
+                                title="Boleta anterior"
+                                class="w-6 h-6 rounded flex items-center justify-center bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                                ‹
+                              </button>
+                              <button
+                                type="button"
+                                data-testid="btn-carrusel-next"
+                                (click)="boletaSiguienteCarrusel(orden)"
+                                [disabled]="orden.boletas.length <= 1"
+                                title="Boleta siguiente"
+                                class="w-6 h-6 rounded flex items-center justify-center bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                                ›
+                              </button>
+                            </div>
+                          </div>
+
+                          @if (obtenerBoletaActivaCarrusel(orden); as boletaActiva) {
+                            <div data-testid="carrusel-boleta-activa" class="flex flex-col items-center gap-1">
+                              <app-qr-viewer
+                                [value]="boletaActiva.uuidCodigo || boletaActiva.codigoQr || boletaActiva.uuid || ''"
+                                [uuid]="boletaActiva.uuid || boletaActiva.uuidCodigo || ''"
+                                [codigoVisible]="boletaActiva.codigoBoleta"
+                                [size]="116"
+                                [margin]="4"
+                                errorCorrectionLevel="M"
+                                [mostrarInsigniaOptica]="true">
+                              </app-qr-viewer>
+
+                              <div class="text-center w-full px-1 space-y-0.5">
+                                <p class="font-bold text-slate-800 text-xs truncate">
+                                  {{ boletaActiva.atraccionNombre }} ({{ boletaActiva.modalidadEtiqueta }})
+                                </p>
+                                <p class="text-[10px] text-slate-600">
+                                  Menor: <span class="font-semibold text-slate-800">{{ boletaActiva.menorNombre }}</span>
+                                </p>
+                                <button
+                                  type="button"
+                                  data-testid="btn-reimprimir-boleta-carrusel"
+                                  (click)="abrirModalReimpresionBoleta(boletaActiva)"
+                                  class="mt-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-bold transition-colors duration-150 ease-out cursor-pointer inline-flex items-center justify-center gap-1">
+                                  <span>Reimprimir boleta</span>
+                                </button>
                               </div>
-                              <div class="text-right shrink-0">
-                                <span class="text-slate-500 text-[10px] block font-medium">
-                                  {{ boleta.menorNombre }}
-                                </span>
-                                <span class="text-[9px] font-mono text-slate-400">
-                                  \${{ boleta.precioUnitario.toLocaleString('es-CO') }}
-                                </span>
-                              </div>
+
+                              @if (orden.boletas.length > 1) {
+                                <div class="flex items-center justify-center gap-1 pt-0.5">
+                                  @for (b of orden.boletas; track b.codigoBoleta; let dIndex = $index) {
+                                    <button
+                                      type="button"
+                                      [attr.data-testid]="'btn-carrusel-dot-' + dIndex"
+                                      (click)="seleccionarBoletaCarrusel(orden.idOrden, dIndex)"
+                                      [class]="dIndex === obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length) ? 'w-4 bg-amber-500' : 'w-1.5 bg-slate-300 hover:bg-slate-400'"
+                                      class="h-1.5 rounded-full transition-[width,background-color] duration-150 ease-out cursor-pointer"
+                                      [attr.aria-label]="'Ir a boleta ' + (dIndex + 1)">
+                                    </button>
+                                  }
+                                </div>
+                              }
                             </div>
                           }
                         </div>
-
-                        <!-- Carrusel de Boletas y Códigos QR Pre-Impresión (HU-20.07) -->
-                        @if (orden.boletas.length > 0) {
-                          <div
-                            [attr.data-testid]="'carrusel-qr-orden-' + orden.idOrden"
-                            class="bg-white rounded-xl border border-amber-200/90 p-2.5 shadow-2xs space-y-2">
-                            <!-- Cabecera del Carrusel con Controles Anterior/Siguiente -->
-                            <div class="flex items-center justify-between text-[11px] pb-1.5 border-b border-slate-100">
-                              <span class="font-bold text-slate-700" data-testid="carrusel-contador-boletas">
-                                Boleta {{ obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length) + 1 }} de {{ orden.boletas.length }}
-                              </span>
-                              <div class="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  data-testid="btn-carrusel-prev"
-                                  (click)="boletaAnteriorCarrusel(orden)"
-                                  [disabled]="orden.boletas.length <= 1"
-                                  title="Boleta anterior"
-                                  class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition">
-                                  ‹
-                                </button>
-                                <button
-                                  type="button"
-                                  data-testid="btn-carrusel-next"
-                                  (click)="boletaSiguienteCarrusel(orden)"
-                                  [disabled]="orden.boletas.length <= 1"
-                                  title="Boleta siguiente"
-                                  class="w-6 h-6 rounded flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition">
-                                  ›
-                                </button>
-                              </div>
-                            </div>
-
-                            <!-- Tarjeta de Boleta Activa con QR Vectorial -->
-                            @if (obtenerBoletaActivaCarrusel(orden); as boletaActiva) {
-                              <div data-testid="carrusel-boleta-activa" class="flex flex-col items-center gap-1.5">
-                                <app-qr-viewer
-                                  [value]="boletaActiva.uuidCodigo || boletaActiva.codigoQr || boletaActiva.uuid || ''"
-                                  [uuid]="boletaActiva.uuid || boletaActiva.uuidCodigo || ''"
-                                  [codigoVisible]="boletaActiva.codigoBoleta"
-                                  [size]="136"
-                                  [margin]="4"
-                                  errorCorrectionLevel="M"
-                                  [mostrarInsigniaOptica]="true">
-                                </app-qr-viewer>
-
-                                <div class="text-center w-full px-1 space-y-0.5">
-                                  <p class="font-bold text-slate-800 text-xs truncate">
-                                    {{ boletaActiva.atraccionNombre }} ({{ boletaActiva.modalidadEtiqueta }})
-                                  </p>
-                                  <p class="text-[10px] text-slate-600">
-                                    Menor: <span class="font-semibold text-slate-800">{{ boletaActiva.menorNombre }}</span>
-                                  </p>
-                                  @if (boletaActiva.uuid) {
-                                    <p class="text-[8px] font-mono text-slate-400 truncate max-w-full" [title]="boletaActiva.uuid">
-                                      UUID: {{ boletaActiva.uuid }}
-                                    </p>
-                                  }
-
-                                  <!-- Botón de Reimpresión Auditada por Boleta en Carrusel -->
-                                  <button
-                                    type="button"
-                                    data-testid="btn-reimprimir-boleta-carrusel"
-                                    (click)="abrirModalReimpresionBoleta(boletaActiva)"
-                                    class="mt-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center justify-center gap-1 mx-auto shadow-2xs">
-                                    <span>🖨️</span>
-                                    <span>Reimprimir boleta</span>
-                                  </button>
-                                </div>
-
-                                <!-- Indicadores / Dots si hay más de 1 boleta -->
-                                @if (orden.boletas.length > 1) {
-                                  <div class="flex items-center justify-center gap-1 pt-1">
-                                    @for (b of orden.boletas; track b.codigoBoleta; let dIndex = $index) {
-                                      <button
-                                        type="button"
-                                        [attr.data-testid]="'btn-carrusel-dot-' + dIndex"
-                                        (click)="seleccionarBoletaCarrusel(orden.idOrden, dIndex)"
-                                        [class]="dIndex === obtenerIndiceCarrusel(orden.idOrden, orden.boletas.length) ? 'w-4 bg-amber-500' : 'w-1.5 bg-slate-300 hover:bg-slate-400'"
-                                        class="h-1.5 rounded-full transition-all cursor-pointer"
-                                        [attr.aria-label]="'Ir a boleta ' + (dIndex + 1)">
-                                      </button>
-                                    }
-                                  </div>
-                                }
-                              </div>
-                            }
-                          </div>
-                        }
-
-                        <div class="flex items-center justify-between pt-1 gap-2">
-                          <span class="font-mono font-bold text-slate-700 text-xs">
-                            \${{ orden.granTotal.toLocaleString('es-CO') }} COP
-                          </span>
-                          <div class="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              [attr.data-testid]="'btn-imprimir-orden-' + orden.idOrden"
-                              (click)="reimprimirOrdenFisica(orden)"
-                              class="px-2 py-1 bg-slate-800 hover:bg-slate-900 transition-transform duration-150 ease-out enabled:active:scale-[0.96] text-white font-bold text-[11px] rounded-lg shadow-xs cursor-pointer flex items-center gap-1"
-                              title="Reimprimir tirilla térmica">
-                              <span>🖨️</span>
-                              <span>Imprimir</span>
-                            </button>
-                            <button
-                              type="button"
-                              [attr.data-testid]="'btn-emitir-orden-' + orden.idOrden"
-                              (click)="emitirOrdenFisica(orden.idOrden)"
-                              class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1">
-                              <span>✓</span>
-                              <span>Emitir / Entregar</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Estado de la Estación -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-xs text-slate-600 space-y-2">
-              <p class="font-bold text-slate-700">Estado de la estación:</p>
-              <p>• Cajero: <span class="font-mono text-slate-800">{{ authService.currentUserName() }}</span></p>
-              <p>• Turno de caja: 
-                @if (turnoActual(); as turno) {
-                  <span class="font-bold text-emerald-600">ABIERTO (Turno #{{ turno.idTurno }})</span>
-                } @else {
-                  <span class="font-bold text-amber-600">PENDIENTE DE APERTURA</span>
-                }
-              </p>
-              <p>• Base inicial: 
-                <span class="font-semibold text-slate-800">
-                  \${{ (turnoActual()?.montoInicial ?? 0).toLocaleString('es-CO') }} COP
-                </span>
-              </p>
-              @if (turnoActual() && !esCierreCiego()) {
-                <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span class="text-slate-500">Saldo teórico actual:</span>
-                  <span class="font-mono font-bold text-slate-800">
-                    \${{ montoEsperadoArqueo().toLocaleString('es-CO') }}
-                  </span>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
-          </div>
-        </div>
+          }
+
+          <!-- Carrito y Checkout Fijo -->
+          <app-pos-cart
+            class="flex-1 min-h-0 flex flex-col"
+            [items]="itemsSeleccionados()"
+            [menores]="menoresOrden()"
+            [autoImprimir]="autoImprimirAlCobrar()"
+            (autoImprimirChange)="autoImprimirAlCobrar.set($event)"
+            (itemsChange)="itemsSeleccionados.set($event)"
+            (liquidarOrden)="onLiquidarOrden($event)">
+          </app-pos-cart>
+        </aside>
       </main>
 
-      <!-- Barra de Estado / Dock Fijo Inferior -->
-      <footer class="no-print fixed bottom-0 inset-x-0 h-12 bg-white/95 backdrop-blur-sm border-t border-slate-200 z-20 px-4 sm:px-6 flex items-center justify-between shadow-xs">
-        <div class="flex items-center gap-2 text-xs text-slate-500 min-w-0">
+      <!-- Barra de Estado Compacta -->
+      <footer class="no-print h-9 shrink-0 bg-white border-t border-slate-200 px-4 flex items-center justify-between text-xs z-20">
+        <div class="flex items-center gap-2 text-slate-500 min-w-0">
           <span class="w-2 h-2 rounded-full shrink-0" [ngClass]="turnoActual() ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-          <span class="font-medium truncate max-w-[150px] sm:max-w-none">
+          <span class="font-medium truncate">
             @if (turnoActual(); as turno) {
               Turno #{{ turno.idTurno }} Activo • Territorio de Niños
             } @else {
@@ -641,9 +647,9 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
           </span>
         </div>
 
-        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div class="flex items-center gap-2.5 shrink-0">
           <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center ring-1 ring-blue-300">
+            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center border border-blue-300">
               {{ authService.currentUserInitials() }}
             </div>
             <span class="text-xs font-bold text-slate-800 hidden sm:inline">{{ authService.currentUserName() }}</span>
@@ -652,14 +658,14 @@ import { CodigoMotivoReimpresion } from '../../../../core/models/ticket.model';
             </span>
           </div>
 
-          <div class="h-4 w-px bg-slate-200"></div>
+          <div class="h-3.5 w-px bg-slate-200"></div>
 
           <button
             type="button"
             (click)="logout()"
-            class="hover:bg-red-50 hover:text-red-600 text-xs text-slate-500 font-medium px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5"
+            class="hover:bg-red-50 hover:text-red-600 text-xs text-slate-600 font-semibold ps-2 pe-2.5 py-1 rounded-lg transition-[transform,background-color,color] duration-150 ease-out motion-safe:enabled:active:scale-[0.96] cursor-pointer flex items-center gap-1.5"
             title="Cerrar sesión">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="w-3.5 h-3.5 op-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             <span class="hidden sm:inline">Cerrar sesión</span>
@@ -708,9 +714,6 @@ export class TaquillaPosComponent implements OnInit {
   readonly procesandoReimpresion = signal<boolean>(false);
   readonly turnoActual = signal<TurnoResponseDTO | null>(null);
 
-  /**
-   * Boletas individuales generadas mapeadas en el estado de la aplicación (SCRUM-368 / HU-19.09).
-   */
   readonly boletasGeneradas = this.colaEmisionService.boletasGeneradas;
   readonly historialTicketsTurno = this.colaEmisionService.historialTicketsTurno;
 
@@ -720,15 +723,37 @@ export class TaquillaPosComponent implements OnInit {
 
   readonly clienteSeleccionado = signal<Cliente | null>(null);
   readonly esClienteNuevo = signal<boolean>(false);
+  readonly editarClienteExpandido = signal<boolean>(false);
   readonly buscandoCliente = signal<boolean>(false);
   readonly menoresOrden = signal<Menor[]>([]);
-  readonly documentoInputRef = viewChild<ElementRef<HTMLInputElement>>('documentoInput');
+  readonly menorActivo = signal<Menor | null>(null);
+  readonly autoImprimirAlCobrar = signal<boolean>(false);
+
+  @ViewChild('documentoInput') documentoInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('nombreInput') nombreInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('telefonoInput') telefonoInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild(CatalogoAtraccionesComponent) catalogoRef?: CatalogoAtraccionesComponent;
+  @ViewChild(PosCartComponent) posCartRef?: PosCartComponent;
 
   readonly clienteForm = this.fb.group({
     numeroDocumento: ['', [Validators.required, Validators.minLength(5)]],
     nombreCompleto: ['', [Validators.required]],
     telefono: ['', [Validators.required, Validators.pattern(/^[0-9+\s-]{7,15}$/)]],
     correo: ['', [Validators.email]]
+  });
+
+  readonly mostrarFormularioClienteExtendido = computed(
+    () => this.esClienteNuevo() || this.editarClienteExpandido()
+  );
+
+  readonly conteoAtraccionesEnCarrito = computed<Record<string, number>>(() => {
+    const mapa: Record<string, number> = {};
+    for (const item of this.itemsSeleccionados()) {
+      const key = String(item.atraccion?.id ?? item.atraccion?.nombre ?? '');
+      if (!key) continue;
+      mapa[key] = (mapa[key] ?? 0) + (item.cantidad ?? 1);
+    }
+    return mapa;
   });
 
   readonly esCierreCiego = computed(() => {
@@ -820,83 +845,115 @@ export class TaquillaPosComponent implements OnInit {
     const req$ = this.configuracionService?.getConfiguracion?.();
     if (!req$) return;
 
-    req$.pipe(
-      takeUntilDestroyed(this.destroyRef),
-      catchError(() => of(null))
-    ).subscribe(config => {
-      if (config) {
-        this.printService.configurarDatosParque(config);
-        if (config.anchoPapelMm) {
-          this.printService.configurarAnchoPapel(config.anchoPapelMm === 58 ? 58 : 80);
+    req$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError(() => of(null))
+      )
+      .subscribe(config => {
+        if (config) {
+          this.printService.configurarDatosParque(config);
+          if (config.anchoPapelMm) {
+            this.printService.configurarAnchoPapel(config.anchoPapelMm === 58 ? 58 : 80);
+          }
         }
-      }
-    });
+      });
   }
 
   cargarCatalogoAtracciones(): void {
     if (!this.atraccionService) return;
     this.cargandoAtracciones.set(true);
-    this.atraccionService.getCatalogoVenta().pipe(
-      takeUntilDestroyed(this.destroyRef),
-      finalize(() => this.cargandoAtracciones.set(false))
-    ).subscribe({
-      next: (lista) => {
-        const normalizada = (lista || []).map(a => {
-          const ocupados = a.ocupacionActual ?? a.ocupacionActiva ?? a.ninosActivos ?? 0;
-          return {
-            ...a,
-            ocupacionActual: ocupados,
-            ocupacionActiva: ocupados,
-            ninosActivos: ocupados
-          };
-        });
-        this.atracciones.set(normalizada);
-      },
-      error: () => {
-        this.atracciones.set([]);
-        this.notificationService?.error('Error al cargar el catálogo de atracciones.');
-      }
-    });
+    this.atraccionService
+      .getCatalogoVenta()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.cargandoAtracciones.set(false))
+      )
+      .subscribe({
+        next: lista => {
+          const normalizada = (lista || []).map(a => {
+            const ocupados = a.ocupacionActual ?? a.ocupacionActiva ?? a.ninosActivos ?? 0;
+            return {
+              ...a,
+              ocupacionActual: ocupados,
+              ocupacionActiva: ocupados,
+              ninosActivos: ocupados
+            };
+          });
+          this.atracciones.set(normalizada);
+        },
+        error: () => {
+          this.atracciones.set([]);
+          this.notificationService?.error('Error al cargar el catálogo de atracciones.');
+        }
+      });
   }
 
   onAtraccionSeleccionada(sel: SeleccionCatalogoPOS): void {
     const a = sel.atraccion;
-    // El aforo lleno ya no bloquea la venta: el ticket queda con hora estimada de ingreso.
     if (a.estado && a.estado !== 'ACTIVO') {
       this.notificationService?.warn(`La atracción "${a.nombre}" no está disponible.`);
       return;
     }
 
     const menores = this.menoresOrden();
-    const menorPreasignado = sel.menorAsignado ?? (menores.length === 1 ? menores[0] : null);
+    const menorPreasignado = sel.menorAsignado ?? this.menorActivo() ?? (menores.length === 1 ? menores[0] : null);
+    const getMenorKey = (m: Menor | null | undefined) =>
+      !m ? '' : m.idMenor !== undefined ? String(m.idMenor) : m.nombreCompleto;
+    const keyNueva = getMenorKey(menorPreasignado);
+    const cantAgregar = sel.cantidad ?? 1;
 
-    const itemConValores: SeleccionCatalogoPOS = {
-      ...sel,
-      cantidad: sel.cantidad ?? 1,
-      menorAsignado: menorPreasignado
-    };
+    this.itemsSeleccionados.update(prev => {
+      const idx = prev.findIndex(
+        item =>
+          String(item.atraccion?.id ?? item.atraccion?.nombre) === String(a.id ?? a.nombre) &&
+          item.modalidad?.etiqueta === sel.modalidad?.etiqueta &&
+          getMenorKey(item.menorAsignado) === keyNueva
+      );
+      if (idx !== -1) {
+        return prev.map((item, i) => (i === idx ? { ...item, cantidad: (item.cantidad ?? 1) + cantAgregar } : item));
+      }
+      return [
+        ...prev,
+        {
+          ...sel,
+          cantidad: cantAgregar,
+          menorAsignado: menorPreasignado
+        }
+      ];
+    });
 
-    this.itemsSeleccionados.update(prev => [...prev, itemConValores]);
     this.notificationService?.success(`"${sel.atraccion.nombre}" (${sel.modalidad.etiqueta}) añadida a la orden.`);
   }
 
   onMenoresOrdenChange(nuevosMenores: Menor[]): void {
     this.menoresOrden.set(nuevosMenores);
     const idsValidos = new Set(
-      nuevosMenores.map(m => m.idMenor !== undefined ? String(m.idMenor) : m.nombreCompleto)
+      nuevosMenores.map(m => (m.idMenor !== undefined ? String(m.idMenor) : m.nombreCompleto))
     );
     this.itemsSeleccionados.update(items =>
       items.map(item => {
         if (!item.menorAsignado) return item;
-        const key = item.menorAsignado.idMenor !== undefined
-          ? String(item.menorAsignado.idMenor)
-          : item.menorAsignado.nombreCompleto;
+        const key =
+          item.menorAsignado.idMenor !== undefined
+            ? String(item.menorAsignado.idMenor)
+            : item.menorAsignado.nombreCompleto;
         if (!idsValidos.has(key)) {
           return { ...item, menorAsignado: null };
         }
         return item;
       })
     );
+
+    const activo = this.menorActivo();
+    if (activo) {
+      const keyActivo = activo.idMenor !== undefined ? String(activo.idMenor) : activo.nombreCompleto;
+      if (!idsValidos.has(keyActivo)) {
+        this.menorActivo.set(nuevosMenores.length === 1 ? nuevosMenores[0] : null);
+      }
+    } else if (nuevosMenores.length === 1) {
+      this.menorActivo.set(nuevosMenores[0]);
+    }
   }
 
   removerItemOrden(index: number): void {
@@ -919,10 +976,8 @@ export class TaquillaPosComponent implements OnInit {
   onPagoConfirmado(resumen: ResumenLiquidacionPOS): void {
     this.procesandoPago.set(true);
 
-    // 1. Emitir sonido sutil de confirmación
     this.posAudioService.reproducirConfirmacionPago();
 
-    // 2. Pasar a la cola de emisión física y mapear boletas en el estado (HU-19.09)
     const docCliente = this.clienteForm.get('numeroDocumento')?.value?.trim();
     const nomCliente = this.clienteForm.get('nombreCompleto')?.value?.trim();
     const telCliente = this.clienteForm.get('telefono')?.value?.trim();
@@ -934,7 +989,6 @@ export class TaquillaPosComponent implements OnInit {
     };
     const ordenFisica = this.colaEmisionService.encolarVenta(resumen, clienteContexto);
 
-    // 3. Si es un cliente nuevo con datos completos, persistir primero y luego sincronizar venta con su clienteId
     const registroCliente$ =
       this.esClienteNuevo() && docCliente && nomCliente
         ? this.clienteService?.registrarCliente?.({
@@ -954,16 +1008,14 @@ export class TaquillaPosComponent implements OnInit {
           catchError(() => of(null))
         )
         .subscribe(nuevoCliente => {
-          const idResuelto =
-            nuevoCliente?.idCliente ??
-            nuevoCliente?.id ??
-            clienteContexto.clienteId;
+          const idResuelto = nuevoCliente?.idCliente ?? nuevoCliente?.id ?? clienteContexto.clienteId;
 
           if (nuevoCliente?.menores && nuevoCliente.menores.length > 0) {
             ordenFisica.boletas.forEach(b => {
               if (!b.menorId) {
-                const menorEncontrado = nuevoCliente.menores?.find(m => m.nombreCompleto === b.menorNombre)
-                  ?? (nuevoCliente.menores?.length === 1 ? nuevoCliente.menores[0] : null);
+                const menorEncontrado =
+                  nuevoCliente.menores?.find(m => m.nombreCompleto === b.menorNombre) ??
+                  (nuevoCliente.menores?.length === 1 ? nuevoCliente.menores[0] : null);
                 if (menorEncontrado) {
                   b.menorId = menorEncontrado.idMenor ?? menorEncontrado.id;
                 }
@@ -987,7 +1039,6 @@ export class TaquillaPosComponent implements OnInit {
       );
     }
 
-    // 4. Si el pago es en efectivo, acumular en turnoActual para balance de arqueo
     const turno = this.turnoActual();
     if (turno && resumen.metodoPago === 'EFECTIVO') {
       this.turnoActual.set({
@@ -996,16 +1047,12 @@ export class TaquillaPosComponent implements OnInit {
       });
     }
 
-    // 5. Limpiar carrito de compras y restablecer cliente/menores para la siguiente venta
     this.itemsSeleccionados.set([]);
     this.limpiarCliente();
 
-    // 6. Cerrar modal de confirmación y mostrar cola de emisión física ANTES de disparar la impresión
     this.mostrarModalConfirmarPago.set(false);
     this.resumenPendientePago.set(null);
-    this.mostrarColaEmision.set(true);
 
-    // 7. Refrescar aforo y cupos del catálogo de ventas tras la venta
     this.cargarCatalogoAtracciones();
 
     this.notificationService?.success(
@@ -1014,15 +1061,36 @@ export class TaquillaPosComponent implements OnInit {
 
     this.procesandoPago.set(false);
 
-    // 8. Preparar orden en la plantilla de impresión sin abrir window.print() automáticamente;
-    //    la impresión física se dispara manualmente desde el botón "Imprimir" en la Cola de Emisión.
     this.printService.ordenEnImpresion.set(ordenFisica);
     this.printService.boletasEnImpresion.set(ordenFisica.boletas ?? []);
+
+    if (this.autoImprimirAlCobrar()) {
+      this.printService.imprimirOrden(ordenFisica);
+      this.colaEmisionService.marcarOrdenEmitida(ordenFisica.idOrden);
+      this.mostrarColaEmision.set(false);
+      this.enfocarBuscarCliente(true);
+    } else {
+      this.mostrarColaEmision.set(true);
+    }
+  }
+
+  imprimirYEntregarOrden(orden: OrdenEmisionFisica): void {
+    this.printService.imprimirOrden(orden);
+    this.colaEmisionService.marcarOrdenEmitida(orden.idOrden);
+    if (this.colaEmisionService.cantidadOrdenesPendientes() === 0) {
+      this.mostrarColaEmision.set(false);
+    }
+    this.notificationService?.success(`Orden #${orden.idOrden} enviada a impresión y entregada.`);
+    this.enfocarBuscarCliente(true);
   }
 
   emitirOrdenFisica(idOrden: string): void {
     this.colaEmisionService.marcarOrdenEmitida(idOrden);
+    if (this.colaEmisionService.cantidadOrdenesPendientes() === 0) {
+      this.mostrarColaEmision.set(false);
+    }
     this.notificationService?.success(`Boletas de la orden #${idOrden} marcadas como emitidas.`);
+    this.enfocarBuscarCliente(true);
   }
 
   reimprimirOrdenFisica(orden: OrdenEmisionFisica): void {
@@ -1030,9 +1098,6 @@ export class TaquillaPosComponent implements OnInit {
     this.notificationService?.info(`Enviando orden #${orden.idOrden} a impresión.`);
   }
 
-  /**
-   * Abre el modal de reimpresión para la última boleta emitida en el turno activo (HU-22.07 / SCRUM-383).
-   */
   abrirModalReimpresionUltimaBoleta(): void {
     const ultima = this.colaEmisionService.ultimaBoletaEmitida();
     if (!ultima) {
@@ -1043,9 +1108,6 @@ export class TaquillaPosComponent implements OnInit {
     this.mostrarModalReimpresion.set(true);
   }
 
-  /**
-   * Abre el modal de reimpresión para una boleta específica seleccionada en la cola o carrusel.
-   */
   abrirModalReimpresionBoleta(ticket: Ticket): void {
     if (!ticket) return;
     this.ticketPendienteReimpresion.set(ticket);
@@ -1057,10 +1119,6 @@ export class TaquillaPosComponent implements OnInit {
     this.ticketPendienteReimpresion.set(null);
   }
 
-  /**
-   * Procesa la confirmación del modal: registra la auditoría en el backend,
-   * estampa la marca visible ** REIMPRESIÓN **, dispara la impresión y notifica vía toast (HU-22.08 / SCRUM-384).
-   */
   onConfirmarReimpresion(evento: {
     ticket: Ticket;
     motivo: string;
@@ -1075,8 +1133,7 @@ export class TaquillaPosComponent implements OnInit {
         finalize(() => this.procesandoReimpresion.set(false))
       )
       .subscribe({
-        next: (res) => {
-          // 1. Actualizar boleta con marca visible ** REIMPRESIÓN ** en estado reactivo (HU-22.05 / Notion: CA-02)
+        next: res => {
           const ticketActualizado = this.colaEmisionService.actualizarBoletaReimpresa(
             evento.ticket.uuid || String(evento.ticket.idTicket || evento.ticket.id),
             {
@@ -1087,7 +1144,6 @@ export class TaquillaPosComponent implements OnInit {
             }
           );
 
-          // 2. Disparar impresión térmica individual de la boleta con marca
           const boletaAImprimir = ticketActualizado || {
             ...evento.ticket,
             esReimpresion: true,
@@ -1096,19 +1152,18 @@ export class TaquillaPosComponent implements OnInit {
           };
           this.printService.imprimirBoletas([boletaAImprimir]);
 
-          // 3. Notificación visual Toast con datos del evento registrado (HU-22.08 / SCRUM-384)
           this.notificationService?.success(
             `Reimpresión registrada (#${res.idLog || 'LOG'}) • Boleta ${res.codigoBoleta || evento.ticket.codigoBoleta} • Motivo: ${res.motivo || evento.motivo}`
           );
 
-          // 4. Cerrar modal y limpiar selección
           this.mostrarModalReimpresion.set(false);
           this.ticketPendienteReimpresion.set(null);
         },
-        error: (err) => {
+        error: err => {
           if (err?.status === 409) {
             this.notificationService?.error(
-              err?.error?.message || `No se puede reimprimir: la boleta #${evento.ticket.codigoBoleta} ya fue consumida o anulada.`
+              err?.error?.message ||
+                `No se puede reimprimir: la boleta #${evento.ticket.codigoBoleta} ya fue consumida o anulada.`
             );
           } else {
             this.notificationService?.error(
@@ -1128,9 +1183,6 @@ export class TaquillaPosComponent implements OnInit {
     this.mostrarColaEmision.update(v => !v);
   }
 
-  /**
-   * Estado reactivo para la navegación en el carrusel de boletas de taquilla (HU-20.07).
-   */
   readonly indiceCarruselPorOrden = signal<Record<string, number>>({});
 
   obtenerIndiceCarrusel(idOrden: string, totalBoletas: number): number {
@@ -1163,42 +1215,71 @@ export class TaquillaPosComponent implements OnInit {
     this.indiceCarruselPorOrden.update(m => ({ ...m, [idOrden]: index }));
   }
 
+  onEnterDocumento(): void {
+    if (this.mostrarFormularioClienteExtendido()) {
+      setTimeout(() => this.nombreInputRef?.nativeElement?.focus(), 0);
+    } else {
+      this.catalogoRef?.enfocarBuscador();
+    }
+  }
+
+  onEnterNombre(): void {
+    this.telefonoInputRef?.nativeElement?.focus();
+  }
+
+  onEnterTelefono(): void {
+    this.catalogoRef?.enfocarBuscador();
+  }
+
   iniciarBusquedaCliente(): void {
-    this.clienteForm.get('numeroDocumento')!.valueChanges.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      filter(doc => !!doc && doc.trim().length >= 5),
-      switchMap(doc => {
-        this.buscandoCliente.set(true);
-        return this.clienteService.buscarPorDocumento(doc!.trim()).pipe(
-          catchError(() => of(null)),
-          finalize(() => this.buscandoCliente.set(false))
-        );
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (cliente) => {
-        if (cliente) {
-          this.clienteSeleccionado.set(cliente);
-          this.esClienteNuevo.set(false);
-          this.menoresOrden.set(cliente.menores ? [...cliente.menores] : []);
-          this.clienteForm.patchValue({
-            nombreCompleto: cliente.nombreCompleto ?? '',
-            telefono: cliente.telefono ?? '',
-            correo: cliente.correo ?? ''
-          }, { emitEvent: false });
-        } else {
-          this.clienteSeleccionado.set(null);
-          this.esClienteNuevo.set(true);
-          this.menoresOrden.set([]);
-          this.clienteForm.patchValue({
-            nombreCompleto: '',
-            telefono: '',
-            correo: ''
-          }, { emitEvent: false });
+    this.clienteForm
+      .get('numeroDocumento')!
+      .valueChanges.pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        filter(doc => !!doc && doc.trim().length >= 5),
+        switchMap(doc => {
+          this.buscandoCliente.set(true);
+          return this.clienteService.buscarPorDocumento(doc!.trim()).pipe(
+            catchError(() => of(null)),
+            finalize(() => this.buscandoCliente.set(false))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: cliente => {
+          if (cliente) {
+            this.clienteSeleccionado.set(cliente);
+            this.esClienteNuevo.set(false);
+            this.editarClienteExpandido.set(false);
+            const menores = cliente.menores ? [...cliente.menores] : [];
+            this.menoresOrden.set(menores);
+            this.menorActivo.set(menores.length === 1 ? menores[0] : null);
+            this.clienteForm.patchValue(
+              {
+                nombreCompleto: cliente.nombreCompleto ?? '',
+                telefono: cliente.telefono ?? '',
+                correo: cliente.correo ?? ''
+              },
+              { emitEvent: false }
+            );
+          } else {
+            this.clienteSeleccionado.set(null);
+            this.esClienteNuevo.set(true);
+            this.menoresOrden.set([]);
+            this.menorActivo.set(null);
+            this.clienteForm.patchValue(
+              {
+                nombreCompleto: '',
+                telefono: '',
+                correo: ''
+              },
+              { emitEvent: false }
+            );
+          }
         }
-      }
-    });
+      });
   }
 
   limpiarCliente(): void {
@@ -1210,13 +1291,14 @@ export class TaquillaPosComponent implements OnInit {
     });
     this.clienteSeleccionado.set(null);
     this.esClienteNuevo.set(false);
+    this.editarClienteExpandido.set(false);
     this.buscandoCliente.set(false);
     this.menoresOrden.set([]);
+    this.menorActivo.set(null);
   }
 
   @HostListener('window:keydown', ['$event'])
   handleKeyboardShortcuts(event: KeyboardEvent): void {
-    // Evitar interceptar atajos si hay un modal bloqueante activo
     if (this.mostrarModalApertura() || this.mostrarModalArqueo() || this.mostrarModalConfirmarPago()) {
       return;
     }
@@ -1229,25 +1311,55 @@ export class TaquillaPosComponent implements OnInit {
       } else if (this.mostrarColaEmision()) {
         this.mostrarColaEmision.set(false);
       }
-    } else if (event.key === 'F2') {
+      return;
+    }
+
+    if (event.key === 'F2') {
       event.preventDefault();
       this.enfocarBuscarCliente();
+    } else if (event.key === 'F3') {
+      event.preventDefault();
+      this.catalogoRef?.enfocarBuscador();
     } else if (event.key === 'F4') {
       event.preventDefault();
       this.abrirCajaShortcut();
     } else if (event.key === 'F8') {
       event.preventDefault();
       this.arqueoCajaShortcut();
+    } else if (event.key === 'F9' || ((event.ctrlKey || event.metaKey) && event.key === 'Enter')) {
+      event.preventDefault();
+      this.posCartRef?.intentarCobrarConAtajo();
+    } else if (event.key === 'F10') {
+      event.preventDefault();
+      this.mostrarConsultaTickets.set(true);
+    } else if (event.altKey && this.itemsSeleccionados().length > 0) {
+      if (event.key === '1') {
+        event.preventDefault();
+        this.posCartRef?.seleccionarMetodo('EFECTIVO');
+      } else if (event.key === '2') {
+        event.preventDefault();
+        this.posCartRef?.seleccionarMetodo('TARJETA_DEBITO');
+      } else if (event.key === '3') {
+        event.preventDefault();
+        this.posCartRef?.seleccionarMetodo('TARJETA_CREDITO');
+      } else if (event.key === '4') {
+        event.preventDefault();
+        this.posCartRef?.seleccionarMetodo('TRANSFERENCIA');
+      }
     }
   }
 
-  enfocarBuscarCliente(): void {
-    const docInput = this.documentoInputRef()?.nativeElement ?? (document.getElementById('numeroDocumento') as HTMLInputElement | null);
+  enfocarBuscarCliente(silencioso = false): void {
+    const docInput =
+      this.documentoInputRef?.nativeElement ??
+      (document.getElementById('numeroDocumento') as HTMLInputElement | null);
     if (docInput) {
       docInput.focus();
       docInput.select();
     }
-    this.notificationService?.info('Atajo F2: Campo de documento de cliente enfocado.');
+    if (!silencioso) {
+      this.notificationService?.info('Atajo F2: Campo de documento de cliente enfocado.');
+    }
   }
 
   abrirCajaShortcut(): void {
@@ -1267,23 +1379,24 @@ export class TaquillaPosComponent implements OnInit {
   }
 
   verificarTurnoCaja(): void {
-    this.cajaService.obtenerTurnoActivo().pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: (turno) => {
-        if (!turno || turno.estado !== 'ABIERTO') {
+    this.cajaService
+      .obtenerTurnoActivo()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: turno => {
+          if (!turno || turno.estado !== 'ABIERTO') {
+            this.turnoActual.set(null);
+            this.mostrarModalApertura.set(true);
+          } else {
+            this.turnoActual.set(turno);
+            this.mostrarModalApertura.set(false);
+          }
+        },
+        error: () => {
           this.turnoActual.set(null);
           this.mostrarModalApertura.set(true);
-        } else {
-          this.turnoActual.set(turno);
-          this.mostrarModalApertura.set(false);
         }
-      },
-      error: () => {
-        this.turnoActual.set(null);
-        this.mostrarModalApertura.set(true);
-      }
-    });
+      });
   }
 
   onTurnoIniciado(turno: TurnoResponseDTO): void {
@@ -1299,47 +1412,51 @@ export class TaquillaPosComponent implements OnInit {
     if (this.procesandoArqueo()) return;
     this.procesandoArqueo.set(true);
 
-    const ejecutarCierre = () => this.cajaService.cerrarTurno({
-      idTurno: resultado.idTurno,
-      montoFinal: resultado.totalFisico,
-      totalEfectivoReal: resultado.totalFisico,
-      observaciones: resultado.justificacion,
-      diferencia: resultado.diferencia,
-      justificacion: resultado.justificacion
-    });
+    const ejecutarCierre = () =>
+      this.cajaService.cerrarTurno({
+        idTurno: resultado.idTurno,
+        montoFinal: resultado.totalFisico,
+        totalEfectivoReal: resultado.totalFisico,
+        observaciones: resultado.justificacion,
+        diferencia: resultado.diferencia,
+        justificacion: resultado.justificacion
+      });
 
-    const pipeline$ = (typeof this.cajaService.registrarArqueo === 'function')
-      ? this.cajaService.registrarArqueo(resultado.idTurno, resultado).pipe(
-          switchMap(() => ejecutarCierre()),
-          catchError((err) => {
-            if (err?.status === 404 || err?.status === 403 || err?.status === 405) {
-              return ejecutarCierre();
-            }
-            return throwError(() => err);
-          })
-        )
-      : ejecutarCierre();
+    const pipeline$ =
+      typeof this.cajaService.registrarArqueo === 'function'
+        ? this.cajaService.registrarArqueo(resultado.idTurno, resultado).pipe(
+            switchMap(() => ejecutarCierre()),
+            catchError(err => {
+              if (err?.status === 404 || err?.status === 403 || err?.status === 405) {
+                return ejecutarCierre();
+              }
+              return throwError(() => err);
+            })
+          )
+        : ejecutarCierre();
 
-    pipeline$.pipe(
-      finalize(() => this.procesandoArqueo.set(false)),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe({
-      next: () => {
-        this.mostrarModalArqueo.set(false);
-        this.turnoActual.set(null);
-        this.itemsSeleccionados.set([]);
-        this.limpiarCliente();
-        this.colaEmisionService.limpiarTodo();
-        this.mostrarColaEmision.set(false);
-        this.indiceCarruselPorOrden.set({});
-        this.notificationService?.success('Arqueo de caja registrado y turno cerrado exitosamente.');
-        this.mostrarModalApertura.set(true);
-      },
-      error: (err) => {
-        const msg = err?.error?.detalles || err?.error?.mensaje || 'Error al procesar el cierre y arqueo de caja.';
-        this.notificationService?.error(msg);
-      }
-    });
+    pipeline$
+      .pipe(
+        finalize(() => this.procesandoArqueo.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.mostrarModalArqueo.set(false);
+          this.turnoActual.set(null);
+          this.itemsSeleccionados.set([]);
+          this.limpiarCliente();
+          this.colaEmisionService.limpiarTodo();
+          this.mostrarColaEmision.set(false);
+          this.indiceCarruselPorOrden.set({});
+          this.notificationService?.success('Arqueo de caja registrado y turno cerrado exitosamente.');
+          this.mostrarModalApertura.set(true);
+        },
+        error: err => {
+          const msg = err?.error?.detalles || err?.error?.mensaje || 'Error al procesar el cierre y arqueo de caja.';
+          this.notificationService?.error(msg);
+        }
+      });
   }
 
   logout(): void {
